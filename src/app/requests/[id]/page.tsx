@@ -7,7 +7,6 @@ import { REQUEST_TYPES, ROLES } from '@/lib/constants';
 import { formatVND, formatDate, formatTimeAgo, cn } from '@/lib/utils';
 import { StatusBadge, PriorityBadge } from '@/components/shared/Badges';
 import { ArrowLeft, CheckCircle, XCircle, ArrowRightCircle, MessageSquare, User, Clock } from 'lucide-react';
-import { mockUsers } from '@/mocks/users';
 
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,7 +28,6 @@ export default function RequestDetailPage() {
     );
   }
 
-  const requester = mockUsers.find(u => u.id === req.requesterId);
 
   // Check if current user is the pending approver
   const pendingStep = req.approvalSteps?.find(s => s.status === 'pending');
@@ -86,8 +84,14 @@ export default function RequestDetailPage() {
               <div>
                 <dt className="text-gray-500 mb-1">Người tạo</dt>
                 <dd className="flex items-center gap-2">
-                  <img src={requester?.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
-                  <span className="font-medium text-gray-900">{requester?.name}</span>
+                  {req.requesterAvatar ? (
+                    <img src={req.requesterAvatar} alt="" className="w-6 h-6 rounded-full" />
+                  ) : (
+                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                      <User className="w-3 h-3 text-gray-400" />
+                    </div>
+                  )}
+                  <span className="font-medium text-gray-900">{req.requesterName}</span>
                 </dd>
               </div>
               <div>
@@ -124,14 +128,13 @@ export default function RequestDetailPage() {
                 </div>
                 <div>
                   <p className="text-sm font-medium text-gray-900">Tạo đề nghị</p>
-                  <p className="text-xs text-gray-500 mt-0.5">{requester?.name} • {formatDate(req.createdAt)}</p>
+                  <p className="text-xs text-gray-500 mt-0.5">{req.requesterName} • {formatDate(req.createdAt)}</p>
                 </div>
               </div>
 
               {/* Approval Steps */}
               {req.approvalSteps.map((step, idx) => {
                 const isLast = idx === req.approvalSteps.length - 1;
-                const approver = step.approverId ? mockUsers.find(u => u.id === step.approverId) : null;
 
                 let icon = <Clock className="w-4 h-4" />;
                 let bgColor = "bg-gray-100 text-gray-400";
@@ -163,7 +166,7 @@ export default function RequestDetailPage() {
                         {ROLES[step.approverRole]}
                       </p>
                       <div className="text-xs text-gray-500 mt-0.5">
-                        {approver ? approver.name : 'Chờ duyệt'}
+                        {step.approverName ? step.approverName : 'Chờ duyệt'}
                         {step.actedAt && ` • ${formatDate(step.actedAt)}`}
                       </div>
                       {step.comment && (

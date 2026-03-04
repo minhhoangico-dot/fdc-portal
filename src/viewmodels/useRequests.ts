@@ -21,7 +21,11 @@ export function useRequests() {
         .from('fdc_approval_requests')
         .select(`
           *,
-          approvalSteps:fdc_approval_steps(*)
+          requester:fdc_user_mapping!requester_id(id, full_name, email, role, department_name, avatar_url),
+          approvalSteps:fdc_approval_steps(
+            *,
+            approver:fdc_user_mapping!approver_id(id, full_name, role, avatar_url)
+          )
         `)
         .order('created_at', { ascending: false });
 
@@ -44,6 +48,9 @@ export function useRequests() {
           totalAmount: dbReq.total_amount,
           createdAt: dbReq.created_at,
           updatedAt: dbReq.updated_at,
+          requesterName: dbReq.requester?.full_name || 'Unknown',
+          requesterDept: dbReq.requester?.department_name || '',
+          requesterAvatar: dbReq.requester?.avatar_url || null,
           approvalSteps: (dbReq.approvalSteps || []).map((step: any) => ({
             id: step.id,
             stepOrder: step.step_order,
@@ -51,7 +58,9 @@ export function useRequests() {
             approverId: step.approver_id,
             status: step.status,
             comment: step.comment,
-            actedAt: step.acted_at
+            actedAt: step.acted_at,
+            approverName: step.approver?.full_name || null,
+            approverAvatar: step.approver?.avatar_url || null,
           }))
         }));
         setRequests(mapped);

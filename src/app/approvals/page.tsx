@@ -2,21 +2,21 @@ import React, { useState } from 'react';
 import { useApprovals } from '@/viewmodels/useApprovals';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { mockUsers } from '@/mocks/users';
-import { 
-  Check, 
-  Clock, 
-  AlertTriangle, 
-  FileText, 
-  Package, 
-  DollarSign, 
-  CreditCard, 
-  Calendar, 
+import {
+  Check,
+  Clock,
+  AlertTriangle,
+  FileText,
+  Package,
+  DollarSign,
+  CreditCard,
+  Calendar,
   RefreshCw,
   Filter,
   Layers,
   List as ListIcon,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { formatVND, cn } from '@/lib/utils';
 import { PriorityBadge } from '@/components/shared/Badges';
@@ -37,10 +37,10 @@ const TYPE_ICONS: Record<RequestType, any> = {
 export default function ApprovalsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { 
-    regularApprovals, 
-    kttEscalationCandidates, 
-    countsByType, 
+  const {
+    regularApprovals,
+    kttEscalationCandidates,
+    countsByType,
     countsByUrgency,
     isRefreshing,
     refresh,
@@ -83,7 +83,7 @@ export default function ApprovalsPage() {
     const now = new Date('2026-03-03T03:58:03-08:00').getTime();
     const createdTime = new Date(createdAt).getTime();
     const hoursWaiting = (now - createdTime) / (1000 * 60 * 60);
-    
+
     if (hoursWaiting > 48) {
       return { level: 'critical', text: `Chờ ${Math.floor(hoursWaiting / 24)} ngày`, color: 'text-red-600 bg-red-50 border-red-200' };
     }
@@ -95,7 +95,6 @@ export default function ApprovalsPage() {
 
   const renderRequestCard = (req: Request, isEscalation = false) => {
     const Icon = TYPE_ICONS[req.type] || FileText;
-    const requester = mockUsers.find(u => u.id === req.requesterId);
     const urgency = getUrgencyInfo(req.createdAt);
     const isSelected = selectedIds.has(req.id);
 
@@ -118,7 +117,7 @@ export default function ApprovalsPage() {
           />
         </div>
 
-        <div 
+        <div
           className="flex items-start gap-4 flex-1 cursor-pointer pl-8 sm:pl-0"
           onClick={() => navigate(`/requests/${req.id}`)}
         >
@@ -136,20 +135,26 @@ export default function ApprovalsPage() {
               </span>
             </div>
             <h3 className="text-base font-semibold text-gray-900 truncate mb-2">{req.title}</h3>
-            
+
             <div className="flex items-center gap-3">
               <div className="flex items-center gap-2">
-                <img src={requester?.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
-                <span className="text-sm text-gray-700">{requester?.name}</span>
-                {requester?.department && (
-                  <span className="text-xs text-gray-500 hidden sm:inline">({requester.department})</span>
+                {req.requesterAvatar ? (
+                  <img src={req.requesterAvatar} alt="" className="w-6 h-6 rounded-full" />
+                ) : (
+                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
+                    <User fill="currentColor" size={12} className="text-gray-400" />
+                  </div>
+                )}
+                <span className="text-sm text-gray-700">{req.requesterName}</span>
+                {req.requesterDept && (
+                  <span className="text-xs text-gray-500 hidden sm:inline">({req.requesterDept})</span>
                 )}
               </div>
               <PriorityBadge priority={req.priority} />
             </div>
           </div>
         </div>
-        
+
         <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 mt-3 sm:mt-0 gap-3">
           {req.totalAmount && (
             <div className="text-left sm:text-right">
@@ -168,7 +173,7 @@ export default function ApprovalsPage() {
               <Check className="w-4 h-4" />
               Duyệt
             </button>
-            <button 
+            <button
               onClick={() => navigate(`/requests/${req.id}`)}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors sm:hidden"
             >
@@ -185,7 +190,7 @@ export default function ApprovalsPage() {
       {/* Header & Pull to refresh */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Cần phê duyệt</h1>
-        <button 
+        <button
           onClick={refresh}
           disabled={isRefreshing}
           className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
@@ -229,7 +234,7 @@ export default function ApprovalsPage() {
             <span>Lọc: Tất cả</span>
           </div>
         </div>
-        
+
         <div className="flex items-center bg-gray-100 p-1 rounded-lg">
           <button
             onClick={() => setViewMode('list')}
@@ -287,7 +292,7 @@ export default function ApprovalsPage() {
                   </span>
                 </div>
               )}
-              
+
               {viewMode === 'list' ? (
                 <div className="space-y-3">
                   {regularApprovals.map(req => renderRequestCard(req))}
@@ -297,7 +302,7 @@ export default function ApprovalsPage() {
                   {Object.entries(countsByType).map(([type, count]) => {
                     const typeRequests = regularApprovals.filter(r => r.type === type);
                     if (typeRequests.length === 0) return null;
-                    
+
                     return (
                       <div key={type} className="space-y-3">
                         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">

@@ -10,4 +10,6 @@ export interface ApprovalStep {
   status: ApprovalStatus;
   comment?: string;
   actedAt?: string;
+  approverName?: string | null;
+  approverAvatar?: string | null;
 }

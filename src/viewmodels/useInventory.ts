@@ -1,19 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
 
-const mockUsageTrend = Array.from({ length: 30 }).map((_, i) => ({
-  date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString(),
-  usage: Math.floor(Math.random() * 50) + 10,
-  patientCount: Math.floor(Math.random() * 200) + 50
-}));
 
-const mockTopMaterials = [
-  { materialId: '1', name: 'Găng tay y tế', consumption: 1500, unit: 'Hộp' },
-  { materialId: '2', name: 'Bơm kim tiêm 5ml', consumption: 1200, unit: 'Cái' },
-  { materialId: '3', name: 'Bông y tế', consumption: 800, unit: 'Cuộn' },
-  { materialId: '4', name: 'Nước muối sinh lý', consumption: 600, unit: 'Chai' },
-  { materialId: '5', name: 'Cồn 70 độ', consumption: 400, unit: 'Chai' },
-];
 import {
   InventoryItem,
   InventoryAnomaly,
@@ -127,11 +115,18 @@ export function useInventory() {
 
   const estimatedValue = useMemo(() => {
     return inventory.reduce((sum, item) => {
-      // Estimated price mock since DB doesn't have it
-      const price = Math.floor(Math.random() * 490000) + 10000;
+      // Stable pseudo-random price based on item name since DB doesn't have pricing yet
+      const charSum = item.name.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+      const price = (charSum % 50) * 10000 + 10000;
       return sum + item.currentStock * price;
     }, 0);
   }, [inventory]);
+
+  const usageTrend = useMemo(() => Array.from({ length: 30 }).map((_, i) => ({
+    date: new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    usage: 0,
+    patientCount: 0
+  })), []);
 
   const acknowledgeAnomaly = async (id: string) => {
     const { error } = await supabase
@@ -162,8 +157,8 @@ export function useInventory() {
     setSelectedItem,
     anomalies,
     acknowledgeAnomaly,
-    usageTrend: mockUsageTrend,
-    topMaterials: mockTopMaterials,
+    usageTrend,
+    topMaterials: [],
     stats: {
       totalItems,
       activeAnomaliesCount,

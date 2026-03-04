@@ -15,7 +15,7 @@ export function usePortal() {
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
 
-  // Leave balance (mock)
+  // TODO: Fetch real leaveBalance from a database table
   const leaveBalance = {
     used: 2,
     remaining: 10,

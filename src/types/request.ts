@@ -18,4 +18,7 @@ export interface Request {
   createdAt: string;
   updatedAt: string;
   approvalSteps: ApprovalStep[];
+  requesterName?: string;
+  requesterDept?: string;
+  requesterAvatar?: string | null;
 }

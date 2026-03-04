@@ -68,8 +68,8 @@ export function useDashboard() {
   // Dept Head specific
   if (user.role === 'dept_head') {
     data.deptPendingApprovals = pendingApprovals.filter(r => r.department === user.department);
-    // Mock dept attendance
-    data.deptAttendanceSummary = { present: 12, late: 2, absent: 1, leave: 1 };
+    // Using system-wide attendance for now (requires useAttendance extension to filter by dept)
+    data.deptAttendanceSummary = attendanceSummary;
   }
 
   // KTT / Super Admin specific
