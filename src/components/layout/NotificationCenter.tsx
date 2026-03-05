@@ -127,8 +127,8 @@ export function NotificationCenter({
           <button
             onClick={() => setActiveTab("all")}
             className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${activeTab === "all"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
               }`}
           >
             Tất cả
@@ -136,8 +136,8 @@ export function NotificationCenter({
           <button
             onClick={() => setActiveTab("unread")}
             className={`flex-1 py-1.5 text-sm font-medium rounded-lg transition-colors ${activeTab === "unread"
-                ? "bg-white text-gray-900 shadow-sm"
-                : "text-gray-500 hover:text-gray-700"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-500 hover:text-gray-700"
               }`}
           >
             Chưa đọc
@@ -184,10 +184,10 @@ export function NotificationCenter({
                       {notification.body}
                     </p>
                     <p className="text-xs text-gray-400 mt-2">
-                      {formatDistanceToNow(parseISO(notification.createdAt), {
+                      {notification.createdAt ? formatDistanceToNow(parseISO(notification.createdAt), {
                         addSuffix: true,
                         locale: vi,
-                      })}
+                      }) : 'Bừa rồi'}
                     </p>
                   </div>
                 </div>

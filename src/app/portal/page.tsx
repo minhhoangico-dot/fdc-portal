@@ -327,7 +327,7 @@ export default function PortalPage() {
                     {req.title}
                   </h3>
                   <p className="text-xs text-gray-500 mt-0.5">
-                    {format(new Date(req.createdAt), "dd/MM/yyyy")}
+                    {req.createdAt ? format(new Date(req.createdAt), "dd/MM/yyyy") : "---"}
                   </p>
                 </div>
                 <span
@@ -412,7 +412,7 @@ export default function PortalPage() {
           <div className="bg-white rounded-2xl w-full max-w-sm overflow-hidden shadow-xl">
             <div className="p-4 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-bold text-gray-900">
-                Chi tiết ngày {format(parseISO(selectedDay.date), "dd/MM/yyyy")}
+                Chi tiết ngày {selectedDay.date ? format(parseISO(selectedDay.date), "dd/MM/yyyy") : "---"}
               </h3>
               <button
                 onClick={() => setSelectedDay(null)}

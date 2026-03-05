@@ -91,11 +91,10 @@ export default function AdminPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
-              activeTab === tab.id
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${activeTab === tab.id
                 ? "bg-indigo-50 text-indigo-700"
                 : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-            }`}
+              }`}
           >
             {tab.icon}
             {tab.label}
@@ -241,11 +240,10 @@ export default function AdminPage() {
                 <button
                   key={config.id}
                   onClick={() => setSelectedConfig(config)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
-                    selectedConfig.id === config.id
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${selectedConfig.id === config.id
                       ? "bg-indigo-100 text-indigo-700"
                       : "text-gray-700 hover:bg-gray-100"
-                  }`}
+                    }`}
                 >
                   {getRequestTypeLabel(config.requestType)}
                 </button>
@@ -524,11 +522,10 @@ export default function AdminPage() {
                     LAN Bridge
                   </h3>
                   <span
-                    className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                      bridgeHealth.status === "online"
+                    className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${bridgeHealth.status === "online"
                         ? "bg-emerald-100 text-emerald-700"
                         : "bg-rose-100 text-rose-700"
-                    }`}
+                      }`}
                   >
                     {bridgeHealth.status}
                   </span>
@@ -553,10 +550,10 @@ export default function AdminPage() {
                   <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
                     <span>Heartbeat cuối:</span>
                     <span>
-                      {formatDistanceToNow(
+                      {bridgeHealth.lastHeartbeat ? formatDistanceToNow(
                         parseISO(bridgeHealth.lastHeartbeat),
                         { addSuffix: true, locale: vi },
-                      )}
+                      ) : "Đang kết nối..."}
                     </span>
                   </div>
                 </div>
@@ -646,11 +643,10 @@ export default function AdminPage() {
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                              sync.status === "success"
+                            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${sync.status === "success"
                                 ? "bg-emerald-100 text-emerald-700"
                                 : "bg-rose-100 text-rose-700"
-                            }`}
+                              }`}
                           >
                             {sync.status === "success"
                               ? "Thành công"
@@ -661,10 +657,10 @@ export default function AdminPage() {
                           {sync.recordsSynced}
                         </td>
                         <td className="px-4 py-3 text-sm text-gray-600">
-                          {format(
+                          {sync.startedAt ? format(
                             parseISO(sync.startedAt),
                             "HH:mm:ss dd/MM/yyyy",
-                          )}
+                          ) : "---"}
                         </td>
                         <td className="px-4 py-3 text-sm text-rose-600">
                           {sync.error || "-"}
@@ -725,25 +721,24 @@ export default function AdminPage() {
                     return (
                       <tr key={log.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
-                          {format(
+                          {log.timestamp ? format(
                             parseISO(log.timestamp),
                             "HH:mm:ss dd/MM/yyyy",
-                          )}
+                          ) : "---"}
                         </td>
                         <td className="px-4 py-3 text-sm font-medium text-gray-900">
                           {user?.name || log.userId}
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                              log.action === "CREATE"
+                            className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${log.action === "CREATE"
                                 ? "bg-emerald-100 text-emerald-700"
                                 : log.action === "UPDATE"
                                   ? "bg-blue-100 text-blue-700"
                                   : log.action === "DELETE"
                                     ? "bg-rose-100 text-rose-700"
                                     : "bg-gray-100 text-gray-700"
-                            }`}
+                              }`}
                           >
                             {log.action}
                           </span>
