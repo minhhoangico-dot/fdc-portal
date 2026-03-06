@@ -92,8 +92,8 @@ export default function AdminPage() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${activeTab === tab.id
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+              ? "bg-indigo-50 text-indigo-700"
+              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
               }`}
           >
             {tab.icon}
@@ -241,8 +241,8 @@ export default function AdminPage() {
                   key={config.id}
                   onClick={() => setSelectedConfig(config)}
                   className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${selectedConfig.id === config.id
-                      ? "bg-indigo-100 text-indigo-700"
-                      : "text-gray-700 hover:bg-gray-100"
+                    ? "bg-indigo-100 text-indigo-700"
+                    : "text-gray-700 hover:bg-gray-100"
                     }`}
                 >
                   {getRequestTypeLabel(config.requestType)}
@@ -256,128 +256,136 @@ export default function AdminPage() {
 
             {/* Main Content */}
             <div className="flex-1 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-lg font-bold text-gray-900">
-                  Quy trình: {getRequestTypeLabel(selectedConfig.requestType)}
-                </h2>
-                <button className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
-                  Lưu thay đổi
-                </button>
-              </div>
-
-              {/* Visual Flow Preview */}
-              <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-100 overflow-x-auto">
-                <h3 className="text-sm font-medium text-gray-500 mb-4">
-                  Sơ đồ quy trình
-                </h3>
-                <div className="flex items-center gap-2 min-w-max">
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
-                      Bắt đầu
-                    </div>
+              {selectedConfig ? (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-bold text-gray-900">
+                      Quy trình: {getRequestTypeLabel(selectedConfig.requestType)}
+                    </h2>
+                    <button className="px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors">
+                      Lưu thay đổi
+                    </button>
                   </div>
-                  {selectedConfig.steps.map((step, idx) => (
-                    <React.Fragment key={step.id}>
+
+                  {/* Visual Flow Preview */}
+                  <div className="mb-8 p-6 bg-gray-50 rounded-xl border border-gray-100 overflow-x-auto">
+                    <h3 className="text-sm font-medium text-gray-500 mb-4">
+                      Sơ đồ quy trình
+                    </h3>
+                    <div className="flex items-center gap-2 min-w-max">
+                      <div className="flex flex-col items-center">
+                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
+                          Bắt đầu
+                        </div>
+                      </div>
+                      {selectedConfig.steps.map((step, idx) => (
+                        <React.Fragment key={step.id}>
+                          <div className="w-8 h-0.5 bg-gray-300 relative">
+                            <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 border-t-2 border-r-2 border-gray-300 rotate-45"></div>
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <div className="px-4 py-2 bg-white border border-indigo-200 rounded-lg shadow-sm text-sm font-medium text-indigo-700">
+                              {ROLES[step.role]}
+                            </div>
+                            <div className="text-xs text-gray-500 mt-1">
+                              {step.slaHours}h
+                            </div>
+                          </div>
+                        </React.Fragment>
+                      ))}
                       <div className="w-8 h-0.5 bg-gray-300 relative">
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 border-t-2 border-r-2 border-gray-300 rotate-45"></div>
                       </div>
                       <div className="flex flex-col items-center">
-                        <div className="px-4 py-2 bg-white border border-indigo-200 rounded-lg shadow-sm text-sm font-medium text-indigo-700">
-                          {ROLES[step.role]}
-                        </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {step.slaHours}h
+                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm">
+                          Kết thúc
                         </div>
                       </div>
-                    </React.Fragment>
-                  ))}
-                  <div className="w-8 h-0.5 bg-gray-300 relative">
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 border-t-2 border-r-2 border-gray-300 rotate-45"></div>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm">
-                      Kết thúc
                     </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Steps Editor */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-medium text-gray-900">
-                  Các bước phê duyệt
-                </h3>
-                {selectedConfig.steps.map((step, index) => (
-                  <div
-                    key={step.id}
-                    className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm"
-                  >
-                    <div className="mt-1 w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          Vai trò duyệt
-                        </label>
-                        <select
-                          value={step.role}
-                          className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          readOnly
-                        >
-                          {Object.entries(ROLES).map(([key, label]) => (
-                            <option key={key} value={key}>
-                              {label}
-                            </option>
-                          ))}
-                        </select>
+                  {/* Steps Editor */}
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-medium text-gray-900">
+                      Các bước phê duyệt
+                    </h3>
+                    {selectedConfig.steps.map((step, index) => (
+                      <div
+                        key={step.id}
+                        className="flex items-start gap-4 p-4 bg-white border border-gray-200 rounded-xl shadow-sm"
+                      >
+                        <div className="mt-1 w-6 h-6 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
+                          {index + 1}
+                        </div>
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              Vai trò duyệt
+                            </label>
+                            <select
+                              value={step.role}
+                              className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              readOnly
+                            >
+                              {Object.entries(ROLES).map(([key, label]) => (
+                                <option key={key} value={key}>
+                                  {label}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-500 mb-1">
+                              SLA (Giờ)
+                            </label>
+                            <input
+                              type="number"
+                              value={step.slaHours}
+                              className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                              readOnly
+                            />
+                          </div>
+                          <div className="flex items-center gap-2 mt-6">
+                            <input
+                              type="checkbox"
+                              checked={step.autoApprove}
+                              readOnly
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <label className="text-sm text-gray-700">
+                              Tự động duyệt
+                            </label>
+                          </div>
+                          <div className="flex items-center gap-2 mt-6">
+                            <input
+                              type="checkbox"
+                              checked={step.canEscalate}
+                              readOnly
+                              className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                            />
+                            <label className="text-sm text-gray-700">
+                              Cho phép vượt cấp
+                            </label>
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <button className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-500 mb-1">
-                          SLA (Giờ)
-                        </label>
-                        <input
-                          type="number"
-                          value={step.slaHours}
-                          className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
-                          readOnly
-                        />
-                      </div>
-                      <div className="flex items-center gap-2 mt-6">
-                        <input
-                          type="checkbox"
-                          checked={step.autoApprove}
-                          readOnly
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <label className="text-sm text-gray-700">
-                          Tự động duyệt
-                        </label>
-                      </div>
-                      <div className="flex items-center gap-2 mt-6">
-                        <input
-                          type="checkbox"
-                          checked={step.canEscalate}
-                          readOnly
-                          className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                        />
-                        <label className="text-sm text-gray-700">
-                          Cho phép vượt cấp
-                        </label>
-                      </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <button className="p-1.5 text-gray-400 hover:text-rose-600 hover:bg-rose-50 rounded-md transition-colors">
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
+                    ))}
+                    <button className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Thêm bước duyệt
+                    </button>
                   </div>
-                ))}
-                <button className="w-full py-3 border-2 border-dashed border-gray-200 rounded-xl text-sm font-medium text-gray-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Thêm bước duyệt
-                </button>
-              </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
+                  Đang tải cấu hình phê duyệt...
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -523,8 +531,8 @@ export default function AdminPage() {
                   </h3>
                   <span
                     className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${bridgeHealth.status === "online"
-                        ? "bg-emerald-100 text-emerald-700"
-                        : "bg-rose-100 text-rose-700"
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-rose-100 text-rose-700"
                       }`}
                   >
                     {bridgeHealth.status}
@@ -644,8 +652,8 @@ export default function AdminPage() {
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${sync.status === "success"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : "bg-rose-100 text-rose-700"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-rose-100 text-rose-700"
                               }`}
                           >
                             {sync.status === "success"
@@ -732,12 +740,12 @@ export default function AdminPage() {
                         <td className="px-4 py-3">
                           <span
                             className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${log.action === "CREATE"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : log.action === "UPDATE"
-                                  ? "bg-blue-100 text-blue-700"
-                                  : log.action === "DELETE"
-                                    ? "bg-rose-100 text-rose-700"
-                                    : "bg-gray-100 text-gray-700"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : log.action === "UPDATE"
+                                ? "bg-blue-100 text-blue-700"
+                                : log.action === "DELETE"
+                                  ? "bg-rose-100 text-rose-700"
+                                  : "bg-gray-100 text-gray-700"
                               }`}
                           >
                             {log.action}
