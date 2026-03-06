@@ -240,7 +240,7 @@ export default function AdminPage() {
                 <button
                   key={config.id}
                   onClick={() => setSelectedConfig(config)}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${selectedConfig.id === config.id
+                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${selectedConfig?.id === config.id
                     ? "bg-indigo-100 text-indigo-700"
                     : "text-gray-700 hover:bg-gray-100"
                     }`}

@@ -47,7 +47,7 @@ export function useAdmin() {
     if (data) {
       const mapped = data.map(c => ({
         id: c.id,
-        category: c.request_type,
+        requestType: c.request_type,
         name: c.name,
         isActive: c.is_active,
         steps: c.steps || []
