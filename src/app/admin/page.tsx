@@ -74,6 +74,12 @@ export default function AdminPage() {
         return "Đơn xin nghỉ phép";
       case "payment":
         return "Đề nghị thanh toán";
+      case "material_release":
+        return "Xuất vật tư";
+      case "advance":
+        return "Tạm ứng";
+      case "other":
+        return "Khác";
       default:
         return type;
     }
@@ -285,10 +291,10 @@ export default function AdminPage() {
                           </div>
                           <div className="flex flex-col items-center">
                             <div className="px-4 py-2 bg-white border border-indigo-200 rounded-lg shadow-sm text-sm font-medium text-indigo-700">
-                              {ROLES[step.role]}
+                              {ROLES[step.role as keyof typeof ROLES] || step.role}
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                              {step.slaHours}h
+                              {step.sla_hours || step.slaHours}h
                             </div>
                           </div>
                         </React.Fragment>
@@ -340,7 +346,7 @@ export default function AdminPage() {
                             </label>
                             <input
                               type="number"
-                              value={step.slaHours}
+                              value={step.sla_hours || step.slaHours}
                               className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
                               readOnly
                             />
@@ -348,7 +354,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-2 mt-6">
                             <input
                               type="checkbox"
-                              checked={step.autoApprove}
+                              checked={step.auto_approve ?? step.autoApprove}
                               readOnly
                               className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                             />
@@ -359,7 +365,7 @@ export default function AdminPage() {
                           <div className="flex items-center gap-2 mt-6">
                             <input
                               type="checkbox"
-                              checked={step.canEscalate}
+                              checked={step.can_escalate ?? step.canEscalate}
                               readOnly
                               className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                             />
