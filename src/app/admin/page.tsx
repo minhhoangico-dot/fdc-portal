@@ -280,8 +280,8 @@ export default function AdminPage() {
                     </h3>
                     <div className="flex items-center gap-2 min-w-max">
                       <div className="flex flex-col items-center">
-                        <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm">
-                          Bắt đầu
+                        <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold text-sm shadow-sm text-center leading-tight">
+                          Bắt <br /> đầu
                         </div>
                       </div>
                       {selectedConfig.steps.map((step, idx) => (
@@ -303,8 +303,8 @@ export default function AdminPage() {
                         <div className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 w-2 h-2 border-t-2 border-r-2 border-gray-300 rotate-45"></div>
                       </div>
                       <div className="flex flex-col items-center">
-                        <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm">
-                          Kết thúc
+                        <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 font-bold text-sm shadow-sm text-center leading-tight">
+                          Kết <br /> thúc
                         </div>
                       </div>
                     </div>
