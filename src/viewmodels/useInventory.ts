@@ -66,13 +66,20 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     // 1. Try today's snapshot
     let allData = await loadForDate(todayDate);
 
-    // 2. If nothing for today (common when sync job hasn't run yet), fall back to latest available date
-    if (allData.length === 0 && moduleType === 'inventory') {
-      const { data: latest, error: latestError } = await supabase
+    // 2. If nothing for today, fall back to the latest date that actually has matching data
+    if (allData.length === 0) {
+      let fallbackQuery = supabase
         .from('fdc_inventory_snapshots')
         .select('snapshot_date')
-        .order('snapshot_date', { ascending: false })
-        .limit(1);
+        .order('snapshot_date', { ascending: false });
+
+      if (moduleType === 'inventory') {
+        fallbackQuery = fallbackQuery.or('his_medicineid.is.null,his_medicineid.like.misa_%');
+      } else if (moduleType === 'pharmacy') {
+        fallbackQuery = fallbackQuery.not('his_medicineid', 'is', null).not('his_medicineid', 'like', 'misa_%');
+      }
+
+      const { data: latest, error: latestError } = await fallbackQuery.limit(1);
 
       if (latestError) {
         console.error('[DEBUG] fetchInventory latest snapshot_date error:', latestError);
