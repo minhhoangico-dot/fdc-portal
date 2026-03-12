@@ -4,7 +4,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   ResponsiveContainer, BarChart, Bar, AreaChart, Area, ComposedChart, Line,
 } from "recharts";
-import { Package, AlertTriangle, DollarSign } from "lucide-react";
+import { Package, AlertTriangle, DollarSign, Activity } from "lucide-react";
 import { useSupplyChart } from "@/viewmodels/useSupplyChart";
 import { SnapshotHistory, TopMaterial, SupplyTimeRange } from "@/types/inventory";
 
@@ -39,6 +39,15 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
     RANGE_LABELS,
   } = useSupplyChart();
 
+  const latestPoint = chartData[chartData.length - 1];
+  const totalConsumption = chartData.reduce((sum, p) => sum + p.consumption, 0);
+  const totalPatients = chartData.reduce((sum, p) => sum + (p.patientVolume || 0), 0);
+  const avgPerVisit = totalPatients > 0 ? totalConsumption / totalPatients : 0;
+  const firstPoint = chartData[0];
+  const yoyChange = latestPoint && firstPoint && latestPoint.consumptionLY > 0
+    ? ((latestPoint.consumption - latestPoint.consumptionLY) / latestPoint.consumptionLY) * 100
+    : 0;
+
   return (
     <div className="space-y-6">
       {/* KPIs */}
@@ -47,6 +56,12 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
           { label: "Tổng loại vật tư", value: stats.totalItems, icon: <Package className="w-5 h-5" />, color: "indigo" },
           { label: "Cảnh báo", value: stats.activeAnomaliesCount, icon: <AlertTriangle className="w-5 h-5" />, color: stats.activeAnomaliesCount > 0 ? "rose" : "emerald" },
           { label: "Giá trị tồn kho", value: formatCompact(stats.estimatedValue), icon: <DollarSign className="w-5 h-5" />, color: "emerald", isCurrency: true },
+          {
+            label: "Chi phí / lượt khám",
+            value: avgPerVisit > 0 ? formatCurrency(avgPerVisit) : "-",
+            icon: <Activity className="w-5 h-5" />,
+            color: "indigo",
+          },
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-3 mb-2">
@@ -124,8 +139,67 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                 <Legend />
                 <Bar yAxisId="right" dataKey="patientVolume" name="Lượt khám" fill="#10b981" opacity={0.35} radius={[4, 4, 0, 0]} barSize={28} />
                 <Area yAxisId="left" type="monotone" dataKey="consumption" name="Tiêu hao kỳ này" stroke="#6366f1" fill="url(#colorConsumption)" strokeWidth={2} />
-                <Line yAxisId="left" type="monotone" dataKey="consumptionLY" name="Cùng kỳ năm trước" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot={false} />
+                <Line yAxisId="left" type="monotone" dataKey="consumptionLY" name="Cùng kỳ năm trước" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot />
               </ComposedChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+      </div>
+
+      {/* Per-visit cost chart */}
+      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <h3 className="text-base font-bold text-gray-900 mb-4">Chi phí tiêu hao / lượt khám</h3>
+        <div className="h-56">
+          {isLoadingSupplyChart ? (
+            <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
+          ) : chartData.length === 0 ? (
+            <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
+              Chưa có dữ liệu tiêu hao cho khoảng thời gian này.
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -5, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorPerVisit" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#22c55e" stopOpacity={0.18} />
+                    <stop offset="95%" stopColor="#22c55e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis
+                  dataKey="period"
+                  tickFormatter={v => {
+                    if (!v) return v;
+                    const parts = String(v).split("-");
+                    if (parts.length === 3) {
+                      return `${parts[2]}/${parts[1]}`;
+                    }
+                    return parts.length >= 2 ? `${parts[1]}/${parts[0].slice(2)}` : v;
+                  }}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "#6b7280" }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "#6b7280" }}
+                  tickFormatter={v => formatCompact(v as number)}
+                />
+                <Tooltip
+                  contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
+                  formatter={(v: number) => [formatCurrency(v), "Chi phí / lượt"]}
+                  labelFormatter={v => String(v)}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="consumptionPerVisit"
+                  name="Chi phí / lượt"
+                  stroke="#22c55e"
+                  fill="url(#colorPerVisit)"
+                  strokeWidth={2}
+                />
+              </AreaChart>
             </ResponsiveContainer>
           )}
         </div>
