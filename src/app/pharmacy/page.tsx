@@ -72,12 +72,18 @@ export default function PharmacyPage() {
     acknowledgeAnomaly,
     snapshotHistory,
     isLoadingSnapshotHistory,
+    filteredSnapshotHistory,
+    isLoadingFilteredSnapshotHistory,
     itemSnapshots,
     isLoadingItemSnapshots,
     filteredValue,
     topMaterials,
     stats,
   } = useInventory('pharmacy');
+
+  const listChartData = filteredSnapshotHistory.length > 0 ? filteredSnapshotHistory : snapshotHistory;
+  const isLoadingListChart =
+    isLoadingFilteredSnapshotHistory || (filteredSnapshotHistory.length === 0 && isLoadingSnapshotHistory);
 
   // Import history state for side panel
   const [importHistory, setImportHistory] = React.useState<any[]>([]);
@@ -476,13 +482,15 @@ export default function PharmacyPage() {
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-400 mb-1">Biến động giá trị tồn kho (1 năm — toàn kho)</p>
+              <p className="text-xs font-medium text-gray-400 mb-1">
+                Biến động giá trị tồn kho ({filteredSnapshotHistory.length > 0 ? "theo bộ lọc" : "1 năm — toàn kho"})
+              </p>
               <div className="h-32">
-                {isLoadingSnapshotHistory ? (
+                {isLoadingListChart ? (
                   <div className="w-full h-full rounded-lg bg-gray-50 animate-pulse" />
-                ) : snapshotHistory.length > 1 ? (
+                ) : listChartData.length > 1 ? (
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={snapshotHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                    <AreaChart data={listChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorValueList" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#6366f1" stopOpacity={0.12} />

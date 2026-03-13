@@ -19,9 +19,11 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [anomalies, setAnomalies] = useState<InventoryAnomaly[]>([]);
   const [snapshotHistory, setSnapshotHistory] = useState<SnapshotHistory[]>([]);
+  const [filteredSnapshotHistory, setFilteredSnapshotHistory] = useState<SnapshotHistory[]>([]);
   const [itemSnapshots, setItemSnapshots] = useState<ItemSnapshot[]>([]);
   const [isLoadingItemSnapshots, setIsLoadingItemSnapshots] = useState(false);
   const [isLoadingSnapshotHistory, setIsLoadingSnapshotHistory] = useState(false);
+  const [isLoadingFilteredSnapshotHistory, setIsLoadingFilteredSnapshotHistory] = useState(false);
 
   type SortKey = "name" | "stock" | "value";
   type SortDir = "asc" | "desc";
@@ -165,6 +167,49 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     }
   }, [moduleType]);
 
+  const fetchFilteredSnapshotHistory = useCallback(async () => {
+    if (moduleType !== "pharmacy") {
+      setFilteredSnapshotHistory([]);
+      return;
+    }
+
+    const hasFilters =
+      filterWarehouse !== "all" ||
+      filterCategory !== "all" ||
+      filterStatus !== "all" ||
+      Boolean(searchQuery?.trim());
+
+    if (!hasFilters) {
+      setFilteredSnapshotHistory([]);
+      return;
+    }
+
+    setIsLoadingFilteredSnapshotHistory(true);
+    try {
+      const { data, error } = await supabase.rpc("get_pharmacy_inventory_history", {
+        p_warehouse: filterWarehouse !== "all" ? filterWarehouse : null,
+        p_category: filterCategory !== "all" ? filterCategory : null,
+        p_search: searchQuery?.trim() ? searchQuery.trim() : null,
+        p_status: filterStatus !== "all" ? filterStatus : null,
+      });
+
+      if (error) {
+        console.error("[DEBUG] fetchFilteredSnapshotHistory error:", error);
+        setFilteredSnapshotHistory([]);
+        return;
+      }
+
+      const result = (data || []).map((row: any) => ({
+        date: row.snapshot_date,
+        totalStock: Number(row.total_stock) || 0,
+        totalValue: Number(row.total_value) || 0,
+      }));
+      setFilteredSnapshotHistory(result);
+    } finally {
+      setIsLoadingFilteredSnapshotHistory(false);
+    }
+  }, [moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
+
   // Fetch per-item snapshot history (when selecting an item)
   const fetchItemSnapshots = useCallback(async (itemName: string, warehouse: string) => {
     setIsLoadingItemSnapshots(true);
@@ -196,6 +241,7 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     fetchInventory();
     fetchAnomalies();
     fetchSnapshotHistory();
+    fetchFilteredSnapshotHistory();
 
     let snapshotTimeout: NodeJS.Timeout | null = null;
 
@@ -207,6 +253,7 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
         if (snapshotTimeout) clearTimeout(snapshotTimeout);
         snapshotTimeout = setTimeout(() => {
           fetchSnapshotHistory();
+          fetchFilteredSnapshotHistory();
         }, 1000);
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_analytics_anomalies' }, fetchAnomalies)
@@ -216,7 +263,7 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
       supabase.removeChannel(channel);
       if (snapshotTimeout) clearTimeout(snapshotTimeout);
     };
-  }, [fetchInventory, fetchAnomalies, fetchSnapshotHistory]);
+  }, [fetchInventory, fetchAnomalies, fetchSnapshotHistory, fetchFilteredSnapshotHistory]);
 
   const filteredAnomalies = useMemo(() => {
     return anomalies.filter(a => inventory.some(i => i.name === a.materialId));
@@ -400,9 +447,11 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     anomalies: filteredAnomalies,
     acknowledgeAnomaly,
     snapshotHistory,
+    filteredSnapshotHistory,
     itemSnapshots,
     isLoadingItemSnapshots,
     isLoadingSnapshotHistory,
+    isLoadingFilteredSnapshotHistory,
     topMaterials,
     filteredValue,
     stats: {
