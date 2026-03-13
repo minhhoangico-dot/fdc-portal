@@ -38,6 +38,13 @@ export default function InventoryPage() {
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 
+  const filteredTotalValue = React.useMemo(() => {
+    return filteredInventory.reduce(
+      (sum, item) => sum + (Number(item.currentStock) || 0) * (Number(item.unitPrice) || 0),
+      0,
+    );
+  }, [filteredInventory]);
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "in_stock":
@@ -111,6 +118,14 @@ export default function InventoryPage() {
                 <option value="low_stock">Sắp hết</option>
                 <option value="out_of_stock">Hết hàng</option>
               </select>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="text-xs text-gray-500 whitespace-nowrap">
+                  Tổng giá trị (theo bộ lọc):
+                </span>
+                <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 whitespace-nowrap">
+                  {formatCurrency(filteredTotalValue)}
+                </span>
+              </div>
             </div>
           </div>
           <div className="flex-1 overflow-auto">
