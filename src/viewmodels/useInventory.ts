@@ -284,16 +284,37 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     return inventory.reduce((sum, item) => sum + item.currentStock * (item.unitPrice || 0), 0);
   }, [inventory]);
 
-  // Top 10 items by value
+  // Top 10 items by value (grouped by normalized name to avoid variants like hyphen/spacing)
   const topMaterials: TopMaterial[] = useMemo(() => {
-    return inventory
-      .map(item => ({
-        materialId: item.sku,
-        name: item.name,
-        value: item.currentStock * (item.unitPrice || 0),
-        unit: item.unit,
-        stock: item.currentStock,
-      }))
+    const byName = new Map<string, TopMaterial>();
+
+    const normalizeName = (name: string) =>
+      name
+        .replace(/[-–]/g, " ") // treat hyphen like space
+        .replace(/\s+/g, " ")  // collapse spaces
+        .trim()
+        .toLowerCase();
+
+    inventory.forEach(item => {
+      const key = normalizeName(item.name);
+      const value = item.currentStock * (item.unitPrice || 0);
+      const existing = byName.get(key);
+
+      if (existing) {
+        existing.value += value;
+        existing.stock += item.currentStock;
+      } else {
+        byName.set(key, {
+          materialId: item.sku,
+          name: item.name,
+          value,
+          unit: item.unit,
+          stock: item.currentStock,
+        });
+      }
+    });
+
+    return Array.from(byName.values())
       .sort((a, b) => b.value - a.value)
       .slice(0, 10);
   }, [inventory]);
