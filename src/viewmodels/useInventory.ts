@@ -131,18 +131,13 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     }
   }, []);
 
-  // Fetch 30-day snapshot history for overall charts
+  // Fetch 1-year snapshot history (weekly aggregate for fast load, ~52 points)
   const fetchSnapshotHistory = useCallback(async () => {
     setIsLoadingSnapshotHistory(true);
     try {
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const cutoffDate = thirtyDaysAgo.toISOString().split('T')[0];
-
       const { data, error } = await supabase
-        .from('fdc_inventory_daily_value')
+        .from('fdc_inventory_weekly_value')
         .select('snapshot_date, total_stock, total_value')
-        .gte('snapshot_date', cutoffDate)
         .eq('module_type', moduleType === 'pharmacy' ? 'pharmacy' : 'inventory')
         .order('snapshot_date', { ascending: true });
 
@@ -151,13 +146,11 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
       }
 
       if (data && data.length > 0) {
-        const result = data
-          .map((row: any) => ({
-            date: row.snapshot_date,
-            totalStock: Number(row.total_stock) || 0,
-            totalValue: Number(row.total_value) || 0,
-          }))
-          .slice(-30); // safety cap
+        const result = data.map((row: any) => ({
+          date: row.snapshot_date,
+          totalStock: Number(row.total_stock) || 0,
+          totalValue: Number(row.total_value) || 0,
+        }));
         setSnapshotHistory(result);
       } else {
         setSnapshotHistory([]);

@@ -208,15 +208,15 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Inventory Value Trend (30 days) */}
+        {/* Inventory Value Trend (1 year) */}
         <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-          <h3 className="text-base font-bold text-gray-900 mb-4">Giá trị tồn kho (30 ngày)</h3>
+          <h3 className="text-base font-bold text-gray-900 mb-4">Giá trị tồn kho (1 năm)</h3>
           <div className="h-72">
             {isLoadingSnapshotHistory ? (
               <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
             ) : snapshotHistory.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
-                Chưa có dữ liệu trong 30 ngày gần nhất.
+                Chưa có dữ liệu trong 1 năm gần nhất.
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
