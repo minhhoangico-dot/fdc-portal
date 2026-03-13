@@ -23,6 +23,11 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
   const [isLoadingItemSnapshots, setIsLoadingItemSnapshots] = useState(false);
   const [isLoadingSnapshotHistory, setIsLoadingSnapshotHistory] = useState(false);
 
+  type SortKey = "name" | "stock" | "value";
+  type SortDir = "asc" | "desc";
+  const [sortKey, setSortKey] = useState<SortKey>("value");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
   // Fetch inventory, preferring today's snapshot but falling back to latest available date
   const fetchInventory = useCallback(async () => {
     const todayDate = new Date().toISOString().split('T')[0];
@@ -256,6 +261,43 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     });
   }, [inventory, searchQuery, filterWarehouse, filterCategory, filterStatus, filteredAnomalies]);
 
+  const sortedInventory = useMemo(() => {
+    const dir = sortDir === "asc" ? 1 : -1;
+    const getValue = (i: InventoryItem) =>
+      (Number(i.currentStock) || 0) * (Number(i.unitPrice) || 0);
+
+    return filteredInventory
+      .map((item, idx) => ({ item, idx }))
+      .sort((a, b) => {
+        let cmp = 0;
+        switch (sortKey) {
+          case "name":
+            cmp = a.item.name.localeCompare(b.item.name, "vi");
+            break;
+          case "stock":
+            cmp = (Number(a.item.currentStock) || 0) - (Number(b.item.currentStock) || 0);
+            break;
+          case "value":
+            cmp = getValue(a.item) - getValue(b.item);
+            break;
+        }
+        if (cmp === 0) return a.idx - b.idx;
+        return cmp * dir;
+      })
+      .map((x) => x.item);
+  }, [filteredInventory, sortKey, sortDir]);
+
+  const toggleSort = useCallback((key: SortKey) => {
+    setSortKey((prevKey) => {
+      if (prevKey === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return prevKey;
+      }
+      setSortDir(key === "name" ? "asc" : "desc");
+      return key;
+    });
+  }, []);
+
   const uniqueCategories = useMemo(() => {
     return Array.from(new Set(inventory.map(item => item.category))).sort();
   }, [inventory]);
@@ -343,9 +385,12 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     setFilterCategory,
     filterStatus,
     setFilterStatus,
-    filteredInventory,
+    filteredInventory: sortedInventory,
     uniqueCategories,
     uniqueWarehouses,
+    sortKey,
+    sortDir,
+    toggleSort,
     selectedItem,
     setSelectedItem,
     anomalies: filteredAnomalies,

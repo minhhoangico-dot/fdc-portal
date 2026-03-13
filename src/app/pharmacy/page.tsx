@@ -15,6 +15,7 @@ import {
   TrendingDown,
   Pill,
   Eye,
+  ArrowUpDown,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase";
@@ -60,6 +61,9 @@ export default function PharmacyPage() {
     filterStatus,
     setFilterStatus,
     filteredInventory,
+    sortKey,
+    sortDir,
+    toggleSort,
     uniqueCategories,
     uniqueWarehouses,
     selectedItem,
@@ -460,15 +464,54 @@ export default function PharmacyPage() {
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Mã thuốc</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Tên thuốc</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("name")}
+                      className="inline-flex items-center gap-1 hover:text-gray-700"
+                      title="Sắp xếp theo tên thuốc"
+                    >
+                      Tên thuốc
+                      <ArrowUpDown className={`w-3.5 h-3.5 ${sortKey === "name" ? "text-indigo-600" : "text-gray-400"}`} />
+                      {sortKey === "name" && (
+                        <span className="sr-only">{sortDir === "asc" ? "tăng dần" : "giảm dần"}</span>
+                      )}
+                    </button>
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">Kho</th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">ĐVT</th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">Lô SX</th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">HSD</th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">Trạng thái</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">Tồn kho</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("stock")}
+                      className="inline-flex items-center gap-1 hover:text-gray-700"
+                      title="Sắp xếp theo tồn kho"
+                    >
+                      Tồn kho
+                      <ArrowUpDown className={`w-3.5 h-3.5 ${sortKey === "stock" ? "text-indigo-600" : "text-gray-400"}`} />
+                      {sortKey === "stock" && (
+                        <span className="sr-only">{sortDir === "asc" ? "tăng dần" : "giảm dần"}</span>
+                      )}
+                    </button>
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right hidden sm:table-cell">Đơn giá</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right hidden sm:table-cell">Giá trị</th>
+                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right hidden sm:table-cell">
+                    <button
+                      type="button"
+                      onClick={() => toggleSort("value")}
+                      className="inline-flex items-center gap-1 hover:text-gray-700"
+                      title="Sắp xếp theo thành tiền"
+                    >
+                      Giá trị
+                      <ArrowUpDown className={`w-3.5 h-3.5 ${sortKey === "value" ? "text-indigo-600" : "text-gray-400"}`} />
+                      {sortKey === "value" && (
+                        <span className="sr-only">{sortDir === "asc" ? "tăng dần" : "giảm dần"}</span>
+                      )}
+                    </button>
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
