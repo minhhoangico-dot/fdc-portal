@@ -500,7 +500,16 @@ export default function PharmacyPage() {
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                       <XAxis
                         dataKey="date"
-                        tickFormatter={(v) => { try { return format(parseISO(v), "MM/yy"); } catch { return v; } }}
+                        tickFormatter={(v) => {
+                          try {
+                            return format(
+                              parseISO(v),
+                              filteredSnapshotHistory.length > 0 ? "dd/MM" : "MM/yy",
+                            );
+                          } catch {
+                            return v;
+                          }
+                        }}
                         axisLine={false} tickLine={false}
                         tick={{ fontSize: 10, fill: "#9ca3af" }}
                       />
