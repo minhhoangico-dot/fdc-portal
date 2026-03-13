@@ -80,7 +80,7 @@ export function useSupplyChart() {
     try {
       const today = new Date();
       const past = new Date();
-      past.setDate(today.getDate() - 35);
+      past.setDate(today.getDate() - 95);
       const cutoff = past.toISOString().split("T")[0];
 
       const { data, error } = await supabase
@@ -132,10 +132,12 @@ export function useSupplyChart() {
   }, [fetchMonthlyStats, fetchDailySummary]);
 
   const chartData: SupplyChartPoint[] = useMemo(() => {
-    if (timeRange === "1M") {
+    const useDaily = timeRange === "1M" || timeRange === "3M";
+    if (useDaily) {
+      const days = timeRange === "1M" ? 31 : 93;
       const today = new Date();
       const past = new Date();
-      past.setDate(today.getDate() - 31);
+      past.setDate(today.getDate() - days);
       const cutoff = past.toISOString().split("T")[0];
 
       const byDate = new Map<
@@ -163,6 +165,13 @@ export function useSupplyChart() {
         });
       });
 
+      const monthlyTotalsByMonth = new Map<string, number>();
+      monthlyData.forEach((r) => {
+        if (accountFilter === "all" && r.account !== "all") return;
+        if (accountFilter !== "all" && r.account !== accountFilter) return;
+        monthlyTotalsByMonth.set(r.report_month, Number(r.consumption_amount) || 0);
+      });
+
       const entries = Array.from(byDate.entries()).sort((a, b) =>
         a[0].localeCompare(b[0])
       );
@@ -170,10 +179,13 @@ export function useSupplyChart() {
       return entries.map(([date, v]) => {
         const perVisit =
           v.patients && v.patients > 0 ? v.amount / v.patients : 0;
+        const [y, m] = date.split("-");
+        const lyMonth = `${parseInt(y, 10) - 1}-${m}`;
+        const consumptionLY = timeRange === "3M" ? (monthlyTotalsByMonth.get(lyMonth) || 0) : 0;
         return {
           period: date,
           consumption: v.amount,
-          consumptionLY: 0,
+          consumptionLY,
           patientVolume: v.patients,
           consumptionQty: v.qty,
           consumptionPerVisit: perVisit,

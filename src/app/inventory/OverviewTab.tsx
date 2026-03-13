@@ -117,7 +117,8 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                   dataKey="period"
                   tickFormatter={v => {
                     if (!v) return v;
-                    const parts = v.split("-");
+                    const parts = String(v).split("-");
+                    if (parts.length >= 3) return `${parts[2]}/${parts[1]}`;
                     return parts.length >= 2 ? `${parts[1]}/${parts[0].slice(2)}` : v;
                   }}
                   axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }}
@@ -133,6 +134,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                   labelFormatter={v => {
                     if (!v) return v;
                     const parts = String(v).split("-");
+                    if (parts.length >= 3) return format(parseISO(String(v)), "dd/MM/yyyy");
                     return parts.length >= 2 ? `Tháng ${parts[1]}/${parts[0]}` : v;
                   }}
                 />
