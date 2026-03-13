@@ -7,4 +7,5 @@ export interface User {
   role: Role;
   department?: string;
   avatarUrl?: string;
+  isActive?: boolean;
 }
