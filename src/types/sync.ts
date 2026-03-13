@@ -8,7 +8,7 @@ export interface BridgeHealth {
 
 export interface SyncRecord {
   id: string;
-  type: 'inventory' | 'patient' | 'invoice' | 'attendance';
+  type: string;
   status: 'success' | 'failed' | 'pending';
   recordsSynced: number;
   startedAt: string;

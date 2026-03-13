@@ -281,6 +281,9 @@ export function useAdmin() {
   });
   const [syncHistory, setSyncHistory] = useState<SyncRecord[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const dismissSyncMessage = useCallback(() => setSyncMessage(null), []);
 
   const fetchSyncData = useCallback(async () => {
     const { data: healthData } = await supabase.from("fdc_sync_health").select("*").limit(1);
@@ -320,17 +323,24 @@ export function useAdmin() {
   const handleManualSync = async (type: string) => {
     if (isSyncing) return;
     setIsSyncing(true);
+    setSyncMessage(null);
     try {
       const baseUrl =
         (import.meta as any).env?.VITE_BRIDGE_URL || "http://localhost:3333";
-      await fetch(`${baseUrl}/sync/${encodeURIComponent(type)}`, {
+      const response = await fetch(`${baseUrl}/sync/${encodeURIComponent(type)}`, {
         method: "POST",
       });
-      await fetchSyncData();
+      if (response.ok) {
+        setSyncMessage({ type: 'success', text: `Đã kích hoạt đồng bộ ${type}` });
+        await fetchSyncData();
+      } else {
+        setSyncMessage({ type: 'error', text: `Lỗi khi kích hoạt đồng bộ ${type}` });
+      }
     } catch (e) {
-      // swallow for now; can show toast in future
+      setSyncMessage({ type: 'error', text: 'Không thể kết nối tới bridge' });
     } finally {
       setIsSyncing(false);
+      setTimeout(() => setSyncMessage(null), 5000);
     }
   };
 
@@ -486,6 +496,9 @@ export function useAdmin() {
     syncHistory,
     isSyncing,
     handleManualSync,
+    refreshSyncData: fetchSyncData,
+    syncMessage,
+    dismissSyncMessage,
 
     // Audit
     auditLogs: filteredAuditLogs,

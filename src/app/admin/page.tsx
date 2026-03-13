@@ -152,6 +152,9 @@ export default function AdminPage() {
             syncHistory={syncHistory}
             onManualSync={handleManualSync}
             isSyncing={isSyncing}
+            refreshSyncData={refreshSyncData}
+            syncMessage={syncMessage}
+            onDismissSyncMessage={dismissSyncMessage}
           />
         )}
 
