@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { User, Role } from "@/types/user";
 import { BridgeHealth, SyncRecord } from "@/types/sync";
+import { validateHikvisionEmployeeId } from "./hikvision";
 
 export type AdminTab = "users" | "approval" | "misa" | "health" | "audit";
 
@@ -27,6 +28,7 @@ export function useAdmin() {
           email: u.email,
           avatarUrl: u.avatar_url,
           isActive: u.is_active,
+          hikvisionEmployeeId: u.hikvision_employee_id ?? undefined,
         })),
       );
     }
@@ -49,13 +51,20 @@ export function useAdmin() {
     setUsers(users.map((u) => (u.id === userId ? { ...u, isActive: nextActive } : u)));
   };
 
-  const handleAddUser = async (payload: { name: string; email?: string; department?: string; role: Role }) => {
+  const handleAddUser = async (payload: {
+    name: string;
+    email?: string;
+    department?: string;
+    role: Role;
+    hikvisionEmployeeId?: string;
+  }) => {
     await supabase.from("fdc_user_mapping").insert({
       full_name: payload.name,
       email: payload.email,
       department_name: payload.department ?? null,
       role: payload.role,
       is_active: true,
+      hikvision_employee_id: payload.hikvisionEmployeeId ?? null,
     });
     await fetchUsers();
   };
@@ -423,7 +432,9 @@ export function useAdmin() {
     return (
       u.name.toLowerCase().includes(normalizedUserSearch) ||
       (u.email && u.email.toLowerCase().includes(normalizedUserSearch)) ||
-      (u.department && u.department.toLowerCase().includes(normalizedUserSearch))
+      (u.department && u.department.toLowerCase().includes(normalizedUserSearch)) ||
+      (u.hikvisionEmployeeId &&
+        u.hikvisionEmployeeId.toLowerCase().includes(normalizedUserSearch))
     );
   });
 
@@ -482,5 +493,6 @@ export function useAdmin() {
     setAuditSearch,
     handleExportAuditCsv,
     handleSaveDelegation,
+    validateHikvisionEmployeeId,
   };
 }

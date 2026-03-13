@@ -8,4 +8,5 @@ export interface User {
   department?: string;
   avatarUrl?: string;
   isActive?: boolean;
+  hikvisionEmployeeId?: string;
 }

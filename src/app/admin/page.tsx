@@ -48,6 +48,7 @@ export default function AdminPage() {
     setAuditSearch,
     handleExportAuditCsv,
     handleSaveDelegation,
+    validateHikvisionEmployeeId,
   } = useAdmin();
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
@@ -176,6 +177,7 @@ export default function AdminPage() {
         isOpen={isAddUserModalOpen}
         onClose={() => setIsAddUserModalOpen(false)}
         onSubmit={handleAddUser}
+        onValidateHikvisionId={validateHikvisionEmployeeId}
       />
     </div>
   );
