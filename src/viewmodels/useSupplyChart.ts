@@ -52,7 +52,7 @@ const RANGE_LABELS: Record<SupplyTimeRange, string> = {
 };
 
 export function useSupplyChart() {
-  const [timeRange, setTimeRange] = useState<SupplyTimeRange>("3M");
+  const [timeRange, setTimeRange] = useState<SupplyTimeRange>("1Y");
   const [accountFilter, setAccountFilter] = useState<AccountFilter>("all");
   const [monthlyData, setMonthlyData] = useState<MonthlyRow[]>([]);
   const [dailyData, setDailyData] = useState<DailyRow[]>([]);

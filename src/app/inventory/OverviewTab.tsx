@@ -80,7 +80,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-base font-bold text-gray-900">Tiêu hao vật tư & Lượt khám bệnh</h3>
           <div className="flex gap-1.5 flex-wrap">
-            {(["1M", "3M", "6M", "1Y"] as SupplyTimeRange[]).map(r => (
+            {(["1Y"] as SupplyTimeRange[]).map(r => (
               <button key={r} onClick={() => setTimeRange(r)}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${timeRange === r ? "bg-indigo-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                 {RANGE_LABELS[r]}
