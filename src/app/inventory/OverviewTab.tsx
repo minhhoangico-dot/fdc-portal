@@ -7,6 +7,7 @@ import {
 import { Package, AlertTriangle, DollarSign, Activity } from "lucide-react";
 import { useSupplyChart } from "@/viewmodels/useSupplyChart";
 import { SnapshotHistory, TopMaterial, SupplyTimeRange } from "@/types/inventory";
+import ChartDetailModal from "./ChartDetailModal";
 
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
@@ -31,6 +32,13 @@ interface OverviewTabProps {
   topMaterials: TopMaterial[];
 }
 
+type DetailModalState = {
+  title: string;
+  dataSource: string;
+  columns: string[];
+  rows: (string | number | null | undefined)[][];
+};
+
 export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotHistory, topMaterials }: OverviewTabProps) {
   const {
     timeRange, setTimeRange,
@@ -38,6 +46,8 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
     chartData, isLoading: isLoadingSupplyChart,
     RANGE_LABELS,
   } = useSupplyChart();
+
+  const [detailModal, setDetailModal] = React.useState<DetailModalState | null>(null);
 
   const latestPoint = chartData[chartData.length - 1];
   const totalConsumption = chartData.reduce((sum, p) => sum + p.consumption, 0);
@@ -50,6 +60,15 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
 
   return (
     <div className="space-y-6">
+      {detailModal && (
+        <ChartDetailModal
+          title={detailModal.title}
+          dataSource={detailModal.dataSource}
+          columns={detailModal.columns}
+          rows={detailModal.rows}
+          onClose={() => setDetailModal(null)}
+        />
+      )}
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
@@ -76,12 +95,60 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
       </div>
 
       {/* Supply Consumption Chart (full width) */}
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div
+        className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer hover:border-gray-200"
+        onClick={() => {
+          setDetailModal({
+            title: "Tiêu hao vật tư & Lượt khám bệnh",
+            dataSource: "MISA + HIS",
+            columns: ["Kỳ", "Tiêu hao kỳ này", "Cùng kỳ năm trước", "Lượt khám", "Chi phí/lượt"],
+            rows: chartData.map((p) => {
+              const perVisit =
+                p.patientVolume && p.patientVolume > 0 ? p.consumption / p.patientVolume : 0;
+              return [
+                p.period,
+                formatCurrency(p.consumption || 0),
+                formatCurrency(p.consumptionLY || 0),
+                (p.patientVolume || 0).toLocaleString("vi-VN"),
+                perVisit > 0 ? formatCurrency(perVisit) : "-",
+              ];
+            }),
+          });
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setDetailModal({
+              title: "Tiêu hao vật tư & Lượt khám bệnh",
+              dataSource: "MISA + HIS",
+              columns: ["Kỳ", "Tiêu hao kỳ này", "Cùng kỳ năm trước", "Lượt khám", "Chi phí/lượt"],
+              rows: chartData.map((p) => {
+                const perVisit =
+                  p.patientVolume && p.patientVolume > 0 ? p.consumption / p.patientVolume : 0;
+                return [
+                  p.period,
+                  formatCurrency(p.consumption || 0),
+                  formatCurrency(p.consumptionLY || 0),
+                  (p.patientVolume || 0).toLocaleString("vi-VN"),
+                  perVisit > 0 ? formatCurrency(perVisit) : "-",
+                ];
+              }),
+            });
+          }
+        }}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
           <h3 className="text-base font-bold text-gray-900">Tiêu hao vật tư & Lượt khám bệnh</h3>
           <div className="flex gap-1.5 flex-wrap">
             {(["1Y"] as SupplyTimeRange[]).map(r => (
-              <button key={r} onClick={() => setTimeRange(r)}
+              <button
+                key={r}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setTimeRange(r);
+                }}
                 className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${timeRange === r ? "bg-indigo-600 text-white shadow-sm" : "bg-gray-100 text-gray-600 hover:bg-gray-200"}`}>
                 {RANGE_LABELS[r]}
               </button>
@@ -90,13 +157,18 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
         </div>
         <div className="flex gap-1.5 flex-wrap mb-4">
           {(["all", "1521", "1522", "1523"] as const).map(acc => (
-            <button key={acc} onClick={() => setAccountFilter(acc)}
+            <button
+              key={acc}
+              onClick={(e) => {
+                e.stopPropagation();
+                setAccountFilter(acc);
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${accountFilter === acc ? "bg-indigo-100 text-indigo-700 ring-1 ring-indigo-300" : "bg-gray-50 text-gray-500 hover:bg-gray-100"}`}>
               {acc === "all" ? "Tất cả TK 152" : ACCOUNT_LABELS[acc]}
             </button>
           ))}
         </div>
-        <div className="h-80">
+        <div className="h-80" onClick={(e) => e.stopPropagation()}>
           {isLoadingSupplyChart ? (
             <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
           ) : chartData.length === 0 ? (
@@ -149,9 +221,42 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
       </div>
 
       {/* Per-visit cost chart */}
-      <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+      <div
+        className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer hover:border-gray-200"
+        onClick={() => {
+          setDetailModal({
+            title: "Chi phí tiêu hao / lượt khám",
+            dataSource: "MISA + HIS",
+            columns: ["Kỳ", "Chi phí/lượt"],
+            rows: chartData.map((p) => [
+              p.period,
+              p.consumptionPerVisit && p.consumptionPerVisit > 0
+                ? formatCurrency(p.consumptionPerVisit)
+                : "-",
+            ]),
+          });
+        }}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setDetailModal({
+              title: "Chi phí tiêu hao / lượt khám",
+              dataSource: "MISA + HIS",
+              columns: ["Kỳ", "Chi phí/lượt"],
+              rows: chartData.map((p) => [
+                p.period,
+                p.consumptionPerVisit && p.consumptionPerVisit > 0
+                  ? formatCurrency(p.consumptionPerVisit)
+                  : "-",
+              ]),
+            });
+          }
+        }}
+      >
         <h3 className="text-base font-bold text-gray-900 mb-4">Chi phí tiêu hao / lượt khám</h3>
-        <div className="h-56">
+        <div className="h-56" onClick={(e) => e.stopPropagation()}>
           {isLoadingSupplyChart ? (
             <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
           ) : chartData.length === 0 ? (
@@ -209,9 +314,40 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Inventory Value Trend (1 year) */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div
+          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer hover:border-gray-200"
+          onClick={() => {
+            setDetailModal({
+              title: "Giá trị tồn kho (1 năm)",
+              dataSource: "MISA",
+              columns: ["Ngày", "Tổng tồn kho", "Giá trị"],
+              rows: snapshotHistory.map((r) => [
+                r.date,
+                (Number(r.totalStock) || 0).toLocaleString("vi-VN"),
+                formatCurrency(Number(r.totalValue) || 0),
+              ]),
+            });
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setDetailModal({
+                title: "Giá trị tồn kho (1 năm)",
+                dataSource: "MISA",
+                columns: ["Ngày", "Tổng tồn kho", "Giá trị"],
+                rows: snapshotHistory.map((r) => [
+                  r.date,
+                  (Number(r.totalStock) || 0).toLocaleString("vi-VN"),
+                  formatCurrency(Number(r.totalValue) || 0),
+                ]),
+              });
+            }
+          }}
+        >
           <h3 className="text-base font-bold text-gray-900 mb-4">Giá trị tồn kho (1 năm)</h3>
-          <div className="h-72">
+          <div className="h-72" onClick={(e) => e.stopPropagation()}>
             {isLoadingSnapshotHistory ? (
               <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
             ) : snapshotHistory.length === 0 ? (
@@ -239,9 +375,42 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
         </div>
 
         {/* Top 10 by Value */}
-        <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
+        <div
+          className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer hover:border-gray-200"
+          onClick={() => {
+            setDetailModal({
+              title: "Top 10 giá trị tồn kho",
+              dataSource: "MISA",
+              columns: ["Tên vật tư", "Số lượng", "Đơn vị", "Giá trị"],
+              rows: topMaterials.map((m) => [
+                m.name,
+                (Number(m.quantity) || 0).toLocaleString("vi-VN"),
+                m.unit || "-",
+                formatCurrency(Number(m.value) || 0),
+              ]),
+            });
+          }}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              setDetailModal({
+                title: "Top 10 giá trị tồn kho",
+                dataSource: "MISA",
+                columns: ["Tên vật tư", "Số lượng", "Đơn vị", "Giá trị"],
+                rows: topMaterials.map((m) => [
+                  m.name,
+                  (Number(m.quantity) || 0).toLocaleString("vi-VN"),
+                  m.unit || "-",
+                  formatCurrency(Number(m.value) || 0),
+                ]),
+              });
+            }
+          }}
+        >
           <h3 className="text-base font-bold text-gray-900 mb-4">Top 10 giá trị tồn kho</h3>
-          <div className="h-72">
+          <div className="h-72" onClick={(e) => e.stopPropagation()}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topMaterials} layout="vertical" margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
