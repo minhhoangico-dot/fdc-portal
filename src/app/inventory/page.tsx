@@ -21,6 +21,9 @@ const formatCompact = (value: number) => {
 
 type TabType = "overview" | "list" | "consumption" | "stocktake" | "anomalies";
 
+type ListSortKey = "name" | "stock" | "value";
+type SortDir = "asc" | "desc";
+
 export default function InventoryPage() {
   const {
     searchQuery, setSearchQuery,
@@ -37,6 +40,10 @@ export default function InventoryPage() {
   } = useInventory("inventory");
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
+  const [listSort, setListSort] = useState<{ key: ListSortKey; dir: SortDir }>({
+    key: "value",
+    dir: "desc",
+  });
 
   const filteredTotalValue = React.useMemo(() => {
     return filteredInventory.reduce(
@@ -44,6 +51,39 @@ export default function InventoryPage() {
       0,
     );
   }, [filteredInventory]);
+
+  const sortedInventory = React.useMemo(() => {
+    const dirMul = listSort.dir === "asc" ? 1 : -1;
+    const copy = [...filteredInventory];
+    copy.sort((a, b) => {
+      if (listSort.key === "name") {
+        return dirMul * a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
+      }
+      if (listSort.key === "stock") {
+        const av = Number(a.currentStock) || 0;
+        const bv = Number(b.currentStock) || 0;
+        if (av === bv) return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
+        return dirMul * (av - bv);
+      }
+      const av = (Number(a.currentStock) || 0) * (Number(a.unitPrice) || 0);
+      const bv = (Number(b.currentStock) || 0) * (Number(b.unitPrice) || 0);
+      if (av === bv) return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
+      return dirMul * (av - bv);
+    });
+    return copy;
+  }, [filteredInventory, listSort]);
+
+  const toggleSort = (key: ListSortKey) => {
+    setListSort((prev) => {
+      if (prev.key !== key) return { key, dir: "desc" };
+      return { key, dir: prev.dir === "desc" ? "asc" : "desc" };
+    });
+  };
+
+  const sortIndicator = (key: ListSortKey) => {
+    if (listSort.key !== key) return null;
+    return <span className="ml-1 text-[10px] text-indigo-600">{listSort.dir === "asc" ? "▲" : "▼"}</span>;
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -132,16 +172,34 @@ export default function InventoryPage() {
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase">Tên vật tư</th>
+                  <th
+                    className="px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => toggleSort("name")}
+                    title="Sắp xếp theo tên"
+                  >
+                    Tên vật tư{sortIndicator("name")}
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Loại</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right">Tồn kho</th>
+                  <th
+                    className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => toggleSort("stock")}
+                    title="Sắp xếp theo tồn kho"
+                  >
+                    Tồn kho{sortIndicator("stock")}
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden md:table-cell">Đơn giá</th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden lg:table-cell">Giá trị</th>
+                  <th
+                    className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden lg:table-cell cursor-pointer select-none hover:text-gray-700"
+                    onClick={() => toggleSort("value")}
+                    title="Sắp xếp theo giá trị"
+                  >
+                    Giá trị{sortIndicator("value")}
+                  </th>
                   <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-center">TT</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {filteredInventory.map(item => (
+                {sortedInventory.map(item => (
                   <tr key={item.id} onClick={() => setSelectedItem(item)} className="hover:bg-indigo-50/50 cursor-pointer transition-colors group">
                     <td className="px-4 py-3">
                       <div className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{item.name}</div>
