@@ -121,31 +121,48 @@ export function HealthTab({
         </div>
 
         <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
+          <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
             <RefreshCw className="w-4 h-4 text-indigo-600" />
             Đồng bộ thủ công
           </h3>
+          {bridgeHealth.status !== "online" && (
+            <p className="mb-3 text-xs text-amber-600">
+              LAN Bridge đang offline. Vui lòng kiểm tra dịch vụ fdc-lan-bridge trong mạng nội bộ trước khi đồng bộ.
+            </p>
+          )}
           <div className="space-y-2">
             <button
               onClick={() => onManualSync("HIS")}
-              disabled={isSyncing}
-              className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+              disabled={isSyncing || bridgeHealth.status !== "online"}
+              className={`w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
+                isSyncing || bridgeHealth.status !== "online"
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
             >
               <span>Đồng bộ từ HIS</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => onManualSync("MISA")}
-              disabled={isSyncing}
-              className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+              disabled={isSyncing || bridgeHealth.status !== "online"}
+              className={`w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
+                isSyncing || bridgeHealth.status !== "online"
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
             >
               <span>Đồng bộ từ MISA</span>
               <ArrowRight className="w-4 h-4" />
             </button>
             <button
               onClick={() => onManualSync("timekeeping")}
-              disabled={isSyncing}
-              className="w-full flex items-center justify-between px-3 py-2 bg-gray-50 hover:bg-indigo-50 text-gray-700 hover:text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+              disabled={isSyncing || bridgeHealth.status !== "online"}
+              className={`w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
+                isSyncing || bridgeHealth.status !== "online"
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-indigo-50 hover:text-indigo-700"
+              }`}
             >
               <span>Đồng bộ Máy chấm công</span>
               <ArrowRight className="w-4 h-4" />

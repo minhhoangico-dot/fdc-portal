@@ -322,6 +322,13 @@ export function useAdmin() {
 
   const handleManualSync = async (type: string) => {
     if (isSyncing) return;
+    if (bridgeHealth.status !== "online") {
+      setSyncMessage({
+        type: "error",
+        text: "LAN Bridge đang offline. Vui lòng kiểm tra dịch vụ fdc-lan-bridge trong mạng nội bộ trước khi đồng bộ.",
+      });
+      return;
+    }
     setIsSyncing(true);
     setSyncMessage(null);
     try {
