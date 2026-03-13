@@ -168,7 +168,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
             </button>
           ))}
         </div>
-        <div className="h-80" onClick={(e) => e.stopPropagation()}>
+        <div className="h-80">
           {isLoadingSupplyChart ? (
             <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
           ) : chartData.length === 0 ? (
@@ -256,7 +256,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
         }}
       >
         <h3 className="text-base font-bold text-gray-900 mb-4">Chi phí tiêu hao / lượt khám</h3>
-        <div className="h-56" onClick={(e) => e.stopPropagation()}>
+        <div className="h-56">
           {isLoadingSupplyChart ? (
             <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
           ) : chartData.length === 0 ? (
@@ -347,7 +347,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
           }}
         >
           <h3 className="text-base font-bold text-gray-900 mb-4">Giá trị tồn kho (1 năm)</h3>
-          <div className="h-72" onClick={(e) => e.stopPropagation()}>
+          <div className="h-72">
             {isLoadingSnapshotHistory ? (
               <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
             ) : snapshotHistory.length === 0 ? (
@@ -384,7 +384,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
               columns: ["Tên vật tư", "Số lượng", "Đơn vị", "Giá trị"],
               rows: topMaterials.map((m) => [
                 m.name,
-                (Number(m.quantity) || 0).toLocaleString("vi-VN"),
+                (Number(m.stock) || 0).toLocaleString("vi-VN"),
                 m.unit || "-",
                 formatCurrency(Number(m.value) || 0),
               ]),
@@ -401,7 +401,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                 columns: ["Tên vật tư", "Số lượng", "Đơn vị", "Giá trị"],
                 rows: topMaterials.map((m) => [
                   m.name,
-                  (Number(m.quantity) || 0).toLocaleString("vi-VN"),
+                  (Number(m.stock) || 0).toLocaleString("vi-VN"),
                   m.unit || "-",
                   formatCurrency(Number(m.value) || 0),
                 ]),
@@ -410,7 +410,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
           }}
         >
           <h3 className="text-base font-bold text-gray-900 mb-4">Top 10 giá trị tồn kho</h3>
-          <div className="h-72" onClick={(e) => e.stopPropagation()}>
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={topMaterials} layout="vertical" margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
