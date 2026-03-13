@@ -326,6 +326,10 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     return inventory.reduce((sum, item) => sum + item.currentStock * (item.unitPrice || 0), 0);
   }, [inventory]);
 
+  const filteredValue = useMemo(() => {
+    return sortedInventory.reduce((sum, item) => sum + item.currentStock * (item.unitPrice || 0), 0);
+  }, [sortedInventory]);
+
   // Top 10 items by value (grouped by normalized name to avoid variants like hyphen/spacing)
   const topMaterials: TopMaterial[] = useMemo(() => {
     const byName = new Map<string, TopMaterial>();
@@ -400,6 +404,7 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     isLoadingItemSnapshots,
     isLoadingSnapshotHistory,
     topMaterials,
+    filteredValue,
     stats: {
       totalItems,
       activeAnomaliesCount,

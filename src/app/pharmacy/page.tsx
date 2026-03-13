@@ -71,8 +71,10 @@ export default function PharmacyPage() {
     anomalies,
     acknowledgeAnomaly,
     snapshotHistory,
+    isLoadingSnapshotHistory,
     itemSnapshots,
     isLoadingItemSnapshots,
+    filteredValue,
     topMaterials,
     stats,
   } = useInventory('pharmacy');
@@ -455,6 +457,65 @@ export default function PharmacyPage() {
                 <option value="out_of_stock">Hết hàng</option>
                 <option value="anomaly">Có bất thường</option>
               </select>
+            </div>
+          </div>
+
+          {/* Summary strip + mini chart */}
+          <div className="px-4 py-3 border-b border-gray-100 space-y-3">
+            <div className="flex items-center gap-6">
+              <div className="flex items-center gap-2">
+                <DollarSign className="w-4 h-4 text-emerald-500" />
+                <span className="text-sm text-gray-500">Tổng giá trị (hiện tại)</span>
+                <span className="text-base font-bold text-gray-900">{formatCurrency(filteredValue)}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4 text-indigo-500" />
+                <span className="text-sm text-gray-500">Số lượng mã hàng</span>
+                <span className="text-base font-bold text-gray-900">{filteredInventory.length.toLocaleString("vi-VN")} mã</span>
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-medium text-gray-400 mb-1">Biến động giá trị tồn kho (1 năm — toàn kho)</p>
+              <div className="h-32">
+                {isLoadingSnapshotHistory ? (
+                  <div className="w-full h-full rounded-lg bg-gray-50 animate-pulse" />
+                ) : snapshotHistory.length > 1 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={snapshotHistory} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorValueList" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#6366f1" stopOpacity={0.12} />
+                          <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                      <XAxis
+                        dataKey="date"
+                        tickFormatter={(v) => { try { return format(parseISO(v), "MM/yy"); } catch { return v; } }}
+                        axisLine={false} tickLine={false}
+                        tick={{ fontSize: 10, fill: "#9ca3af" }}
+                      />
+                      <YAxis
+                        axisLine={false} tickLine={false}
+                        tick={{ fontSize: 10, fill: "#9ca3af" }}
+                        tickFormatter={formatCompact}
+                        domain={["dataMin * 0.95", "dataMax * 1.05"]}
+                      />
+                      <Tooltip
+                        contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)", fontSize: 12 }}
+                        labelFormatter={(v) => { try { return format(parseISO(v as string), "dd/MM/yyyy"); } catch { return v as string; } }}
+                        formatter={(v: number) => [formatCurrency(v), "Giá trị tồn"]}
+                      />
+                      <Area type="monotone" dataKey="totalValue" stroke="#6366f1" strokeWidth={1.5} fill="url(#colorValueList)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                    Chưa có dữ liệu lịch sử.
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
