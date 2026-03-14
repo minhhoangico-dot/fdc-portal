@@ -169,10 +169,12 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
 
   const fetchFilteredSnapshotHistory = useCallback(async () => {
     const hasFilters =
-      filterWarehouse !== "all" ||
-      filterCategory !== "all" ||
-      filterStatus !== "all" ||
-      Boolean(searchQuery?.trim());
+      moduleType === "inventory"
+        ? filterCategory !== "all" || Boolean(searchQuery?.trim())
+        : filterWarehouse !== "all" ||
+          filterCategory !== "all" ||
+          filterStatus !== "all" ||
+          Boolean(searchQuery?.trim());
 
     if (!hasFilters) {
       setFilteredSnapshotHistory([]);
@@ -202,6 +204,71 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
         }));
         setFilteredSnapshotHistory(result);
       } else if (moduleType === "inventory") {
+        const fetchInventoryHistoryFallback = async (): Promise<SnapshotHistory[]> => {
+          const oneYearAgo = new Date();
+          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+          const cutoff = oneYearAgo.toISOString().split("T")[0];
+
+          let allData: any[] = [];
+          let from = 0;
+          const PAGE_SIZE = 1000;
+          let hasMore = true;
+
+          while (hasMore) {
+            let query = supabase
+              .from("fdc_inventory_snapshots")
+              .select("snapshot_date, current_stock, unit_price")
+              .or("his_medicineid.is.null,his_medicineid.like.misa_%")
+              .gte("snapshot_date", cutoff)
+              .order("snapshot_date", { ascending: true })
+              .range(from, from + PAGE_SIZE - 1);
+
+            if (filterCategory !== "all") {
+              query = query.eq("category", filterCategory);
+            }
+            if (searchQuery?.trim()) {
+              query = query.ilike("name", `%${searchQuery.trim()}%`);
+            }
+
+            const { data, error } = await query;
+            if (error) {
+              console.error(
+                "[DEBUG] fetchFilteredSnapshotHistory inventory fallback error:",
+                error,
+              );
+              return [];
+            }
+
+            if (data && data.length > 0) {
+              allData = [...allData, ...data];
+              from += PAGE_SIZE;
+              hasMore = data.length === PAGE_SIZE;
+            } else {
+              hasMore = false;
+            }
+          }
+
+          const byDate = new Map<string, { totalStock: number; totalValue: number }>();
+
+          for (const row of allData) {
+            const date = row.snapshot_date as string;
+            const stock = Number(row.current_stock) || 0;
+            const price = Number(row.unit_price) || 0;
+            const current = byDate.get(date) ?? { totalStock: 0, totalValue: 0 };
+            current.totalStock += stock;
+            current.totalValue += stock * price;
+            byDate.set(date, current);
+          }
+
+          return Array.from(byDate.entries())
+            .sort(([a], [b]) => a.localeCompare(b))
+            .map(([date, total]) => ({
+              date,
+              totalStock: total.totalStock,
+              totalValue: total.totalValue,
+            }));
+        };
+
         const { data, error } = await supabase.rpc(
           "get_inventory_filtered_history",
           {
@@ -211,11 +278,11 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
         );
 
         if (error) {
-          console.error(
-            "[DEBUG] fetchFilteredSnapshotHistory inventory error:",
+          console.warn(
+            "[DEBUG] fetchFilteredSnapshotHistory inventory RPC failed, using fallback:",
             error,
           );
-          setFilteredSnapshotHistory([]);
+          setFilteredSnapshotHistory(await fetchInventoryHistoryFallback());
           return;
         }
 

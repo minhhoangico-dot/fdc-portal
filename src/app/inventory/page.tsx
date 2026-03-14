@@ -145,9 +145,10 @@ export default function InventoryPage() {
 
       {/* TAB 2: LIST */}
       {activeTab === "list" && (() => {
-        const isFiltered = filterCategory !== "all" || filterStatus !== "all" || searchQuery.trim() !== "";
-        const chartData = isFiltered && filteredSnapshotHistory.length > 0 ? filteredSnapshotHistory : snapshotHistory;
-        const chartLoading = isFiltered && isLoadingFilteredSnapshotHistory;
+        const hasChartFilters = filterCategory !== "all" || searchQuery.trim() !== "";
+        const isFiltered = hasChartFilters && filteredSnapshotHistory.length > 0;
+        const chartData = hasChartFilters ? filteredSnapshotHistory : snapshotHistory;
+        const chartLoading = hasChartFilters ? isLoadingFilteredSnapshotHistory : isLoadingSnapshotHistory;
         return (
         <div className="space-y-4">
         {/* 1-year inventory value chart */}
@@ -155,13 +156,10 @@ export default function InventoryPage() {
           <div className="flex items-center justify-between mb-2">
             <h3 className="text-sm font-semibold text-gray-700">
               Giá trị tồn kho 1 năm
-              {isFiltered && filteredSnapshotHistory.length > 0 && (
+              {isFiltered && (
                 <span className="ml-2 text-xs font-normal text-indigo-500">
                   (Theo bộ lọc{filterCategory !== "all" ? ` — ${filterCategory}` : ""})
                 </span>
-              )}
-              {isFiltered && !chartLoading && filteredSnapshotHistory.length === 0 && snapshotHistory.length > 0 && (
-                <span className="ml-2 text-xs font-normal text-gray-400">(Toàn bộ kho)</span>
               )}
             </h3>
             {chartLoading && <span className="text-xs text-gray-400 animate-pulse">Đang tải...</span>}
