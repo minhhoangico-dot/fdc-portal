@@ -1,4 +1,5 @@
 import { supabase } from "../db/supabase";
+import { toHoChiMinhDate } from "../lib/date";
 import { logger } from "../lib/logger";
 import { logSync } from "../lib/syncLog";
 
@@ -10,10 +11,10 @@ export async function detectAnomaliesJob(): Promise<void> {
   try {
     logger.info("Starting detectAnomaliesJob (Dynamic Thresholds)...");
 
-    const todayDate = new Date().toISOString().split("T")[0];
+    const todayDate = toHoChiMinhDate();
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const cutoffDate = thirtyDaysAgo.toISOString().split("T")[0];
+    const cutoffDate = toHoChiMinhDate(thirtyDaysAgo);
 
     const { data: rawSnapshots, error: snapError } = await supabase
       .from("fdc_inventory_snapshots")
@@ -91,7 +92,7 @@ export async function detectAnomaliesJob(): Promise<void> {
         const yesterdaySnap = (history as any[]).find((s) => {
           const d = new Date(todayDate);
           d.setDate(d.getDate() - 1);
-          return s.snapshot_date === d.toISOString().split("T")[0];
+          return s.snapshot_date === toHoChiMinhDate(d);
         });
         if (yesterdaySnap && yesterdaySnap.current_stock > 0) {
           detectedRules.push({

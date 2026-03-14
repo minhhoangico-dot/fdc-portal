@@ -1,4 +1,5 @@
 import { useState, useMemo, useEffect, useCallback } from "react";
+import { parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import {
   InventoryItem,
@@ -9,6 +10,39 @@ import {
 } from "@/types/inventory";
 
 type InventoryModuleType = "pharmacy" | "inventory" | "all";
+
+const formatLocalDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+};
+
+const getWeekBucketKey = (dateString: string): string => {
+  const parsed = parseISO(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return dateString;
+  }
+
+  const localDate = new Date(parsed.getFullYear(), parsed.getMonth(), parsed.getDate());
+  const daysSinceMonday = (localDate.getDay() + 6) % 7;
+  localDate.setDate(localDate.getDate() - daysSinceMonday);
+  return formatLocalDate(localDate);
+};
+
+const compactSnapshotHistoryByWeek = (
+  history: SnapshotHistory[],
+): SnapshotHistory[] => {
+  const latestPointByWeek = new Map<string, SnapshotHistory>();
+
+  for (const point of [...history].sort((a, b) => a.date.localeCompare(b.date))) {
+    latestPointByWeek.set(getWeekBucketKey(point.date), point);
+  }
+
+  return Array.from(latestPointByWeek.values()).sort((a, b) =>
+    a.date.localeCompare(b.date),
+  );
+};
 
 const applySnapshotSourceFilter = (query: any, moduleType: InventoryModuleType) => {
   if (moduleType === "inventory") {
@@ -32,7 +66,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
 
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [anomalies, setAnomalies] = useState<InventoryAnomaly[]>([]);
-  const [snapshotHistory, setSnapshotHistory] = useState<SnapshotHistory[]>([]);
+  const [rawSnapshotHistory, setRawSnapshotHistory] = useState<SnapshotHistory[]>([]);
   const [filteredSnapshotHistory, setFilteredSnapshotHistory] = useState<SnapshotHistory[]>([]);
   const [itemSnapshots, setItemSnapshots] = useState<ItemSnapshot[]>([]);
   const [isLoadingItemSnapshots, setIsLoadingItemSnapshots] = useState(false);
@@ -46,7 +80,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
 
   // Fetch inventory, preferring today's snapshot but falling back to latest available date
   const fetchInventory = useCallback(async () => {
-    const todayDate = new Date().toISOString().split('T')[0];
+    const todayDate = formatLocalDate(new Date());
 
     const loadForDate = async (snapshotDate: string) => {
       let allData: any[] = [];
@@ -146,13 +180,18 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
     }
   }, []);
 
-  // Fetch 1-year snapshot history (weekly aggregate for fast load, ~52 points)
+  // Fetch 1-year daily history and compact to weekly points in the client.
   const fetchSnapshotHistory = useCallback(async () => {
     setIsLoadingSnapshotHistory(true);
     try {
+      const oneYearAgo = new Date();
+      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+      const cutoffDate = formatLocalDate(oneYearAgo);
+
       const { data, error } = await supabase
-        .from('fdc_inventory_weekly_value')
+        .from('fdc_inventory_daily_value')
         .select('snapshot_date, total_stock, total_value')
+        .gte('snapshot_date', cutoffDate)
         .eq('module_type', moduleType === 'pharmacy' ? 'pharmacy' : 'inventory')
         .order('snapshot_date', { ascending: true });
 
@@ -166,9 +205,9 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
           totalStock: Number(row.total_stock) || 0,
           totalValue: Number(row.total_value) || 0,
         }));
-        setSnapshotHistory(result);
+        setRawSnapshotHistory(result);
       } else {
-        setSnapshotHistory([]);
+        setRawSnapshotHistory([]);
       }
     } finally {
       setIsLoadingSnapshotHistory(false);
@@ -215,7 +254,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
         const fetchInventoryHistoryFallback = async (): Promise<SnapshotHistory[]> => {
           const oneYearAgo = new Date();
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          const cutoff = oneYearAgo.toISOString().split("T")[0];
+          const cutoff = formatLocalDate(oneYearAgo);
 
           let allData: any[] = [];
           let from = 0;
@@ -313,7 +352,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
     setIsLoadingItemSnapshots(true);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-    const cutoffDate = thirtyDaysAgo.toISOString().split('T')[0];
+    const cutoffDate = formatLocalDate(thirtyDaysAgo);
 
     const { data, error } = await applySnapshotSourceFilter(
       supabase
@@ -369,6 +408,37 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
   const filteredAnomalies = useMemo(() => {
     return anomalies.filter(a => inventory.some(i => i.name === a.materialId));
   }, [anomalies, inventory]);
+
+  const snapshotHistory = useMemo(() => {
+    const mergedByDate = new Map<string, SnapshotHistory>();
+
+    rawSnapshotHistory.forEach((point) => {
+      mergedByDate.set(point.date, point);
+    });
+
+    if (inventory.length > 0) {
+      const latestSnapshotDate = inventory.reduce((latest, item) => {
+        return item.lastUpdated > latest ? item.lastUpdated : latest;
+      }, "");
+
+      if (latestSnapshotDate) {
+        mergedByDate.set(latestSnapshotDate, {
+          date: latestSnapshotDate,
+          totalStock: inventory.reduce(
+            (sum, item) => sum + (Number(item.currentStock) || 0),
+            0,
+          ),
+          totalValue: inventory.reduce(
+            (sum, item) =>
+              sum + (Number(item.currentStock) || 0) * (Number(item.unitPrice) || 0),
+            0,
+          ),
+        });
+      }
+    }
+
+    return compactSnapshotHistoryByWeek(Array.from(mergedByDate.values()));
+  }, [rawSnapshotHistory, inventory]);
 
   // When selectedItem changes, fetch its per-item snapshots
   useEffect(() => {

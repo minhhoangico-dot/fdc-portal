@@ -1,11 +1,12 @@
 import mssql from "mssql";
 import { misaPool } from "../db/misa";
 import { supabase } from "../db/supabase";
+import { toHoChiMinhDate } from "../lib/date";
 import { logger } from "../lib/logger";
 import { logSync } from "../lib/syncLog";
 
 function toIsoDate(date: Date): string {
-  return date.toISOString().slice(0, 10);
+  return toHoChiMinhDate(date);
 }
 
 export async function backfillMisaInventoryDailyValueJob(

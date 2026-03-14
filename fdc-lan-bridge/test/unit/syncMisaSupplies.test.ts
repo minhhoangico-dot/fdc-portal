@@ -59,6 +59,9 @@ jest.mock("../../src/lib/syncLog", () => ({
 
 describe("syncMisaSuppliesJob", () => {
   beforeEach(() => {
+    jest.useFakeTimers();
+    jest.setSystemTime(new Date("2026-03-13T23:30:00.000Z"));
+
     mockMisaQuery.mockReset();
     mockConnect.mockReset();
     mockSnapshotUpsert.mockReset();
@@ -90,6 +93,10 @@ describe("syncMisaSuppliesJob", () => {
     mockLogSync.mockResolvedValue(undefined);
   });
 
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
   it("writes MISA supplies to misa_* snapshots and inventory aggregate", async () => {
     const { syncMisaSuppliesJob } = await import("../../src/jobs/syncMisaSupplies");
 
@@ -99,6 +106,7 @@ describe("syncMisaSuppliesJob", () => {
       [
         expect.objectContaining({
           his_medicineid: "misa_VT001",
+          snapshot_date: "2026-03-14",
           category: "Vật tư y tế",
           current_stock: 4,
           unit_price: 25,
@@ -109,6 +117,7 @@ describe("syncMisaSuppliesJob", () => {
     expect(mockDailyUpsert).toHaveBeenCalledWith(
       [
         expect.objectContaining({
+          snapshot_date: "2026-03-14",
           module_type: "inventory",
           total_stock: 4,
           total_value: 100,

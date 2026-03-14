@@ -1,6 +1,7 @@
 import mssql from "mssql";
 import { supabase } from "../db/supabase";
 import { misaPool } from "../db/misa";
+import { toHoChiMinhDate } from "../lib/date";
 import { logger } from "../lib/logger";
 import { logSync } from "../lib/syncLog";
 
@@ -44,7 +45,7 @@ export async function syncMisaSuppliesJob(): Promise<void> {
       unitMap[u.UnitID] = u.UnitName;
     });
 
-    const snapshotDate = new Date().toISOString().split("T")[0];
+    const snapshotDate = toHoChiMinhDate();
 
     const payload = supplies.map((item) => {
       const stock = Number(item.balance) || 0;
