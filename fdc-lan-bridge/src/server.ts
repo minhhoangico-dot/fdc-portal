@@ -13,10 +13,12 @@ import { detectAnomaliesJob } from "./jobs/detectAnomalies";
 
 import { syncMisaPaymentsJob } from "./jobs/syncMisaPayments";
 import { scanMisaPhieuchiJob } from "./jobs/scanMisaPhieuchi";
-import { syncMisaSuppliesJob } from "./jobs/syncMisaSupplies";
+import {
+  backfillMisaInventorySnapshotsJob,
+  syncMisaSuppliesJob,
+} from "./jobs/syncMisaSupplies";
 import { syncSupplyConsumptionJob } from "./jobs/syncSupplyConsumption";
 import { syncSupplyMonthlyStatsJob } from "./jobs/syncSupplyMonthlyStats";
-import { backfillMisaInventoryDailyValueJob } from "./jobs/backfillMisaInventoryDailyValue";
 
 import { syncAttendanceJob } from "./jobs/syncAttendance";
 
@@ -96,7 +98,7 @@ app.post("/sync/:type", async (req: Request, res: Response) => {
       }
       case "backfill-inventory": {
         const days = Number(req.query.days) || 365;
-        void backfillMisaInventoryDailyValueJob(days);
+        void backfillMisaInventorySnapshotsJob(days);
         return res.json({ ok: true, message: `Backfilling ${days} days` });
       }
       default:

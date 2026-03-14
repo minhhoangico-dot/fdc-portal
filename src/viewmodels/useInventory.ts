@@ -56,6 +56,28 @@ const applySnapshotSourceFilter = (query: any, moduleType: InventoryModuleType) 
   return query;
 };
 
+const matchesInventoryHistoryFilters = (
+  item: InventoryItem,
+  category: string,
+  query: string,
+): boolean => {
+  const normalizedQuery = query.trim().toLowerCase();
+
+  if (category !== "all" && item.category !== category) {
+    return false;
+  }
+
+  if (
+    normalizedQuery &&
+    !item.name.toLowerCase().includes(normalizedQuery) &&
+    !item.sku.toLowerCase().includes(normalizedQuery)
+  ) {
+    return false;
+  }
+
+  return true;
+};
+
 export function useInventory(moduleType: InventoryModuleType = 'all') {
   const [activeTab, setActiveTab] = useState<"overview" | "list" | "anomalies">("overview");
   const [searchQuery, setSearchQuery] = useState("");
@@ -251,101 +273,81 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
         }));
         setFilteredSnapshotHistory(result);
       } else if (moduleType === "inventory") {
-        const fetchInventoryHistoryFallback = async (): Promise<SnapshotHistory[]> => {
-          const oneYearAgo = new Date();
-          oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-          const cutoff = formatLocalDate(oneYearAgo);
+        const oneYearAgo = new Date();
+        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+        const cutoff = formatLocalDate(oneYearAgo);
+        const matchingIds = inventory
+          .filter((item) =>
+            matchesInventoryHistoryFilters(item, filterCategory, searchQuery),
+          )
+          .map((item) => item.sku)
+          .filter(Boolean);
 
-          let allData: any[] = [];
+        if (matchingIds.length === 0) {
+          setFilteredSnapshotHistory([]);
+          return;
+        }
+
+        const byDate = new Map<string, { totalStock: number; totalValue: number }>();
+        const PAGE_SIZE = 1000;
+        const ID_BATCH_SIZE = 100;
+
+        for (let batchStart = 0; batchStart < matchingIds.length; batchStart += ID_BATCH_SIZE) {
+          const idBatch = matchingIds.slice(batchStart, batchStart + ID_BATCH_SIZE);
           let from = 0;
-          const PAGE_SIZE = 1000;
           let hasMore = true;
 
           while (hasMore) {
-            let query = applySnapshotSourceFilter(
-              supabase
+            const { data, error } = await supabase
               .from("fdc_inventory_snapshots")
-              .select("snapshot_date, current_stock, unit_price")
+              .select("snapshot_date, current_stock, unit_price, his_medicineid")
               .gte("snapshot_date", cutoff)
+              .in("his_medicineid", idBatch)
               .order("snapshot_date", { ascending: true })
-              .range(from, from + PAGE_SIZE - 1),
-              "inventory",
-            );
+              .order("his_medicineid", { ascending: true })
+              .range(from, from + PAGE_SIZE - 1);
 
-            if (filterCategory !== "all") {
-              query = query.eq("category", filterCategory);
-            }
-            if (searchQuery?.trim()) {
-              query = query.ilike("name", `%${searchQuery.trim()}%`);
-            }
-
-            const { data, error } = await query;
             if (error) {
               console.error(
-                "[DEBUG] fetchFilteredSnapshotHistory inventory fallback error:",
+                "[DEBUG] fetchFilteredSnapshotHistory inventory query error:",
                 error,
               );
-              return [];
+              setFilteredSnapshotHistory([]);
+              return;
             }
 
-            if (data && data.length > 0) {
-              allData = [...allData, ...data];
-              from += PAGE_SIZE;
-              hasMore = data.length === PAGE_SIZE;
-            } else {
-              hasMore = false;
+            const batch = data || [];
+            for (const row of batch) {
+              const date = row.snapshot_date as string;
+              const stock = Number(row.current_stock) || 0;
+              const price = Number(row.unit_price) || 0;
+              const current = byDate.get(date) ?? { totalStock: 0, totalValue: 0 };
+              current.totalStock += stock;
+              current.totalValue += stock * price;
+              byDate.set(date, current);
             }
+
+            from += PAGE_SIZE;
+            hasMore = batch.length === PAGE_SIZE;
           }
+        }
 
-          const byDate = new Map<string, { totalStock: number; totalValue: number }>();
-
-          for (const row of allData) {
-            const date = row.snapshot_date as string;
-            const stock = Number(row.current_stock) || 0;
-            const price = Number(row.unit_price) || 0;
-            const current = byDate.get(date) ?? { totalStock: 0, totalValue: 0 };
-            current.totalStock += stock;
-            current.totalValue += stock * price;
-            byDate.set(date, current);
-          }
-
-          return Array.from(byDate.entries())
+        const result = compactSnapshotHistoryByWeek(
+          Array.from(byDate.entries())
             .sort(([a], [b]) => a.localeCompare(b))
             .map(([date, total]) => ({
               date,
               totalStock: total.totalStock,
               totalValue: total.totalValue,
-            }));
-        };
-
-        const { data, error } = await supabase.rpc(
-          "get_inventory_filtered_history",
-          {
-            p_category: filterCategory !== "all" ? filterCategory : null,
-            p_search: searchQuery?.trim() ? searchQuery.trim() : null,
-          },
+            })),
         );
 
-        if (error) {
-          console.warn(
-            "[DEBUG] fetchFilteredSnapshotHistory inventory RPC failed, using fallback:",
-            error,
-          );
-          setFilteredSnapshotHistory(await fetchInventoryHistoryFallback());
-          return;
-        }
-
-        const result = (data || []).map((row: any) => ({
-          date: row.snapshot_date,
-          totalStock: Number(row.total_stock) || 0,
-          totalValue: Number(row.total_value) || 0,
-        }));
         setFilteredSnapshotHistory(result);
       }
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
     }
-  }, [moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
+  }, [inventory, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
 
   // Fetch per-item snapshot history (when selecting an item)
   const fetchItemSnapshots = useCallback(async (itemName: string, warehouse: string) => {

@@ -51,18 +51,16 @@ jest.mock("../../src/jobs/syncMisaPayments", () => ({
 jest.mock("../../src/jobs/scanMisaPhieuchi", () => ({
   scanMisaPhieuchiJob: async () => undefined,
 }));
+const mockBackfillMisaInventorySnapshotsJob = jest.fn(async () => undefined);
 jest.mock("../../src/jobs/syncMisaSupplies", () => ({
   syncMisaSuppliesJob: async () => undefined,
+  backfillMisaInventorySnapshotsJob: mockBackfillMisaInventorySnapshotsJob,
 }));
 jest.mock("../../src/jobs/syncSupplyConsumption", () => ({
   syncSupplyConsumptionJob: async () => undefined,
 }));
 jest.mock("../../src/jobs/syncAttendance", () => ({
   syncAttendanceJob: async () => undefined,
-}));
-const mockBackfillMisaInventoryDailyValueJob = jest.fn(async () => undefined);
-jest.mock("../../src/jobs/backfillMisaInventoryDailyValue", () => ({
-  backfillMisaInventoryDailyValueJob: mockBackfillMisaInventoryDailyValueJob,
 }));
 
 describe("server routes", () => {
@@ -105,7 +103,7 @@ describe("server routes", () => {
     const res = await request(app).post("/sync/backfill-inventory?days=180");
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ ok: true, message: "Backfilling 180 days" });
-    expect(mockBackfillMisaInventoryDailyValueJob).toHaveBeenCalledWith(180);
+    expect(mockBackfillMisaInventorySnapshotsJob).toHaveBeenCalledWith(180);
   });
 
   it("POST /sync/unknown returns 400", async () => {
