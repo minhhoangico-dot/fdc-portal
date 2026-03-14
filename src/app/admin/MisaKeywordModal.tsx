@@ -72,7 +72,7 @@ export function MisaKeywordModal({
               required
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
-              className="w-full text-sm rounded-lg border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div>
@@ -83,7 +83,7 @@ export function MisaKeywordModal({
               type="text"
               value={category}
               onChange={(e) => setCategory(e.target.value)}
-              className="w-full text-sm rounded-lg border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div className="flex items-center justify-between">

@@ -93,7 +93,7 @@ export function UsersTab({
                   <select
                     value={user.role}
                     onChange={(e) => onRoleChange(user.id, e.target.value)}
-                    className="text-sm rounded-md border-gray-200 py-1 pl-2 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="text-sm rounded-md border border-gray-200 py-1 pl-2 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
                   >
                     {Object.entries(ROLES).map(([key, label]) => (
                       <option key={key} value={key}>

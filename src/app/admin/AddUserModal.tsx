@@ -82,7 +82,7 @@ export function AddUserModal({ isOpen, onClose, onSubmit, onValidateHikvisionId 
               required
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full text-sm rounded-lg border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div>
@@ -93,7 +93,7 @@ export function AddUserModal({ isOpen, onClose, onSubmit, onValidateHikvisionId 
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full text-sm rounded-lg border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div>
@@ -104,7 +104,7 @@ export function AddUserModal({ isOpen, onClose, onSubmit, onValidateHikvisionId 
               type="text"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
-              className="w-full text-sm rounded-lg border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
             />
           </div>
           <div>
@@ -116,7 +116,7 @@ export function AddUserModal({ isOpen, onClose, onSubmit, onValidateHikvisionId 
                 type="text"
                 value={hikvisionEmployeeId}
                 onChange={(e) => setHikvisionEmployeeId(e.target.value)}
-                className="flex-1 text-sm rounded-lg border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-1 text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
                 maxLength={64}
               />
               <button
@@ -141,7 +141,7 @@ export function AddUserModal({ isOpen, onClose, onSubmit, onValidateHikvisionId 
             <select
               value={role}
               onChange={(e) => setRole(e.target.value as Role)}
-              className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
             >
               {Object.entries(ROLES).map(([key, label]) => (
                 <option key={key} value={key}>

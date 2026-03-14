@@ -162,7 +162,7 @@ export function ApprovalTab({
                       </label>
                       <select
                         value={step.role}
-                        className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
                         onChange={(e) =>
                           onUpdateStep(selectedConfig.id, index, "role", e.target.value)
                         }
@@ -181,7 +181,7 @@ export function ApprovalTab({
                       <input
                         type="number"
                         value={step.sla_hours || step.slaHours}
-                        className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                        className="w-full text-sm rounded-lg border border-gray-200 py-2 px-3 focus:ring-indigo-500 focus:border-indigo-500"
                         onChange={(e) =>
                           onUpdateStep(
                             selectedConfig.id,
