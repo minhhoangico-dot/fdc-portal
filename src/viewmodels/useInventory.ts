@@ -8,7 +8,21 @@ import {
   TopMaterial,
 } from "@/types/inventory";
 
-export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all') {
+type InventoryModuleType = "pharmacy" | "inventory" | "all";
+
+const applySnapshotSourceFilter = (query: any, moduleType: InventoryModuleType) => {
+  if (moduleType === "inventory") {
+    return query.like("his_medicineid", "misa_%");
+  }
+  if (moduleType === "pharmacy") {
+    return query
+      .not("his_medicineid", "is", null)
+      .not("his_medicineid", "like", "misa_%");
+  }
+  return query;
+};
+
+export function useInventory(moduleType: InventoryModuleType = 'all') {
   const [activeTab, setActiveTab] = useState<"overview" | "list" | "anomalies">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterWarehouse, setFilterWarehouse] = useState<string>("all");
@@ -41,18 +55,15 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
       let hasMore = true;
 
       while (hasMore) {
-        let query = supabase
+        const query = applySnapshotSourceFilter(
+          supabase
           .from('fdc_inventory_snapshots')
           .select('*')
           .eq('snapshot_date', snapshotDate)
           .order('name')
-          .range(from, from + PAGE_SIZE - 1);
-
-        if (moduleType === 'pharmacy') {
-          query = query.not('his_medicineid', 'is', null).not('his_medicineid', 'like', 'misa_%');
-        } else if (moduleType === 'inventory') {
-          query = query.or('his_medicineid.is.null,his_medicineid.like.misa_%');
-        }
+          .range(from, from + PAGE_SIZE - 1),
+          moduleType,
+        );
 
         const { data, error } = await query;
         if (error) {
@@ -75,16 +86,13 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
 
     // 2. If nothing for today, fall back to the latest date that actually has matching data
     if (allData.length === 0) {
-      let fallbackQuery = supabase
+      const fallbackQuery = applySnapshotSourceFilter(
+        supabase
         .from('fdc_inventory_snapshots')
         .select('snapshot_date')
-        .order('snapshot_date', { ascending: false });
-
-      if (moduleType === 'inventory') {
-        fallbackQuery = fallbackQuery.or('his_medicineid.is.null,his_medicineid.like.misa_%');
-      } else if (moduleType === 'pharmacy') {
-        fallbackQuery = fallbackQuery.not('his_medicineid', 'is', null).not('his_medicineid', 'like', 'misa_%');
-      }
+        .order('snapshot_date', { ascending: false }),
+        moduleType,
+      );
 
       const { data: latest, error: latestError } = await fallbackQuery.limit(1);
 
@@ -215,13 +223,15 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
           let hasMore = true;
 
           while (hasMore) {
-            let query = supabase
+            let query = applySnapshotSourceFilter(
+              supabase
               .from("fdc_inventory_snapshots")
               .select("snapshot_date, current_stock, unit_price")
-              .or("his_medicineid.is.null,his_medicineid.like.misa_%")
               .gte("snapshot_date", cutoff)
               .order("snapshot_date", { ascending: true })
-              .range(from, from + PAGE_SIZE - 1);
+              .range(from, from + PAGE_SIZE - 1),
+              "inventory",
+            );
 
             if (filterCategory !== "all") {
               query = query.eq("category", filterCategory);
@@ -305,13 +315,16 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const cutoffDate = thirtyDaysAgo.toISOString().split('T')[0];
 
-    const { data, error } = await supabase
+    const { data, error } = await applySnapshotSourceFilter(
+      supabase
       .from('fdc_inventory_snapshots')
       .select('snapshot_date, current_stock')
       .eq('name', itemName)
       .eq('warehouse', warehouse)
       .gte('snapshot_date', cutoffDate)
-      .order('snapshot_date', { ascending: true });
+      .order('snapshot_date', { ascending: true }),
+      moduleType,
+    );
 
     if (error) {
       console.error('[DEBUG] fetchItemSnapshots error:', error);

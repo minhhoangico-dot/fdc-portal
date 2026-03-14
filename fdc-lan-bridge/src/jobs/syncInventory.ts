@@ -119,6 +119,8 @@ export async function syncInventoryJob(): Promise<void> {
     const { error: cleanupError } = await supabase
       .from("fdc_inventory_snapshots")
       .delete()
+      .not("his_medicineid", "is", null)
+      .not("his_medicineid", "like", "misa_%")
       .lt("snapshot_date", cutoffDate);
 
     if (cleanupError) {
