@@ -16,6 +16,7 @@ import {
   User,
   X,
 } from "lucide-react";
+import { PasswordChangeModal } from "@/components/layout/PasswordChangeModal";
 import { format, isSameMonth, isToday, parseISO, getDay } from "date-fns";
 import { vi } from "date-fns/locale";
 import { REQUEST_STATUS, REQUEST_TYPES } from "@/lib/constants";
@@ -36,6 +37,7 @@ export default function PortalPage() {
   } = usePortal();
 
   const [selectedDay, setSelectedDay] = useState<any>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   // Leave Form State
   const [leaveType, setLeaveType] = useState("Nghỉ phép");
@@ -377,7 +379,10 @@ export default function PortalPage() {
           </span>
         </a>
 
-        <button className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 transition-all group">
+        <button
+          onClick={() => setIsPasswordModalOpen(true)}
+          className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 transition-all group"
+        >
           <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center group-hover:scale-110 transition-transform">
             <Key className="w-5 h-5" />
           </div>
@@ -605,6 +610,11 @@ export default function PortalPage() {
           </div>
         </div>
       )}
+
+      <PasswordChangeModal
+        isOpen={isPasswordModalOpen}
+        onClose={() => setIsPasswordModalOpen(false)}
+      />
     </div>
   );
 }

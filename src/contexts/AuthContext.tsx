@@ -6,6 +6,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   logout: () => void;
+  updateAvatar: (file: File) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -74,8 +75,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   };
 
+  const updateAvatar = async (file: File): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const fileExt = file.name.split(".").pop();
+      const filePath = `${user.id}.${fileExt}`;
+      const { error: uploadError } = await supabase.storage
+        .from("avatars")
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("avatars")
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from("fdc_user_mapping")
+        .update({ avatar_url: publicUrl })
+        .eq("id", user.id);
+      if (updateError) throw updateError;
+
+      setUser({ ...user, avatarUrl: publicUrl });
+      return true;
+    } catch (err) {
+      console.error("Error uploading avatar:", err);
+      return false;
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, logout }}>
+    <AuthContext.Provider value={{ user, loading, logout, updateAvatar }}>
       {children}
     </AuthContext.Provider>
   );
