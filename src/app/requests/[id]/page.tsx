@@ -29,9 +29,11 @@ export default function RequestDetailPage() {
   }
 
 
-  // Check if current user is the pending approver
+  // Check if current user is the pending approver (only assigned approver or super_admin)
   const pendingStep = req.approvalSteps?.find(s => s.status === 'pending');
-  const isCurrentApprover = pendingStep && pendingStep.approverRole === user.role;
+  const isCurrentApprover = pendingStep && (
+    pendingStep.approverId === user.id || user.role === 'super_admin'
+  );
 
   const handleAction = async (action: 'approve' | 'reject' | 'escalate') => {
     if ((action === 'reject' || action === 'escalate') && !comment.trim()) {

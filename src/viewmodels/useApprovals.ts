@@ -80,6 +80,22 @@ export function useApprovals() {
 
   const refresh = fetchApprovals;
 
+  const [activeDelegations, setActiveDelegations] = useState<Array<{ delegator_id: string; request_types: string[] }>>([]);
+
+  useEffect(() => {
+    if (!user) return;
+    const today = new Date().toISOString().split('T')[0];
+    supabase
+      .from('fdc_delegations')
+      .select('delegator_id, request_types')
+      .eq('delegate_id', user.id)
+      .lte('start_date', today)
+      .gte('end_date', today)
+      .then(({ data }) => {
+        if (data) setActiveDelegations(data);
+      });
+  }, [user]);
+
   const pendingApprovals = useMemo(() => {
     if (!user) return [];
 
@@ -91,9 +107,15 @@ export function useApprovals() {
       const currentStep = req.approvalSteps?.find(step => step.status === 'pending');
       if (!currentStep) return false;
 
-      return currentStep.approverId === user.id;
+      if (currentStep.approverId === user.id) return true;
+
+      const isDelegated = activeDelegations.some(d =>
+        d.delegator_id === currentStep.approverId &&
+        d.request_types.includes(req.type)
+      );
+      return isDelegated;
     });
-  }, [requests, user]);
+  }, [requests, user, activeDelegations]);
 
   const kttEscalationCandidates = useMemo(() => {
     if (user?.role !== 'super_admin') return [];
@@ -160,19 +182,58 @@ export function useApprovals() {
       return;
     }
 
+    // Audit log
+    await supabase.from('fdc_audit_log').insert({
+      user_id: user?.id,
+      action: action,
+      entity_type: 'approval_step',
+      entity_id: currentStep.id,
+      new_value: {
+        request_id: req.id,
+        request_number: req.requestNumber,
+        step_order: currentStep.stepOrder,
+        status: action,
+        comment: note || null,
+      },
+    }).then(({ error }) => {
+      if (error) console.error('Failed to write audit log', error);
+    });
+
     // Now update request status based on action
     let newReqStatus: any = 'pending';
+    let escalateApproverId: string | undefined;
     if (action === 'rejected') {
       newReqStatus = 'rejected';
     } else if (action === 'forwarded') {
       newReqStatus = 'escalated';
+      // Find the target approver by role
+      const targetRole = escalateTo || 'chairman';
+      const { data: escalateApprovers } = await supabase
+        .from('fdc_user_mapping')
+        .select('id')
+        .eq('role', targetRole)
+        .limit(1);
+      if (escalateApprovers && escalateApprovers.length > 0) {
+        escalateApproverId = escalateApprovers[0].id;
+      }
       // Create a new step for escalation
       await supabase.from('fdc_approval_steps').insert({
         request_id: req.id,
         step_order: currentStep.stepOrder + 1,
-        approver_role: escalateTo || 'chairman',
+        approver_role: targetRole,
+        approver_id: escalateApproverId,
         status: 'pending'
       });
+      // Notify the escalation target
+      if (escalateApproverId) {
+        await supabase.from('fdc_notifications').insert({
+          recipient_id: escalateApproverId,
+          type: 'approval',
+          title: 'Đề nghị chuyển cấp cần duyệt',
+          body: `Đề nghị ${req.requestNumber} đã được chuyển cấp và cần bạn phê duyệt.`,
+          data: { linkTo: `/approvals` }
+        });
+      }
     } else if (action === 'approved') {
       const isLastStep = currentStep.stepOrder === req.approvalSteps.length || !req.approvalSteps.some(s => s.stepOrder > currentStep.stepOrder);
       if (isLastStep) {
@@ -208,6 +269,22 @@ export function useApprovals() {
       body: notificationBody,
       data: { linkTo: `/requests/${req.id}` }
     });
+
+    // Notify next approver if request is still pending
+    if (action === 'approved' && newReqStatus === 'pending') {
+      const nextStep = req.approvalSteps
+        ?.filter(s => s.stepOrder > currentStep.stepOrder)
+        .sort((a, b) => a.stepOrder - b.stepOrder)[0];
+      if (nextStep?.approverId) {
+        await supabase.from('fdc_notifications').insert({
+          recipient_id: nextStep.approverId,
+          type: 'approval',
+          title: 'Đề nghị mới cần duyệt',
+          body: `Đề nghị ${req.requestNumber} đang chờ bạn phê duyệt.`,
+          data: { linkTo: `/approvals` }
+        });
+      }
+    }
   };
 
   const approveRequest = useCallback((id: string, note?: string) => {

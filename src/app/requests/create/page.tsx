@@ -6,6 +6,7 @@ import { REQUEST_TYPES } from '@/lib/constants';
 import { FileText, Package, DollarSign, CreditCard, Calendar, ChevronRight, ArrowLeft, Check, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { cn, formatVND } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabase';
 
 const TYPE_CARDS = [
   { type: 'material_release', icon: Package, title: 'Xuất vật tư', desc: 'Xin xuất kho vật tư y tế, văn phòng phẩm' },
@@ -46,34 +47,49 @@ export default function CreateRequestPage() {
     else setStep(s => s - 1);
   };
 
-  const handleSubmit = () => {
-    // Generate mock approval steps based on type
-    const approvalSteps = [];
-    if (formData.type === 'leave') {
-      approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
-      if (formData.startDate !== formData.endDate) {
-        approvalSteps.push({ id: `as-${Date.now()}-2`, stepOrder: 2, approverRole: 'director', status: 'pending' });
-      }
-    } else if (['purchase', 'payment', 'advance'].includes(formData.type)) {
-      approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
-      approvalSteps.push({ id: `as-${Date.now()}-2`, stepOrder: 2, approverRole: 'accountant', status: 'pending' });
-      approvalSteps.push({ id: `as-${Date.now()}-3`, stepOrder: 3, approverRole: 'director', status: 'pending' });
+  const handleSubmit = async () => {
+    // Try to load template for this request type
+    const { data: template } = await supabase
+      .from('fdc_approval_templates')
+      .select('steps')
+      .eq('request_type', formData.type)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    let approvalSteps: Array<{ id: string; stepOrder: number; approverRole: string; status: string }> = [];
+    if (template?.steps && Array.isArray(template.steps) && template.steps.length > 0) {
+      approvalSteps = template.steps.map((s: { role: string }, idx: number) => ({
+        id: `as-${Date.now()}-${idx + 1}`,
+        stepOrder: idx + 1,
+        approverRole: s.role,
+        status: 'pending',
+      }));
     } else {
-      approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
+      if (formData.type === 'leave') {
+        approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
+        if (formData.startDate !== formData.endDate) {
+          approvalSteps.push({ id: `as-${Date.now()}-2`, stepOrder: 2, approverRole: 'director', status: 'pending' });
+        }
+      } else if (['purchase', 'payment', 'advance'].includes(formData.type)) {
+        approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
+        approvalSteps.push({ id: `as-${Date.now()}-2`, stepOrder: 2, approverRole: 'accountant', status: 'pending' });
+        approvalSteps.push({ id: `as-${Date.now()}-3`, stepOrder: 3, approverRole: 'director', status: 'pending' });
+      } else {
+        approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
+      }
     }
 
-    const totalAmount = ['purchase', 'payment', 'advance'].includes(formData.type) 
+    const totalAmount = ['purchase', 'payment', 'advance'].includes(formData.type)
       ? (formData.type === 'purchase' ? formData.items.reduce((sum: number, i: any) => sum + (i.qty * i.price), 0) : Number(formData.amount))
       : undefined;
 
-    const newId = createRequest({
+    const newId = await createRequest({
       type: formData.type,
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
       totalAmount,
       approvalSteps,
-      // Store extra data in description for mock purposes
       ...(formData.type === 'leave' && { description: `Từ: ${formData.startDate} Đến: ${formData.endDate}\nLý do: ${formData.description}` }),
     });
 
