@@ -202,65 +202,28 @@ export function useInventory(moduleType: 'pharmacy' | 'inventory' | 'all' = 'all
         }));
         setFilteredSnapshotHistory(result);
       } else if (moduleType === "inventory") {
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const cutoff = oneYearAgo.toISOString().split("T")[0];
+        const { data, error } = await supabase.rpc(
+          "get_inventory_filtered_history",
+          {
+            p_category: filterCategory !== "all" ? filterCategory : null,
+            p_search: searchQuery?.trim() ? searchQuery.trim() : null,
+          },
+        );
 
-        let allData: any[] = [];
-        let from = 0;
-        const PAGE_SIZE = 1000;
-        let hasMore = true;
-
-        while (hasMore) {
-          let q = supabase
-            .from("fdc_inventory_snapshots")
-            .select("snapshot_date, current_stock, unit_price")
-            .or("his_medicineid.is.null,his_medicineid.like.misa_%")
-            .gte("snapshot_date", cutoff)
-            .order("snapshot_date", { ascending: true })
-            .range(from, from + PAGE_SIZE - 1);
-
-          if (filterCategory !== "all") q = q.eq("category", filterCategory);
-          if (searchQuery?.trim()) q = q.ilike("name", `%${searchQuery.trim()}%`);
-
-          const { data, error } = await q;
-          if (error) {
-            console.error("[DEBUG] fetchFilteredSnapshotHistory inventory error:", error);
-            break;
-          }
-          if (data && data.length > 0) {
-            allData = [...allData, ...data];
-            from += PAGE_SIZE;
-            hasMore = data.length === PAGE_SIZE;
-          } else {
-            hasMore = false;
-          }
+        if (error) {
+          console.error(
+            "[DEBUG] fetchFilteredSnapshotHistory inventory error:",
+            error,
+          );
+          setFilteredSnapshotHistory([]);
+          return;
         }
 
-        // Aggregate by snapshot_date
-        const byDate = new Map<string, { totalStock: number; totalValue: number }>();
-        for (const row of allData) {
-          const d = row.snapshot_date as string;
-          const stock = Number(row.current_stock) || 0;
-          const price = Number(row.unit_price) || 0;
-          const agg = byDate.get(d) ?? { totalStock: 0, totalValue: 0 };
-          agg.totalStock += stock;
-          agg.totalValue += stock * price;
-          byDate.set(d, agg);
-        }
-
-        // Sample roughly weekly (~52 points for 1 year)
-        const allDates = Array.from(byDate.keys()).sort();
-        const result: SnapshotHistory[] = [];
-        let lastTs = 0;
-        for (const d of allDates) {
-          const ts = new Date(d).getTime();
-          if (ts - lastTs >= 6 * 24 * 60 * 60 * 1000) {
-            const v = byDate.get(d)!;
-            result.push({ date: d, totalStock: v.totalStock, totalValue: v.totalValue });
-            lastTs = ts;
-          }
-        }
+        const result = (data || []).map((row: any) => ({
+          date: row.snapshot_date,
+          totalStock: Number(row.total_stock) || 0,
+          totalValue: Number(row.total_value) || 0,
+        }));
         setFilteredSnapshotHistory(result);
       }
     } finally {

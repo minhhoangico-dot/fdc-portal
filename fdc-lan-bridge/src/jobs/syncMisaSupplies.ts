@@ -87,6 +87,38 @@ export async function syncMisaSuppliesJob(): Promise<void> {
       }
     }
 
+    const totalStock = payload.reduce(
+      (sum, item) => sum + (Number(item.current_stock) || 0),
+      0,
+    );
+    const totalValue = payload.reduce(
+      (sum, item) =>
+        sum +
+        (Number(item.current_stock) || 0) * (Number(item.unit_price) || 0),
+      0,
+    );
+
+    const { error: aggError } = await supabase
+      .from("fdc_inventory_daily_value")
+      .upsert(
+        [
+          {
+            snapshot_date: snapshotDate,
+            module_type: "inventory",
+            total_stock: totalStock,
+            total_value: totalValue,
+          },
+        ],
+        { onConflict: "snapshot_date,module_type" },
+      );
+
+    if (aggError) {
+      logger.error(
+        "Failed to upsert fdc_inventory_daily_value aggregate",
+        aggError,
+      );
+    }
+
     recordsSynced = payload.length;
     await logSync(
       "syncMisaSupplies",

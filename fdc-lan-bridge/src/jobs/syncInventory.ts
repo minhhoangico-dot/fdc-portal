@@ -100,7 +100,7 @@ export async function syncInventoryJob(): Promise<void> {
         [
           {
             snapshot_date: snapshotDate,
-            module_type: "inventory",
+            module_type: "pharmacy",
             total_stock: totalStockAll,
             total_value: totalValueAll,
           },
