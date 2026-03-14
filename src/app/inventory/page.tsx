@@ -5,6 +5,9 @@ import {
   ClipboardCheck, CheckCircle2, Activity,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from "recharts";
 import OverviewTab from "./OverviewTab";
 import ConsumptionTab from "./ConsumptionTab";
 import StocktakeTab from "./StocktakeTab";
@@ -34,6 +37,8 @@ export default function InventoryPage() {
     selectedItem, setSelectedItem,
     anomalies, acknowledgeAnomaly,
     snapshotHistory,
+    filteredSnapshotHistory,
+    isLoadingFilteredSnapshotHistory,
     topMaterials,
     stats,
     isLoadingSnapshotHistory,
@@ -139,8 +144,77 @@ export default function InventoryPage() {
       )}
 
       {/* TAB 2: LIST */}
-      {activeTab === "list" && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-280px)] min-h-[500px]">
+      {activeTab === "list" && (() => {
+        const isFiltered = filterCategory !== "all" || filterStatus !== "all" || searchQuery.trim() !== "";
+        const chartData = isFiltered && filteredSnapshotHistory.length > 0 ? filteredSnapshotHistory : snapshotHistory;
+        const chartLoading = isFiltered && isLoadingFilteredSnapshotHistory;
+        return (
+        <div className="space-y-4">
+        {/* 1-year inventory value chart */}
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-semibold text-gray-700">
+              Giá trị tồn kho 1 năm
+              {isFiltered && filteredSnapshotHistory.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-indigo-500">
+                  (Theo bộ lọc{filterCategory !== "all" ? ` — ${filterCategory}` : ""})
+                </span>
+              )}
+              {isFiltered && !chartLoading && filteredSnapshotHistory.length === 0 && snapshotHistory.length > 0 && (
+                <span className="ml-2 text-xs font-normal text-gray-400">(Toàn bộ kho)</span>
+              )}
+            </h3>
+            {chartLoading && <span className="text-xs text-gray-400 animate-pulse">Đang tải...</span>}
+          </div>
+          {chartLoading && chartData.length === 0 ? (
+            <div className="h-32 bg-gray-50 rounded-xl animate-pulse" />
+          ) : chartData.length === 0 ? (
+            <div className="h-32 flex items-center justify-center text-xs text-gray-400">Chưa có dữ liệu lịch sử</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={140}>
+              <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                <defs>
+                  <linearGradient id="listValueGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  tickLine={false}
+                  axisLine={false}
+                  tickFormatter={(d) => { try { return format(parseISO(d), "MM/yy"); } catch { return d; } }}
+                  interval="preserveStartEnd"
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: "#9ca3af" }}
+                  tickLine={false}
+                  axisLine={false}
+                  width={52}
+                  tickFormatter={(v) => formatCompact(v)}
+                />
+                <Tooltip
+                  formatter={(v: number) => [formatCurrency(v), "Giá trị"]}
+                  labelFormatter={(d) => { try { return format(parseISO(d as string), "dd/MM/yyyy"); } catch { return d as string; } }}
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="totalValue"
+                  stroke="#6366f1"
+                  strokeWidth={2}
+                  fill="url(#listValueGrad)"
+                  dot={false}
+                  activeDot={{ r: 4 }}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          )}
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-460px)] min-h-[400px]">
           <div className="p-4 border-b border-gray-100 space-y-3">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -222,7 +296,9 @@ export default function InventoryPage() {
             </table>
           </div>
         </div>
-      )}
+        </div>
+        );
+      })()}
 
       {/* TAB 3: CONSUMPTION */}
       {activeTab === "consumption" && <ConsumptionTab />}
