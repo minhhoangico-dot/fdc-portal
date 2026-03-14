@@ -72,11 +72,17 @@ export function UsersTab({
               <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <img
-                      src={user.avatarUrl}
-                      alt=""
-                      className="w-8 h-8 rounded-full bg-gray-100 object-cover"
-                    />
+                    {user.avatarUrl ? (
+                      <img
+                        src={user.avatarUrl}
+                        alt=""
+                        className="w-8 h-8 rounded-full bg-gray-100 object-cover"
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
+                        {user.name?.charAt(0)?.toUpperCase() ?? "?"}
+                      </div>
+                    )}
                     <div>
                       <div className="font-medium text-gray-900">{user.name}</div>
                       <div className="text-xs text-gray-500">{user.email}</div>

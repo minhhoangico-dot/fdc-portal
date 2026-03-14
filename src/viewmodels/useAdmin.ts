@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { BRIDGE_HEALTH_ROW_ID, isBridgeHeartbeatStale } from "@/lib/bridge";
 import { User, Role } from "@/types/user";
@@ -8,6 +9,7 @@ import { validateHikvisionEmployeeId } from "./hikvision";
 export type AdminTab = "users" | "approval" | "misa" | "health" | "audit";
 
 export function useAdmin() {
+  const { user: currentUser } = useAuth();
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
 
   // Users state
@@ -36,10 +38,25 @@ export function useAdmin() {
   }, []);
 
   const handleRoleChange = async (userId: string, newRole: Role) => {
-    await supabase.from("fdc_user_mapping").update({ role: newRole }).eq("id", userId);
+    const { error } = await supabase
+      .from("fdc_user_mapping")
+      .update({ role: newRole })
+      .eq("id", userId);
+    if (error) {
+      console.error("Failed to update role:", error);
+      return;
+    }
     setUsers(users.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
+    await supabase.from("fdc_audit_log").insert({
+      user_id: currentUser?.id,
+      action: "update_role",
+      entity_type: "user",
+      entity_id: userId,
+      new_value: { role: newRole },
+    });
   };
 
+  // TODO: Implement via Supabase Edge Function — reset password for user's email using admin API
   const handleResetPassword = (userId: string) => {
     alert(`Đã gửi email reset mật khẩu cho user ${userId}`);
   };
@@ -48,10 +65,25 @@ export function useAdmin() {
     const target = users.find((u) => u.id === userId);
     if (!target) return;
     const nextActive = !target.isActive;
-    await supabase.from("fdc_user_mapping").update({ is_active: nextActive }).eq("id", userId);
+    const { error } = await supabase
+      .from("fdc_user_mapping")
+      .update({ is_active: nextActive })
+      .eq("id", userId);
+    if (error) {
+      console.error("Failed to toggle active:", error);
+      return;
+    }
     setUsers(users.map((u) => (u.id === userId ? { ...u, isActive: nextActive } : u)));
+    await supabase.from("fdc_audit_log").insert({
+      user_id: currentUser?.id,
+      action: "toggle_active",
+      entity_type: "user",
+      entity_id: userId,
+      new_value: { is_active: nextActive },
+    });
   };
 
+  // TODO: Implement via Supabase Edge Function — create Auth user + fdc_user_mapping so user can log in
   const handleAddUser = async (payload: {
     name: string;
     email?: string;
@@ -59,7 +91,7 @@ export function useAdmin() {
     role: Role;
     hikvisionEmployeeId?: string;
   }) => {
-    await supabase.from("fdc_user_mapping").insert({
+    const { error } = await supabase.from("fdc_user_mapping").insert({
       full_name: payload.name,
       email: payload.email,
       department_name: payload.department ?? null,
@@ -67,7 +99,18 @@ export function useAdmin() {
       is_active: true,
       hikvision_employee_id: payload.hikvisionEmployeeId ?? null,
     });
+    if (error) {
+      console.error("Failed to add user:", error);
+      return;
+    }
     await fetchUsers();
+    await supabase.from("fdc_audit_log").insert({
+      user_id: currentUser?.id,
+      action: "create_user",
+      entity_type: "user",
+      entity_id: payload.email ?? payload.name,
+      new_value: { name: payload.name, role: payload.role },
+    });
   };
 
   // Approval Config state
@@ -437,12 +480,28 @@ export function useAdmin() {
     startDate: string;
     endDate: string;
   }) => {
-    await supabase.from("fdc_delegations").insert({
+    const { error } = await supabase.from("fdc_delegations").insert({
       delegator_id: payload.delegatorId,
       delegate_id: payload.delegateId,
       request_types: payload.requestTypes,
       start_date: payload.startDate,
       end_date: payload.endDate,
+    });
+    if (error) {
+      console.error("Failed to save delegation:", error);
+      return;
+    }
+    await supabase.from("fdc_audit_log").insert({
+      user_id: currentUser?.id,
+      action: "save_delegation",
+      entity_type: "delegation",
+      entity_id: payload.delegatorId,
+      new_value: {
+        delegate_id: payload.delegateId,
+        request_types: payload.requestTypes,
+        start_date: payload.startDate,
+        end_date: payload.endDate,
+      },
     });
   };
 

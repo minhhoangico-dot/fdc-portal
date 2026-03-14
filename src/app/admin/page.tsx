@@ -1,5 +1,6 @@
 import React from "react";
 import { Users, Settings, Key, Activity, Shield } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin, AdminTab } from "@/viewmodels/useAdmin";
 import { UsersTab } from "./UsersTab";
 import { ApprovalTab } from "./ApprovalTab";
@@ -10,6 +11,7 @@ import { DelegationModal } from "./DelegationModal";
 import { AddUserModal } from "./AddUserModal";
 
 export default function AdminPage() {
+  const { user } = useAuth();
   const {
     activeTab,
     setActiveTab,
@@ -53,6 +55,14 @@ export default function AdminPage() {
     handleSaveDelegation,
     validateHikvisionEmployeeId,
   } = useAdmin();
+
+  if (!user || user.role !== "super_admin") {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <p className="text-gray-500 text-lg">Bạn không có quyền truy cập trang này.</p>
+      </div>
+    );
+  }
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: "users", label: "Người dùng", icon: <Users className="w-4 h-4" /> },

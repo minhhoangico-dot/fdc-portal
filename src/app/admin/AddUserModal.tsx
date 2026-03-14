@@ -16,7 +16,7 @@ interface AddUserModalProps {
   onValidateHikvisionId?: (employeeId: string) => Promise<HikvisionValidationResult>;
 }
 
-export function AddUserModal({ isOpen, onClose, onSubmit }: AddUserModalProps) {
+export function AddUserModal({ isOpen, onClose, onSubmit, onValidateHikvisionId }: AddUserModalProps) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("");

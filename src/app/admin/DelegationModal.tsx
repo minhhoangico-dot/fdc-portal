@@ -16,6 +16,15 @@ interface DelegationModalProps {
   }) => Promise<void> | void;
 }
 
+const DELEGATION_REQUEST_TYPES: { value: string; label: string }[] = [
+  { value: "purchase", label: "Đề nghị mua sắm" },
+  { value: "payment", label: "Đề nghị thanh toán" },
+  { value: "leave", label: "Đơn xin nghỉ phép" },
+  { value: "material_release", label: "Xuất vật tư" },
+  { value: "advance", label: "Tạm ứng" },
+  { value: "other", label: "Khác" },
+];
+
 export function DelegationModal({
   isOpen,
   onClose,
@@ -27,6 +36,17 @@ export function DelegationModal({
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
   const [types, setTypes] = React.useState<string[]>([]);
+  const [triedSubmit, setTriedSubmit] = React.useState(false);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setDelegateId("");
+      setStartDate("");
+      setEndDate("");
+      setTypes([]);
+      setTriedSubmit(false);
+    }
+  }, [isOpen, selectedUser?.id]);
 
   if (!isOpen || !selectedUser) return null;
 
@@ -38,7 +58,7 @@ export function DelegationModal({
 
   const handleSubmit = async () => {
     if (!delegateId || !startDate || !endDate || types.length === 0) {
-      onClose();
+      setTriedSubmit(true);
       return;
     }
     await onSave({
@@ -50,6 +70,9 @@ export function DelegationModal({
     });
     onClose();
   };
+
+  const isInvalid = !delegateId || !startDate || !endDate || types.length === 0;
+  const showValidation = triedSubmit && isInvalid;
 
   return (
     <>
@@ -67,7 +90,7 @@ export function DelegationModal({
               Người được ủy quyền
             </label>
             <select
-              className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className={`w-full text-sm rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 ${showValidation && !delegateId ? "border border-rose-300" : "border border-gray-200"}`}
               value={delegateId}
               onChange={(e) => setDelegateId(e.target.value)}
             >
@@ -90,7 +113,7 @@ export function DelegationModal({
                 type="date"
                 value={startDate}
                 onChange={(e) => setStartDate(e.target.value)}
-                className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className={`w-full text-sm rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 ${showValidation && !startDate ? "border border-rose-300" : "border border-gray-200"}`}
               />
             </div>
             <div>
@@ -101,7 +124,7 @@ export function DelegationModal({
                 type="date"
                 value={endDate}
                 onChange={(e) => setEndDate(e.target.value)}
-                className="w-full text-sm rounded-lg border-gray-200 py-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className={`w-full text-sm rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 ${showValidation && !endDate ? "border border-rose-300" : "border border-gray-200"}`}
               />
             </div>
           </div>
@@ -109,37 +132,22 @@ export function DelegationModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Loại đề nghị ủy quyền
             </label>
-            <div className="space-y-2">
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={types.includes("purchase")}
-                  onChange={() => toggleType("purchase")}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm text-gray-700">Đề nghị mua sắm</span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={types.includes("payment")}
-                  onChange={() => toggleType("payment")}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm text-gray-700">
-                  Đề nghị thanh toán
-                </span>
-              </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  checked={types.includes("leave")}
-                  onChange={() => toggleType("leave")}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
-                />
-                <span className="text-sm text-gray-700">Đơn xin nghỉ phép</span>
-              </label>
+            <div className={`space-y-2 ${showValidation && types.length === 0 ? "rounded-lg border border-rose-200 p-2" : ""}`}>
+              {DELEGATION_REQUEST_TYPES.map(({ value, label }) => (
+                <label key={value} className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={types.includes(value)}
+                    onChange={() => toggleType(value)}
+                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <span className="text-sm text-gray-700">{label}</span>
+                </label>
+              ))}
             </div>
+            {showValidation && (
+              <p className="text-xs text-rose-600">Vui lòng điền đầy đủ và chọn ít nhất một loại đề nghị.</p>
+            )}
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
