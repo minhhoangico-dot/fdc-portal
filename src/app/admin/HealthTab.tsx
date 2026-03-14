@@ -1,7 +1,8 @@
 import React from "react";
-import { format, parseISO, formatDistanceToNow } from "date-fns";
-import { vi } from "date-fns/locale";
+import { format, parseISO } from "date-fns";
 import { ArrowRight, Database, RefreshCw, Server, CheckCircle2, XCircle, RotateCw } from "lucide-react";
+import { isBridgeHeartbeatStale } from "@/lib/bridge";
+import { formatTimeAgo } from "@/lib/utils";
 import { BridgeHealth, SyncRecord } from "@/types/sync";
 
 interface HealthTabProps {
@@ -37,6 +38,12 @@ export function HealthTab({
   onDismissSyncMessage,
 }: HealthTabProps) {
   const isRefreshing = React.useRef(false);
+  const hasHeartbeat = Boolean(bridgeHealth.lastHeartbeat);
+  const heartbeatIsStale = isBridgeHeartbeatStale(bridgeHealth.lastHeartbeat);
+  const showStaleHeartbeatWarning =
+    bridgeHealth.status === "offline" && hasHeartbeat && heartbeatIsStale;
+  const showMissingHeartbeatWarning =
+    bridgeHealth.status === "offline" && !hasHeartbeat;
 
   const handleRefresh = () => {
     if (isRefreshing.current) return;
@@ -93,15 +100,19 @@ export function HealthTab({
               <span>Heartbeat cuối:</span>
               <span>
                 {bridgeHealth.lastHeartbeat
-                  ? formatDistanceToNow(parseISO(bridgeHealth.lastHeartbeat), {
-                      addSuffix: true,
-                      locale: vi,
-                    })
+                  ? formatTimeAgo(bridgeHealth.lastHeartbeat)
                   : bridgeHealth.status === "online"
                     ? "Đang kết nối..."
                     : "—"}
               </span>
             </div>
+            {(showStaleHeartbeatWarning || showMissingHeartbeatWarning) && (
+              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                {showStaleHeartbeatWarning
+                  ? `Máº¥t káº¿t ná»‘i vá»›i Bridge tá»« ${formatTimeAgo(bridgeHealth.lastHeartbeat)}`
+                  : "ChÆ°a nháº­n Ä‘Æ°á»£c tÃ­n hiá»‡u tá»« Bridge"}
+              </div>
+            )}
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
+import { BRIDGE_HEALTH_ROW_ID, isBridgeHeartbeatStale } from "@/lib/bridge";
 import { User, Role } from "@/types/user";
 import { BridgeHealth, SyncRecord } from "@/types/sync";
 import { validateHikvisionEmployeeId } from "./hikvision";
@@ -286,23 +287,43 @@ export function useAdmin() {
   const dismissSyncMessage = useCallback(() => setSyncMessage(null), []);
 
   const fetchSyncData = useCallback(async () => {
-    const { data: healthData } = await supabase.from("fdc_sync_health").select("*").limit(1);
-    if (healthData && healthData.length > 0) {
+    const { data: healthData, error: healthError } = await supabase
+      .from("fdc_sync_health")
+      .select("bridge_status, his_connected, misa_connected, last_heartbeat, queue_depth")
+      .eq("id", BRIDGE_HEALTH_ROW_ID)
+      .maybeSingle();
+
+    if (healthError) {
+      console.error("Failed to fetch fdc_sync_health", healthError);
+    } else if (healthData) {
+      const lastHeartbeat = healthData.last_heartbeat ?? "";
+      const heartbeatIsStale = isBridgeHeartbeatStale(lastHeartbeat);
+
       setBridgeHealth({
-        status: healthData[0].bridge_status ?? "offline",
-        hisConnected: !!healthData[0].his_connected,
-        misaConnected: !!healthData[0].misa_connected,
-        lastHeartbeat: healthData[0].last_heartbeat,
-        queueDepth: healthData[0].queue_depth ?? 0,
+        status: heartbeatIsStale ? "offline" : (healthData.bridge_status ?? "offline"),
+        hisConnected: heartbeatIsStale ? false : !!healthData.his_connected,
+        misaConnected: heartbeatIsStale ? false : !!healthData.misa_connected,
+        lastHeartbeat,
+        queueDepth: healthData.queue_depth ?? 0,
+      });
+    } else {
+      setBridgeHealth({
+        status: "offline",
+        hisConnected: false,
+        misaConnected: false,
+        lastHeartbeat: "",
+        queueDepth: 0,
       });
     }
 
-    const { data: logData } = await supabase
+    const { data: logData, error: logError } = await supabase
       .from("fdc_sync_logs")
       .select("*")
       .order("started_at", { ascending: false })
       .limit(20);
-    if (logData) {
+    if (logError) {
+      console.error("Failed to fetch fdc_sync_logs", logError);
+    } else if (logData) {
       setSyncHistory(
         logData.map(
           (l) =>

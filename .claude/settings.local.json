@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find /c/Users/Minh/Desktop/ERP_v1/fdc-lan-bridge/test -type f -name *.test.ts)",
+      "Bash(git log:*)",
+      "Bash(ls -ltr /c/Users/Minh/Desktop/ERP_v1/fdc-lan-bridge/logs/*.log)",
+      "Bash(find /c/Users/Minh/Desktop/ERP_v1 -name *.sql -type f)",
+      "Bash(npm ls:*)",
+      "Bash(node -e \"const df = require\\(''digest-fetch''\\); console.log\\(''Successfully loaded digest-fetch''\\);\")",
+      "Bash(npm run:*)",
+      "Bash(timeout 5 npm start)",
+      "Bash(node -e \"const DigestFetch = require\\(''digest-fetch''\\); const df = new DigestFetch\\(''user'', ''pass''\\); console.log\\(''DigestFetch loaded successfully. Has fetch method:'', typeof df.fetch === ''function''\\);\")",
+      "Bash(node -e \"const fetch = require\\(''node-fetch''\\); console.log\\(''node-fetch available, version:'', fetch.default ? ''v3+'' : ''v2''\\);\")",
+      "Bash(node -e \"try { const fetch = require\\(''node-fetch''\\); console.log\\(''Successfully resolved node-fetch''\\); } catch\\(e\\) { console.log\\(''Error:'', e.message\\); }\")"
+    ]
+  }
+}
