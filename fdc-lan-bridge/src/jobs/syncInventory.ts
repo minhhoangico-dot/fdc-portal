@@ -1,6 +1,7 @@
 import { hisPool } from "../db/his";
 import { supabase } from "../db/supabase";
 import { logger } from "../lib/logger";
+import { logSync } from "../lib/syncLog";
 
 export async function syncInventoryJob(): Promise<void> {
   const startTime = Date.now();
@@ -124,26 +125,28 @@ export async function syncInventoryJob(): Promise<void> {
       logger.warn("Failed to clean up old snapshots:", cleanupError);
     }
 
-    const { error: logError } = await supabase.from("fdc_sync_logs").insert({
-      sync_type: "syncInventory",
-      status: "completed",
-      records_synced: recordsSynced,
-      completed_at: new Date().toISOString(),
-    });
-
-    if (logError) logger.error("Failed to record sync log", logError);
+    await logSync(
+      "syncInventory",
+      "completed",
+      "HIS",
+      recordsSynced,
+      null,
+      Date.now() - startTime,
+    );
 
     logger.info(
       `syncInventoryJob completed. Synced ${recordsSynced} records in ${Date.now() - startTime}ms`,
     );
   } catch (err: any) {
     logger.error("Error in syncInventoryJob:", err);
-    await supabase.from("fdc_sync_logs").insert({
-      sync_type: "syncInventory",
-      status: "error",
-      error_message: err?.message ?? String(err),
-      completed_at: new Date().toISOString(),
-    });
+    await logSync(
+      "syncInventory",
+      "failed",
+      "HIS",
+      0,
+      err?.message ?? String(err),
+      Date.now() - startTime,
+    );
   }
 }
 

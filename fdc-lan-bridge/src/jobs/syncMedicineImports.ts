@@ -1,6 +1,7 @@
 import { hisPool } from "../db/his";
 import { supabase } from "../db/supabase";
 import { logger } from "../lib/logger";
+import { logSync } from "../lib/syncLog";
 
 export async function syncMedicineImportsJob(): Promise<void> {
   const startTime = Date.now();
@@ -70,26 +71,28 @@ export async function syncMedicineImportsJob(): Promise<void> {
       }
     }
 
-    const { error: logError } = await supabase.from("fdc_sync_logs").insert({
-      sync_type: "syncMedicineImports",
-      status: "completed",
-      records_synced: recordsSynced,
-      completed_at: new Date().toISOString(),
-    });
-
-    if (logError) logger.error("Failed to record sync log", logError);
+    await logSync(
+      "syncMedicineImports",
+      "completed",
+      "HIS",
+      recordsSynced,
+      null,
+      Date.now() - startTime,
+    );
 
     logger.info(
       `syncMedicineImportsJob completed. Synced ${recordsSynced} records in ${Date.now() - startTime}ms`,
     );
   } catch (err: any) {
     logger.error("Error in syncMedicineImportsJob:", err);
-    await supabase.from("fdc_sync_logs").insert({
-      sync_type: "syncMedicineImports",
-      status: "error",
-      error_message: err?.message ?? String(err),
-      completed_at: new Date().toISOString(),
-    });
+    await logSync(
+      "syncMedicineImports",
+      "failed",
+      "HIS",
+      0,
+      err?.message ?? String(err),
+      Date.now() - startTime,
+    );
   }
 }
 

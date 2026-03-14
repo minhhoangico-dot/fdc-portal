@@ -1,5 +1,6 @@
 import { supabase } from "../db/supabase";
 import { logger } from "../lib/logger";
+import { logSync } from "../lib/syncLog";
 
 export async function detectAnomaliesJob(): Promise<void> {
   const startTime = Date.now();
@@ -182,8 +183,25 @@ export async function detectAnomaliesJob(): Promise<void> {
         Date.now() - startTime
       }ms`,
     );
-  } catch (err) {
+
+    await logSync(
+      "detectAnomalies",
+      "completed",
+      "SYSTEM",
+      anomaliesCreated,
+      null,
+      Date.now() - startTime,
+    );
+  } catch (err: any) {
     logger.error("Error in detectAnomaliesJob:", err);
+    await logSync(
+      "detectAnomalies",
+      "failed",
+      "SYSTEM",
+      0,
+      err?.message ?? String(err),
+      Date.now() - startTime,
+    );
   }
 }
 

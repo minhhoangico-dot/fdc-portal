@@ -17,15 +17,33 @@ interface HealthTabProps {
 
 function getSyncTypeLabel(type: string): string {
   const map: Record<string, string> = {
-    HIS: 'HIS',
-    MISA: 'MISA',
-    timekeeping: 'Máy chấm công',
-    inventory: 'Kho',
-    patient: 'Bệnh nhân',
-    invoice: 'Hóa đơn',
-    attendance: 'Chấm công',
+    HIS: "HIS",
+    MISA: "MISA",
+    timekeeping: "Máy chấm công",
+    inventory: "Kho",
+    patient: "Bệnh nhân",
+    invoice: "Hóa đơn",
+    attendance: "Chấm công",
+    syncInventory: "Đồng bộ kho",
+    syncMedicineImports: "Nhập thuốc",
+    detectAnomalies: "Phát hiện bất thường",
   };
   return map[type] || type.charAt(0).toUpperCase() + type.slice(1);
+}
+
+function formatSyncStatus(status: string): string {
+  return status === "success" || status === "completed"
+    ? "Thành công"
+    : status === "pending"
+      ? "Đang xử lý"
+      : "Thất bại";
+}
+
+function getDurationMs(record: SyncRecord): number | null {
+  if (!record.startedAt || !record.completedAt) return null;
+  const start = parseISO(record.startedAt).getTime();
+  const end = parseISO(record.completedAt).getTime();
+  return end - start;
 }
 
 export function HealthTab({
@@ -37,6 +55,7 @@ export function HealthTab({
   syncMessage,
   onDismissSyncMessage,
 }: HealthTabProps) {
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
   const isRefreshing = React.useRef(false);
   const hasHeartbeat = Boolean(bridgeHealth.lastHeartbeat);
   const heartbeatIsStale = isBridgeHeartbeatStale(bridgeHealth.lastHeartbeat);
@@ -225,35 +244,94 @@ export function HealthTab({
                 </tr>
               ) : (
                 syncHistory.slice(0, 5).map((sync) => (
-                  <tr key={sync.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                      {getSyncTypeLabel(sync.type)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span
-                        className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                          sync.status === "success"
-                            ? "bg-emerald-100 text-emerald-700"
-                            : sync.status === "pending"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-rose-100 text-rose-700"
-                        }`}
-                      >
-                        {sync.status === "success" ? "Thành công" : sync.status === "pending" ? "Đang xử lý" : "Thất bại"}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600 text-right">
-                      {sync.recordsSynced}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-gray-600">
-                      {sync.startedAt
-                        ? format(parseISO(sync.startedAt), "HH:mm:ss dd/MM/yyyy")
-                        : "---"}
-                    </td>
-                    <td className="px-4 py-3 text-sm text-rose-600">
-                      {sync.error || "-"}
-                    </td>
-                  </tr>
+                  <React.Fragment key={sync.id}>
+                    <tr
+                      onClick={() => setExpandedId((id) => (id === sync.id ? null : sync.id))}
+                      className="hover:bg-gray-50 cursor-pointer select-none"
+                    >
+                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
+                        {getSyncTypeLabel(sync.type)}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
+                            sync.status === "success" || sync.status === "completed"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : sync.status === "pending"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-rose-100 text-rose-700"
+                          }`}
+                        >
+                          {formatSyncStatus(sync.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600 text-right">
+                        {sync.recordsSynced}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-gray-600">
+                        {sync.startedAt
+                          ? format(parseISO(sync.startedAt), "HH:mm:ss dd/MM/yyyy")
+                          : "---"}
+                      </td>
+                      <td className="px-4 py-3 text-sm text-rose-600">
+                        {sync.error ? `${sync.error.slice(0, 40)}${sync.error.length > 40 ? "…" : ""}` : "-"}
+                      </td>
+                    </tr>
+                    {expandedId === sync.id && (
+                      <tr className="bg-gray-50/80">
+                        <td colSpan={5} className="px-4 py-4">
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                            <div>
+                              <span className="text-gray-500">Loại:</span>{" "}
+                              {getSyncTypeLabel(sync.type)}
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Trạng thái:</span>{" "}
+                              <span
+                                className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
+                                  sync.status === "success" || sync.status === "completed"
+                                    ? "bg-emerald-100 text-emerald-700"
+                                    : sync.status === "pending"
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-rose-100 text-rose-700"
+                                }`}
+                              >
+                                {formatSyncStatus(sync.status)}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Số bản ghi:</span>{" "}
+                              {sync.recordsSynced}
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Thời gian bắt đầu:</span>{" "}
+                              {sync.startedAt
+                                ? format(parseISO(sync.startedAt), "HH:mm:ss dd/MM/yyyy")
+                                : "---"}
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Thời gian kết thúc:</span>{" "}
+                              {sync.completedAt
+                                ? format(parseISO(sync.completedAt), "HH:mm:ss dd/MM/yyyy")
+                                : "---"}
+                            </div>
+                            <div>
+                              <span className="text-gray-500">Thời lượng:</span>{" "}
+                              {getDurationMs(sync) != null
+                                ? `${(getDurationMs(sync)! / 1000).toFixed(1)}s`
+                                : "---"}
+                            </div>
+                            {sync.error && (
+                              <div className="col-span-2">
+                                <span className="text-gray-500">Lỗi:</span>{" "}
+                                <span className="text-rose-600">{sync.error}</span>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
                 ))
               )}
             </tbody>
