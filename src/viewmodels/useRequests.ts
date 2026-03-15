@@ -1,6 +1,6 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Request, RequestStatus, RequestType, Priority } from '@/types/request';
+import { Request, RequestStatus, RequestType, Priority, RequestAttachment } from '@/types/request';
 import { supabase } from '@/lib/supabase';
 
 const REQUEST_ADMIN_ROLES = new Set(['super_admin', 'director', 'chairman']);
@@ -27,7 +27,8 @@ export function useRequests() {
           approvalSteps:fdc_approval_steps(
             *,
             approver:fdc_user_mapping!approver_id(id, full_name, role, avatar_url)
-          )
+          ),
+          attachments:fdc_request_attachments(*)
         `)
         .order('created_at', { ascending: false });
 
@@ -54,6 +55,7 @@ export function useRequests() {
           status: dbReq.status as RequestStatus,
           priority: dbReq.priority as Priority,
           totalAmount: dbReq.total_amount,
+          costCenter: dbReq.cost_center || undefined,
           createdAt: dbReq.created_at,
           updatedAt: dbReq.updated_at,
           requesterName: dbReq.requester?.full_name || 'Unknown',
@@ -69,7 +71,18 @@ export function useRequests() {
             actedAt: step.acted_at,
             approverName: step.approver?.full_name || null,
             approverAvatar: step.approver?.avatar_url || null,
-          }))
+          })),
+          attachments: (dbReq.attachments || []).map((a: any) => ({
+            id: a.id,
+            requestId: a.request_id,
+            fileName: a.file_name,
+            fileSize: a.file_size,
+            mimeType: a.mime_type,
+            storagePath: a.storage_path,
+            publicUrl: a.public_url,
+            uploadedBy: a.uploaded_by,
+            uploadedAt: a.uploaded_at || a.created_at,
+          })),
         }));
         setRequests(mapped);
       }
@@ -147,7 +160,8 @@ export function useRequests() {
         requester_id: user.id,
         department_name: user.department || 'Chung',
         priority: newRequest.priority || 'normal',
-        total_amount: newRequest.totalAmount
+        total_amount: newRequest.totalAmount,
+        cost_center: newRequest.costCenter || null,
       })
       .select()
       .single();
@@ -206,6 +220,38 @@ export function useRequests() {
     return reqData.id;
   };
 
+  const uploadAttachments = useCallback(async (requestId: string, files: File[]) => {
+    if (!user || files.length === 0) return;
+
+    for (const file of files) {
+      const ext = file.name.split('.').pop() || '';
+      const storagePath = `${requestId}/${Date.now()}_${file.name}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('request-attachments')
+        .upload(storagePath, file, { upsert: false });
+
+      if (uploadError) {
+        console.error('Failed to upload file:', uploadError);
+        continue;
+      }
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('request-attachments')
+        .getPublicUrl(storagePath);
+
+      await supabase.from('fdc_request_attachments').insert({
+        request_id: requestId,
+        file_name: file.name,
+        file_size: file.size,
+        mime_type: file.type,
+        storage_path: storagePath,
+        public_url: publicUrl,
+        uploaded_by: user.id,
+      });
+    }
+  }, [user]);
+
   return {
     requests: filteredRequests,
     searchQuery,
@@ -216,5 +262,6 @@ export function useRequests() {
     setSortBy,
     getRequest,
     createRequest,
+    uploadAttachments,
   };
 }

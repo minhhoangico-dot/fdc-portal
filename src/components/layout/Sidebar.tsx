@@ -1,7 +1,7 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Home, FileText, CheckCircle, Package, User, Settings, Pill } from 'lucide-react';
+import { Home, FileText, CheckCircle, Package, User, Settings, Pill, BarChart3 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export const NAV_ITEMS = [
@@ -10,6 +10,7 @@ export const NAV_ITEMS = [
   { path: '/approvals', label: 'Phê duyệt', icon: CheckCircle, roles: ['dept_head', 'accountant', 'director', 'chairman', 'super_admin'] },
   { path: '/pharmacy', label: 'Kho thuốc', icon: Pill, roles: ['dept_head', 'super_admin'] },
   { path: '/inventory', label: 'Kho vật tư', icon: Package, roles: ['dept_head', 'super_admin'] },
+  { path: '/reports', label: 'Báo cáo', icon: BarChart3, roles: ['super_admin', 'director', 'chairman', 'accountant'] },
   { path: '/portal', label: 'Cá nhân', icon: User, roles: ['all'] },
   { path: '/admin', label: 'Quản trị', icon: Settings, roles: ['super_admin'] },
 ];

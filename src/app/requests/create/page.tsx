@@ -2,11 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequests } from '@/viewmodels/useRequests';
 import { RequestType } from '@/types/request';
-import { REQUEST_TYPES, ROLES } from '@/lib/constants';
-import { FileText, Package, DollarSign, CreditCard, Calendar, ChevronRight, ArrowLeft, Check, Plus, Trash2, AlertTriangle } from 'lucide-react';
+import { REQUEST_TYPES, ROLES, COST_CENTERS } from '@/lib/constants';
+import { FileText, Package, DollarSign, CreditCard, Calendar, ChevronRight, ArrowLeft, Check, Plus, Trash2, AlertTriangle, Paperclip } from 'lucide-react';
 import { cn, formatVND } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
+import { FileUpload } from '@/components/shared/FileUpload';
 
 const TYPE_CARDS = [
   { type: 'material_release', icon: Package, title: 'Xuất vật tư', desc: 'Xin xuất kho vật tư y tế, văn phòng phẩm' },
@@ -65,8 +66,9 @@ const buildFallbackApprovalSteps = (type: string, formData: any): ApprovalPrevie
 
 export default function CreateRequestPage() {
   const navigate = useNavigate();
-  const { createRequest } = useRequests();
+  const { createRequest, uploadAttachments } = useRequests();
   const { user } = useAuth();
+  const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   const [step, setStep] = useState(1);
   const [approvalPreviewSteps, setApprovalPreviewSteps] = useState<ApprovalPreviewStep[]>([]);
@@ -78,6 +80,7 @@ export default function CreateRequestPage() {
     title: '',
     description: '',
     priority: 'normal',
+    costCenter: '',
     // Material Release
     items: [],
     // Payment / Advance
@@ -174,11 +177,15 @@ export default function CreateRequestPage() {
         description: formData.description,
         priority: formData.priority,
         totalAmount,
+        costCenter: formData.costCenter || undefined,
         approvalSteps,
         ...(formData.type === 'leave' && { description: `Từ: ${formData.startDate} Đến: ${formData.endDate}\nLý do: ${formData.description}` }),
       });
 
       if (newId) {
+        if (attachmentFiles.length > 0) {
+          await uploadAttachments(newId, attachmentFiles);
+        }
         navigate(`/requests/${newId}`);
         return;
       }
@@ -299,6 +306,21 @@ export default function CreateRequestPage() {
                     <option value="urgent">Khẩn cấp</option>
                   </select>
                 </div>
+                {formData.type !== 'leave' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Trung tâm chi phí</label>
+                    <select
+                      value={formData.costCenter}
+                      onChange={e => setFormData({ ...formData, costCenter: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none bg-white"
+                    >
+                      <option value="">-- Chọn (không bắt buộc) --</option>
+                      {Object.entries(COST_CENTERS).map(([key, label]) => (
+                        <option key={key} value={key}>{label}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {['material_release', 'purchase'].includes(formData.type) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Khoa/Phòng yêu cầu</label>
@@ -454,6 +476,14 @@ export default function CreateRequestPage() {
                 />
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 flex items-center gap-1.5">
+                  <Paperclip className="w-4 h-4" />
+                  Tệp đính kèm
+                </label>
+                <FileUpload files={attachmentFiles} onChange={setAttachmentFiles} />
+              </div>
+
             </div>
 
             <div className="flex justify-end pt-4 border-t border-gray-100">
@@ -488,6 +518,12 @@ export default function CreateRequestPage() {
                     <dd className="font-medium text-gray-900">{formatVND(Number(formData.amount))}</dd>
                   </div>
                 )}
+                {formData.costCenter && (
+                  <div>
+                    <dt className="text-gray-500">Trung tâm chi phí</dt>
+                    <dd className="font-medium text-gray-900">{COST_CENTERS[formData.costCenter as keyof typeof COST_CENTERS] || formData.costCenter}</dd>
+                  </div>
+                )}
                 {formData.type === 'leave' && (
                   <div className="sm:col-span-2">
                     <dt className="text-gray-500">Thời gian nghỉ</dt>
@@ -498,6 +534,12 @@ export default function CreateRequestPage() {
                   <dt className="text-gray-500">Mô tả / Lý do</dt>
                   <dd className="font-medium text-gray-900 whitespace-pre-wrap">{formData.description}</dd>
                 </div>
+                {attachmentFiles.length > 0 && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-gray-500">Tệp đính kèm</dt>
+                    <dd className="font-medium text-gray-900">{attachmentFiles.length} tệp</dd>
+                  </div>
+                )}
               </dl>
             </div>
 

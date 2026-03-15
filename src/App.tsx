@@ -19,6 +19,7 @@ import PharmacyPage from '@/app/pharmacy/page';
 import ValuationPage from '@/app/valuation/page';
 import PortalPage from '@/app/portal/page';
 import AdminPage from '@/app/admin/page';
+import ReportsPage from '@/app/reports/page';
 
 export default function App() {
   return (
@@ -38,6 +39,7 @@ export default function App() {
             <Route path="/pharmacy" element={<PharmacyPage />} />
             <Route path="/valuation" element={<ValuationPage />} />
             <Route path="/portal" element={<PortalPage />} />
+            <Route path="/reports" element={<ReportsPage />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>

@@ -33,3 +33,15 @@ export const ROLES = {
   staff: 'Nhân viên',
   doctor: 'Bác sĩ',
 } as const;
+
+export const COST_CENTERS = {
+  general: 'Chung',
+  clinic: 'Phòng khám',
+  pharmacy: 'Nhà thuốc',
+  lab: 'Xét nghiệm',
+  imaging: 'Chẩn đoán hình ảnh',
+  admin: 'Hành chính',
+  facility: 'Cơ sở vật chất',
+  marketing: 'Marketing',
+  it: 'Công nghệ thông tin',
+} as const;

@@ -3,10 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useRequests } from '@/viewmodels/useRequests';
 import { useApprovals } from '@/viewmodels/useApprovals';
 import { useAuth } from '@/contexts/AuthContext';
-import { REQUEST_TYPES, ROLES } from '@/lib/constants';
+import { REQUEST_TYPES, ROLES, COST_CENTERS } from '@/lib/constants';
 import { formatVND, formatDate, formatTimeAgo, cn } from '@/lib/utils';
 import { StatusBadge, PriorityBadge } from '@/components/shared/Badges';
-import { ArrowLeft, CheckCircle, XCircle, ArrowRightCircle, MessageSquare, User, Clock } from 'lucide-react';
+import { ArrowLeft, CheckCircle, XCircle, ArrowRightCircle, MessageSquare, User, Clock, Paperclip, FileText as FileTextIcon, Image, Download, File as FileIcon } from 'lucide-react';
 
 const APPROVER_ROLES = new Set(['dept_head', 'accountant', 'director', 'chairman', 'super_admin']);
 
@@ -134,6 +134,16 @@ export default function RequestDetailPage() {
                   <dd className="font-bold text-indigo-700 text-lg">{formatVND(req.totalAmount)}</dd>
                 </div>
               )}
+              {req.costCenter && (
+                <div>
+                  <dt className="text-gray-500 mb-1">Trung tâm chi phí</dt>
+                  <dd className="font-medium text-gray-900">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-sm bg-slate-50 border border-slate-200">
+                      {COST_CENTERS[req.costCenter as keyof typeof COST_CENTERS] || req.costCenter}
+                    </span>
+                  </dd>
+                </div>
+              )}
               <div className="sm:col-span-2">
                 <dt className="text-gray-500 mb-1">Mô tả chi tiết</dt>
                 <dd className="font-medium text-gray-900 whitespace-pre-wrap bg-gray-50 p-4 rounded-lg border border-gray-100">
@@ -142,6 +152,45 @@ export default function RequestDetailPage() {
               </div>
             </dl>
           </div>
+
+          {/* Attachments */}
+          {req.attachments && req.attachments.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <Paperclip className="w-5 h-5 text-gray-500" />
+                Tệp đính kèm ({req.attachments.length})
+              </h3>
+              <div className="space-y-2">
+                {req.attachments.map((att) => {
+                  const isImage = att.mimeType.startsWith('image/');
+                  const isPdf = att.mimeType === 'application/pdf';
+                  const AttIcon = isImage ? Image : isPdf ? FileTextIcon : FileIcon;
+                  const iconColor = isImage ? 'text-blue-500' : isPdf ? 'text-red-500' : 'text-gray-500';
+
+                  return (
+                    <a
+                      key={att.id}
+                      href={att.publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors group"
+                    >
+                      <AttIcon className={cn("w-5 h-5 shrink-0", iconColor)} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate group-hover:text-indigo-600">{att.fileName}</p>
+                        <p className="text-xs text-gray-500">
+                          {att.fileSize < 1024 * 1024
+                            ? `${(att.fileSize / 1024).toFixed(1)} KB`
+                            : `${(att.fileSize / (1024 * 1024)).toFixed(1)} MB`}
+                        </p>
+                      </div>
+                      <Download className="w-4 h-4 text-gray-400 group-hover:text-indigo-500 shrink-0" />
+                    </a>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right Col: Timeline & Actions */}

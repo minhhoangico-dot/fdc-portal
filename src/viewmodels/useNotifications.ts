@@ -3,11 +3,26 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notification } from '@/types/notification';
 
+const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+
+function urlBase64ToUint8Array(base64String: string) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+    for (let i = 0; i < rawData.length; ++i) {
+        outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+}
+
 export function useNotifications() {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const hasLoaded = useRef(false);
+    const [pushSupported, setPushSupported] = useState(false);
+    const [pushPermission, setPushPermission] = useState<NotificationPermission>('default');
 
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
@@ -88,12 +103,73 @@ export function useNotifications() {
         }
     };
 
+    // Push notification support
+    useEffect(() => {
+        const supported = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+        setPushSupported(supported);
+        if (supported) {
+            setPushPermission(window.Notification.permission);
+        }
+    }, []);
+
+    const subscribeToPush = useCallback(async () => {
+        if (!user || !pushSupported || !VAPID_PUBLIC_KEY) return false;
+
+        try {
+            const permission = await window.Notification.requestPermission();
+            setPushPermission(permission);
+            if (permission !== 'granted') return false;
+
+            const registration = await navigator.serviceWorker.ready;
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({
+                    userVisibleOnly: true,
+                    applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+                });
+            }
+
+            const subJson = subscription.toJSON();
+            await supabase.from('fdc_push_subscriptions').upsert({
+                user_id: user.id,
+                endpoint: subJson.endpoint,
+                p256dh: subJson.keys?.p256dh,
+                auth: subJson.keys?.auth,
+                updated_at: new Date().toISOString(),
+            }, { onConflict: 'endpoint' });
+
+            return true;
+        } catch (err) {
+            console.error('Push subscription failed:', err);
+            return false;
+        }
+    }, [user, pushSupported]);
+
+    const unsubscribeFromPush = useCallback(async () => {
+        try {
+            const registration = await navigator.serviceWorker.ready;
+            const subscription = await registration.pushManager.getSubscription();
+            if (subscription) {
+                const endpoint = subscription.endpoint;
+                await subscription.unsubscribe();
+                await supabase.from('fdc_push_subscriptions').delete().eq('endpoint', endpoint);
+            }
+        } catch (err) {
+            console.error('Push unsubscribe failed:', err);
+        }
+    }, []);
+
     return {
         notifications,
         unreadCount,
         isLoading,
         markAsRead,
         markAllAsRead,
-        refresh: fetchNotifications
+        refresh: fetchNotifications,
+        pushSupported,
+        pushPermission,
+        subscribeToPush,
+        unsubscribeFromPush,
     };
 }

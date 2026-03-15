@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { usePortal } from "@/viewmodels/usePortal";
+import { useNotifications } from "@/viewmodels/useNotifications";
 import {
   ChevronLeft,
   ChevronRight,
@@ -11,6 +12,8 @@ import {
   Key,
   CreditCard,
   Briefcase,
+  Bell,
+  BellOff,
   X,
 } from "lucide-react";
 import { PasswordChangeModal } from "@/components/layout/PasswordChangeModal";
@@ -34,8 +37,20 @@ export default function PortalPage() {
     submitLeaveRequest,
   } = usePortal();
 
+  const { pushSupported, pushPermission, subscribeToPush, unsubscribeFromPush } = useNotifications();
   const [selectedDay, setSelectedDay] = useState<any>(null);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [pushLoading, setPushLoading] = useState(false);
+
+  const handleTogglePush = async () => {
+    setPushLoading(true);
+    if (pushPermission === 'granted') {
+      await unsubscribeFromPush();
+    } else {
+      await subscribeToPush();
+    }
+    setPushLoading(false);
+  };
 
   // Leave Form State
   const [leaveType, setLeaveType] = useState("Nghỉ phép");
@@ -407,22 +422,37 @@ export default function PortalPage() {
           </span>
         </button>
 
-        <div className="relative group">
+        {pushSupported ? (
           <button
-            disabled
-            className="w-full flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 rounded-2xl border border-gray-100 opacity-60 cursor-not-allowed"
+            onClick={handleTogglePush}
+            disabled={pushLoading || pushPermission === 'denied'}
+            className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 transition-all group disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center">
-              <CreditCard className="w-5 h-5" />
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform ${pushPermission === 'granted' ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'}`}>
+              {pushPermission === 'granted' ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
             </div>
-            <span className="text-sm font-medium text-gray-500">
-              Xem bảng lương
+            <span className="text-sm font-medium text-gray-700">
+              {pushLoading ? 'Đang xử lý...' : pushPermission === 'granted' ? 'Tắt thông báo' : pushPermission === 'denied' ? 'Đã chặn' : 'Bật thông báo'}
             </span>
           </button>
-          <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
-            Sắp ra mắt
+        ) : (
+          <div className="relative group">
+            <button
+              disabled
+              className="w-full flex flex-col items-center justify-center gap-2 p-4 bg-gray-50 rounded-2xl border border-gray-100 opacity-60 cursor-not-allowed"
+            >
+              <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center">
+                <CreditCard className="w-5 h-5" />
+              </div>
+              <span className="text-sm font-medium text-gray-500">
+                Xem bảng lương
+              </span>
+            </button>
+            <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+              Sắp ra mắt
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* Modals */}
