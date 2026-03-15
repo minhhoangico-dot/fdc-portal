@@ -3,7 +3,6 @@ import { NavLink } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Home, FileText, CheckCircle, Package, User, Settings, Pill } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useApprovals } from '@/viewmodels/useApprovals';
 
 export const NAV_ITEMS = [
   { path: '/dashboard', label: 'Trang chủ', icon: Home, roles: ['all'] },
@@ -15,10 +14,16 @@ export const NAV_ITEMS = [
   { path: '/admin', label: 'Quản trị', icon: Settings, roles: ['super_admin'] },
 ];
 
-export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function Sidebar({
+  isOpen,
+  onClose,
+  pendingCount = 0,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  pendingCount?: number;
+}) {
   const { user } = useAuth();
-  const { pendingApprovals } = useApprovals();
-  const pendingCount = pendingApprovals.length;
 
   if (!user) return null;
 
@@ -38,7 +43,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
 
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:flex-shrink-0",
+          "fixed inset-y-0 left-0 z-50 w-[var(--sidebar-width)] bg-white border-r border-gray-200 transform transition-transform duration-200 ease-in-out md:translate-x-0 md:static md:flex-shrink-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

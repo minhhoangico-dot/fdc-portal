@@ -187,7 +187,7 @@ export function NotificationCenter({
                       {notification.createdAt ? formatDistanceToNow(parseISO(notification.createdAt), {
                         addSuffix: true,
                         locale: vi,
-                      }) : 'Bừa rồi'}
+                      }) : 'Vừa rồi'}
                     </p>
                   </div>
                 </div>

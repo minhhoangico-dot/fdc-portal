@@ -1,6 +1,6 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
-import { ROLES } from "@/lib/constants";
+import { REQUEST_TYPES, ROLES } from "@/lib/constants";
 
 interface ApprovalStep {
   id: string;
@@ -46,22 +46,7 @@ export function ApprovalTab({
   onAddType,
 }: ApprovalTabProps) {
   const getRequestTypeLabel = (type: string) => {
-    switch (type) {
-      case "purchase":
-        return "Đề nghị mua sắm";
-      case "leave":
-        return "Đơn xin nghỉ phép";
-      case "payment":
-        return "Đề nghị thanh toán";
-      case "material_release":
-        return "Xuất vật tư";
-      case "advance":
-        return "Tạm ứng";
-      case "other":
-        return "Khác";
-      default:
-        return type;
-    }
+    return REQUEST_TYPES[type as keyof typeof REQUEST_TYPES] || type;
   };
 
   return (

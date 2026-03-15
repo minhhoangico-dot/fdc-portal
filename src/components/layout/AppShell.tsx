@@ -4,19 +4,30 @@ import { useAuth } from '@/contexts/AuthContext';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
+import { useApprovals } from '@/viewmodels/useApprovals';
+
+const APPROVER_ROLES = new Set(['dept_head', 'accountant', 'director', 'chairman', 'super_admin']);
 
 export function AppShell() {
   const { user } = useAuth();
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const approvalEnabled = Boolean(user && APPROVER_ROLES.has(user.role));
+  const { pendingApprovals } = useApprovals({ enabled: approvalEnabled });
+  const pendingCount = pendingApprovals.length;
+  const shellStyle = { ['--sidebar-width' as any]: '16rem' } as React.CSSProperties;
 
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row" style={shellStyle}>
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        pendingCount={pendingCount}
+      />
       
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <TopBar onMenuClick={() => setIsSidebarOpen(true)} />
@@ -28,7 +39,7 @@ export function AppShell() {
         </main>
       </div>
 
-      <BottomNav />
+      <BottomNav pendingCount={pendingCount} />
     </div>
   );
 }

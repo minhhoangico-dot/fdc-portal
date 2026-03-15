@@ -9,7 +9,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('Fdc@2026');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -103,25 +103,9 @@ export default function LoginPage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <input
-                  id="remember-me"
-                  name="remember-me"
-                  type="checkbox"
-                  className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-                />
-                <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
-                  Nhớ mật khẩu
-                </label>
-              </div>
-
-              <div className="text-sm">
-                <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
-                  Quên mật khẩu?
-                </a>
-              </div>
-            </div>
+            <p className="text-sm text-gray-500">
+              Quên mật khẩu? Liên hệ quản trị viên để được cấp lại.
+            </p>
 
             <div>
               <button

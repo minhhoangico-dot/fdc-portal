@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRequests } from '@/viewmodels/useRequests';
-import { RequestType, Priority } from '@/types/request';
-import { REQUEST_TYPES } from '@/lib/constants';
+import { RequestType } from '@/types/request';
+import { REQUEST_TYPES, ROLES } from '@/lib/constants';
 import { FileText, Package, DollarSign, CreditCard, Calendar, ChevronRight, ArrowLeft, Check, Plus, Trash2, AlertTriangle } from 'lucide-react';
 import { cn, formatVND } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
@@ -17,12 +17,62 @@ const TYPE_CARDS = [
   { type: 'other', icon: FileText, title: 'Khác', desc: 'Các đề xuất, kiến nghị khác' },
 ] as const;
 
+type ApprovalPreviewStep = {
+  id: string;
+  stepOrder: number;
+  approverRole: string;
+  status: 'pending';
+};
+
+const requiresDirectorApproval = (startDate: string, endDate: string) => {
+  if (!startDate || !endDate) return false;
+
+  const start = new Date(`${startDate}T00:00:00`);
+  const end = new Date(`${endDate}T00:00:00`);
+  if (end.getTime() < start.getTime()) return false;
+  const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
+
+  return diffDays > 1 || start.getDay() === 1;
+};
+
+const buildFallbackApprovalSteps = (type: string, formData: any): ApprovalPreviewStep[] => {
+  if (type === 'leave') {
+    const leaveSteps: ApprovalPreviewStep[] = [
+      { id: 'preview-step-1', stepOrder: 1, approverRole: 'dept_head', status: 'pending' },
+    ];
+
+    if (requiresDirectorApproval(formData.startDate, formData.endDate)) {
+      leaveSteps.push({ id: 'preview-step-2', stepOrder: 2, approverRole: 'director', status: 'pending' });
+    }
+
+    return leaveSteps;
+  }
+
+  if (['purchase', 'payment', 'advance'].includes(type)) {
+    return [
+      { id: 'preview-step-1', stepOrder: 1, approverRole: 'dept_head', status: 'pending' },
+      { id: 'preview-step-2', stepOrder: 2, approverRole: 'accountant', status: 'pending' },
+      { id: 'preview-step-3', stepOrder: 3, approverRole: 'director', status: 'pending' },
+    ];
+  }
+
+  if (type) {
+    return [{ id: 'preview-step-1', stepOrder: 1, approverRole: 'dept_head', status: 'pending' }];
+  }
+
+  return [];
+};
+
 export default function CreateRequestPage() {
   const navigate = useNavigate();
   const { createRequest } = useRequests();
   const { user } = useAuth();
 
   const [step, setStep] = useState(1);
+  const [approvalPreviewSteps, setApprovalPreviewSteps] = useState<ApprovalPreviewStep[]>([]);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
   const [formData, setFormData] = useState<any>({
     type: '',
     title: '',
@@ -41,14 +91,13 @@ export default function CreateRequestPage() {
     endDate: '',
   });
 
-  const handleNext = () => setStep(s => s + 1);
-  const handleBack = () => {
-    if (step === 1) navigate('/requests');
-    else setStep(s => s - 1);
-  };
+  const buildApprovalSteps = async (): Promise<ApprovalPreviewStep[]> => {
+    const fallbackSteps = buildFallbackApprovalSteps(formData.type, formData);
 
-  const handleSubmit = async () => {
-    // Try to load template for this request type
+    if (!formData.type) {
+      return fallbackSteps;
+    }
+
     const { data: template } = await supabase
       .from('fdc_approval_templates')
       .select('steps')
@@ -56,45 +105,87 @@ export default function CreateRequestPage() {
       .eq('is_active', true)
       .maybeSingle();
 
-    let approvalSteps: Array<{ id: string; stepOrder: number; approverRole: string; status: string }> = [];
     if (template?.steps && Array.isArray(template.steps) && template.steps.length > 0) {
-      approvalSteps = template.steps.map((s: { role: string }, idx: number) => ({
-        id: `as-${Date.now()}-${idx + 1}`,
+      return template.steps.map((step: any, idx: number) => ({
+        id: `preview-template-step-${idx + 1}`,
         stepOrder: idx + 1,
-        approverRole: s.role,
+        approverRole: step.role || step.approver_role || step.approverRole || 'dept_head',
         status: 'pending',
       }));
-    } else {
-      if (formData.type === 'leave') {
-        approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
-        if (formData.startDate !== formData.endDate) {
-          approvalSteps.push({ id: `as-${Date.now()}-2`, stepOrder: 2, approverRole: 'director', status: 'pending' });
-        }
-      } else if (['purchase', 'payment', 'advance'].includes(formData.type)) {
-        approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
-        approvalSteps.push({ id: `as-${Date.now()}-2`, stepOrder: 2, approverRole: 'accountant', status: 'pending' });
-        approvalSteps.push({ id: `as-${Date.now()}-3`, stepOrder: 3, approverRole: 'director', status: 'pending' });
-      } else {
-        approvalSteps.push({ id: `as-${Date.now()}-1`, stepOrder: 1, approverRole: 'dept_head', status: 'pending' });
-      }
     }
 
-    const totalAmount = ['purchase', 'payment', 'advance'].includes(formData.type)
-      ? (formData.type === 'purchase' ? formData.items.reduce((sum: number, i: any) => sum + (i.qty * i.price), 0) : Number(formData.amount))
-      : undefined;
+    return fallbackSteps;
+  };
 
-    const newId = await createRequest({
-      type: formData.type,
-      title: formData.title,
-      description: formData.description,
-      priority: formData.priority,
-      totalAmount,
-      approvalSteps,
-      ...(formData.type === 'leave' && { description: `Từ: ${formData.startDate} Đến: ${formData.endDate}\nLý do: ${formData.description}` }),
-    });
+  useEffect(() => {
+    if (step !== 3) return;
 
-    if (newId) {
-      navigate(`/requests/${newId}`);
+    let isMounted = true;
+    setIsPreviewLoading(true);
+
+    buildApprovalSteps()
+      .then((steps) => {
+        if (isMounted) {
+          setApprovalPreviewSteps(steps);
+        }
+      })
+      .catch(() => {
+        if (isMounted) {
+          setApprovalPreviewSteps(buildFallbackApprovalSteps(formData.type, formData));
+        }
+      })
+      .finally(() => {
+        if (isMounted) {
+          setIsPreviewLoading(false);
+        }
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [step, formData.type, formData.startDate, formData.endDate]);
+
+  const handleNext = () => setStep(s => s + 1);
+  const handleBack = () => {
+    if (step === 1) navigate('/requests');
+    else setStep(s => s - 1);
+  };
+
+  const handleSubmit = async () => {
+    if (isSubmitting) {
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError('');
+
+    try {
+      const approvalSteps = approvalPreviewSteps.length > 0
+        ? approvalPreviewSteps
+        : await buildApprovalSteps();
+
+      const totalAmount = ['purchase', 'payment', 'advance'].includes(formData.type)
+        ? (formData.type === 'purchase' ? formData.items.reduce((sum: number, i: any) => sum + (i.qty * i.price), 0) : Number(formData.amount))
+        : undefined;
+
+      const newId = await createRequest({
+        type: formData.type,
+        title: formData.title,
+        description: formData.description,
+        priority: formData.priority,
+        totalAmount,
+        approvalSteps,
+        ...(formData.type === 'leave' && { description: `Từ: ${formData.startDate} Đến: ${formData.endDate}\nLý do: ${formData.description}` }),
+      });
+
+      if (newId) {
+        navigate(`/requests/${newId}`);
+        return;
+      }
+
+      setSubmitError('Không tạo được đề nghị. Vui lòng thử lại.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -288,10 +379,10 @@ export default function CreateRequestPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
-                  {formData.startDate && formData.endDate && formData.startDate !== formData.endDate && (
+                  {requiresDirectorApproval(formData.startDate, formData.endDate) && (
                     <div className="col-span-full p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2 text-amber-800 text-sm">
                       <AlertTriangle className="w-5 h-5 shrink-0" />
-                      <p>Nghỉ nhiều ngày liên tiếp sẽ cần sự phê duyệt của Giám đốc.</p>
+                      <p>Đơn nghỉ này sẽ cần thêm sự phê duyệt của Giám đốc.</p>
                     </div>
                   )}
                 </div>
@@ -412,24 +503,24 @@ export default function CreateRequestPage() {
 
             <div>
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Quy trình duyệt dự kiến</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 text-sm">
-                  <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">1</div>
-                  <span className="font-medium text-gray-900">Trưởng khoa/phòng</span>
+              {isPreviewLoading ? (
+                <div className="text-sm text-gray-500">Đang tải quy trình phê duyệt...</div>
+              ) : approvalPreviewSteps.length > 0 ? (
+                <div className="space-y-3">
+                  {approvalPreviewSteps.map((approvalStep, index) => (
+                    <div key={approvalStep.id} className="flex items-center gap-3 text-sm">
+                      <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">
+                        {index + 1}
+                      </div>
+                      <span className="font-medium text-gray-900">
+                        {ROLES[approvalStep.approverRole as keyof typeof ROLES] || approvalStep.approverRole}
+                      </span>
+                    </div>
+                  ))}
                 </div>
-                {['purchase', 'payment', 'advance'].includes(formData.type) && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">2</div>
-                    <span className="font-medium text-gray-900">Kế toán trưởng</span>
-                  </div>
-                )}
-                {(['purchase', 'payment', 'advance'].includes(formData.type) || (formData.type === 'leave' && formData.startDate !== formData.endDate)) && (
-                  <div className="flex items-center gap-3 text-sm">
-                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs">3</div>
-                    <span className="font-medium text-gray-900">Giám đốc</span>
-                  </div>
-                )}
-              </div>
+              ) : (
+                <div className="text-sm text-gray-500">Chưa xác định được quy trình phê duyệt.</div>
+              )}
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -441,11 +532,15 @@ export default function CreateRequestPage() {
               </button>
               <button
                 onClick={handleSubmit}
-                className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+                disabled={isSubmitting || isPreviewLoading}
+                className="flex items-center gap-2 bg-indigo-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <Check className="w-5 h-5" /> Gửi đề nghị
+                <Check className="w-5 h-5" /> {isSubmitting ? 'Đang gửi...' : 'Gửi đề nghị'}
               </button>
             </div>
+            {submitError && (
+              <p className="text-sm text-rose-600 pt-2">{submitError}</p>
+            )}
           </div>
         )}
 

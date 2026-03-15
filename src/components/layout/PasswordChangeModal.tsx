@@ -2,9 +2,10 @@
  * @license SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function PasswordChangeModal({
   isOpen,
@@ -13,15 +14,32 @@ export function PasswordChangeModal({
   isOpen: boolean;
   onClose: () => void;
 }) {
+  const { user } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setError("");
+      setSuccess(false);
+      setLoading(false);
+    }
+  }, [isOpen]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    if (!currentPassword) {
+      setError("Vui lòng nhập mật khẩu hiện tại");
+      return;
+    }
     if (newPassword.length < 6) {
       setError("Mật khẩu phải có ít nhất 6 ký tự");
       return;
@@ -31,6 +49,27 @@ export function PasswordChangeModal({
       return;
     }
     setLoading(true);
+
+    const { data: authData } = await supabase.auth.getUser();
+    const email = authData.user?.email || user?.email;
+
+    if (!email) {
+      setError("Không xác thực được tài khoản hiện tại");
+      setLoading(false);
+      return;
+    }
+
+    const { error: verifyError } = await supabase.auth.signInWithPassword({
+      email,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      setError("Mật khẩu hiện tại không đúng");
+      setLoading(false);
+      return;
+    }
+
     const { error: updateError } = await supabase.auth.updateUser({
       password: newPassword,
     });
@@ -42,6 +81,7 @@ export function PasswordChangeModal({
       setTimeout(() => {
         onClose();
         setSuccess(false);
+        setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
       }, 1500);
@@ -63,6 +103,19 @@ export function PasswordChangeModal({
           </button>
         </div>
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Mật khẩu hiện tại
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              placeholder="Nhập mật khẩu hiện tại"
+              autoComplete="current-password"
+            />
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Mật khẩu mới

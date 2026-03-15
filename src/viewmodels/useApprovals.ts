@@ -12,6 +12,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
   const enabled = options.enabled ?? true;
   const [requests, setRequests] = useState<Request[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [hasLoaded, setHasLoaded] = useState(false);
 
   const fetchApprovals = useCallback(async () => {
     if (!enabled || !user) return;
@@ -63,12 +64,14 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       setRequests(mapped);
     }
     setIsRefreshing(false);
+    setHasLoaded(true);
   }, [enabled, user]);
 
   useEffect(() => {
     if (!enabled) {
       setRequests([]);
       setIsRefreshing(false);
+      setHasLoaded(false);
       return;
     }
 
@@ -90,6 +93,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
   }, [enabled, fetchApprovals]);
 
   const refresh = fetchApprovals;
+  const isLoading = enabled && !hasLoaded;
 
   const [activeDelegations, setActiveDelegations] = useState<Array<{ delegator_id: string; request_types: string[] }>>([]);
 
@@ -303,19 +307,19 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
   };
 
   const approveRequest = useCallback((id: string, note?: string) => {
-    updateStepStatus(id, 'approved', note);
+    return updateStepStatus(id, 'approved', note);
   }, [requests]);
 
   const batchApprove = useCallback((ids: string[], note?: string) => {
-    ids.forEach(id => approveRequest(id, note));
+    return Promise.all(ids.map(id => approveRequest(id, note)));
   }, [approveRequest]);
 
   const rejectRequest = useCallback((id: string, note: string) => {
-    updateStepStatus(id, 'rejected', note);
+    return updateStepStatus(id, 'rejected', note);
   }, [requests]);
 
   const escalateRequest = useCallback((id: string, note: string) => {
-    updateStepStatus(id, 'forwarded', note + (note ? ' - ' : '') + 'Đã chuyển CT HĐQT');
+    return updateStepStatus(id, 'forwarded', note + (note ? ' - ' : '') + 'Đã chuyển CT HĐQT');
   }, [requests]);
 
   return {
@@ -324,6 +328,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
     kttEscalationCandidates,
     countsByType,
     countsByUrgency,
+    isLoading,
     isRefreshing,
     refresh,
     approveRequest,

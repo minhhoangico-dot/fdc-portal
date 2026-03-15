@@ -316,7 +316,7 @@ export default function ValuationPage() {
                                             </div>
                                         ) : (
                                             <div className="text-sm text-gray-500 text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">
-                                                Không có dữ liệu lịch sử nhập lịch sử trong 1 năm qua.
+                                                Không có dữ liệu lịch sử nhập hàng trong 1 năm qua.
                                             </div>
                                         )}
                                     </div>

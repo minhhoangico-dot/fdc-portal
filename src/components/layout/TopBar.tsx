@@ -2,7 +2,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { ROLES } from "@/lib/constants";
-import { Bell, RefreshCw, Menu, User, Key, LogOut, Camera } from "lucide-react";
+import { Bell, Menu, User, Key, LogOut, Camera } from "lucide-react";
 import { NotificationCenter } from "./NotificationCenter";
 import { PasswordChangeModal } from "./PasswordChangeModal";
 import { useNotifications } from "@/viewmodels/useNotifications";
@@ -11,7 +11,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
   const navigate = useNavigate();
   const { user, logout, updateAvatar } = useAuth();
   const { unreadCount } = useNotifications();
-  const [isStale, setIsStale] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
@@ -65,13 +64,6 @@ export function TopBar({ onMenuClick }: { onMenuClick: () => void }) {
       </div>
 
       <div className="flex items-center gap-4 relative">
-        {isStale && (
-          <div className="flex items-center gap-1.5 text-xs font-medium text-amber-600 bg-amber-50 px-2 py-1 rounded-full">
-            <RefreshCw className="w-3 h-3 animate-spin" />
-            <span className="hidden sm:inline">Đang đồng bộ...</span>
-          </div>
-        )}
-
         <button
           onClick={() => setIsNotificationOpen(!isNotificationOpen)}
           className="relative p-2 text-gray-600 hover:bg-gray-100 rounded-full transition-colors"

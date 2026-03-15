@@ -76,25 +76,6 @@ export default function AdminPage() {
     { id: "audit", label: "Nhật ký", icon: <Shield className="w-4 h-4" /> },
   ];
 
-  const getRequestTypeLabel = (type: string) => {
-    switch (type) {
-      case "purchase":
-        return "Đề nghị mua sắm";
-      case "leave":
-        return "Đơn xin nghỉ phép";
-      case "payment":
-        return "Đề nghị thanh toán";
-      case "material_release":
-        return "Xuất vật tư";
-      case "advance":
-        return "Tạm ứng";
-      case "other":
-        return "Khác";
-      default:
-        return type;
-    }
-  };
-
   return (
     <div className="max-w-7xl mx-auto pb-24 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -39,6 +39,7 @@ export default function App() {
             <Route path="/valuation" element={<ValuationPage />} />
             <Route path="/portal" element={<PortalPage />} />
             <Route path="/admin" element={<AdminPage />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

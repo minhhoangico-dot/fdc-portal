@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useRequests } from '@/viewmodels/useRequests';
 import { useApprovals } from '@/viewmodels/useApprovals';
 import { useAuth } from '@/contexts/AuthContext';
@@ -8,16 +8,37 @@ import { formatVND, formatDate, formatTimeAgo, cn } from '@/lib/utils';
 import { StatusBadge, PriorityBadge } from '@/components/shared/Badges';
 import { ArrowLeft, CheckCircle, XCircle, ArrowRightCircle, MessageSquare, User, Clock } from 'lucide-react';
 
+const APPROVER_ROLES = new Set(['dept_head', 'accountant', 'director', 'chairman', 'super_admin']);
+
 export default function RequestDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { getRequest } = useRequests();
-  const { approveRequest, rejectRequest, escalateRequest } = useApprovals();
   const { user } = useAuth();
+  const approvalEnabled = Boolean(user && APPROVER_ROLES.has(user.role));
+  const {
+    regularApprovals,
+    kttEscalationCandidates,
+    approveRequest,
+    rejectRequest,
+    escalateRequest,
+    isLoading: isApprovalsLoading,
+  } = useApprovals({ enabled: approvalEnabled });
 
-  const req = getRequest(id || '');
+  const approvalRequests = [...kttEscalationCandidates, ...regularApprovals];
+  const req = getRequest(id || '') || approvalRequests.find((request) => request.id === id);
   const [comment, setComment] = useState('');
   const [showConfirm, setShowConfirm] = useState<'approve' | 'reject' | 'escalate' | null>(null);
+  const [actionError, setActionError] = useState('');
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+
+  if (!req && approvalEnabled && isApprovalsLoading) {
+    return (
+      <div className="text-center py-12 text-gray-500">
+        Đang tải thông tin đề nghị...
+      </div>
+    );
+  }
 
   if (!req || !user) {
     return (
@@ -37,20 +58,27 @@ export default function RequestDetailPage() {
 
   const handleAction = async (action: 'approve' | 'reject' | 'escalate') => {
     if ((action === 'reject' || action === 'escalate') && !comment.trim()) {
-      alert('Vui lòng nhập lý do/ghi chú');
+      setActionError('Vui lòng nhập lý do/ghi chú.');
       return;
     }
 
-    if (action === 'approve') {
-      await approveRequest(req.id, comment);
-    } else if (action === 'reject') {
-      await rejectRequest(req.id, comment);
-    } else if (action === 'escalate') {
-      await escalateRequest(req.id, comment);
-    }
+    setActionError('');
+    setIsSubmittingAction(true);
 
-    setShowConfirm(null);
-    setComment('');
+    try {
+      if (action === 'approve') {
+        await approveRequest(req.id, comment);
+      } else if (action === 'reject') {
+        await rejectRequest(req.id, comment);
+      } else if (action === 'escalate') {
+        await escalateRequest(req.id, comment);
+      }
+
+      setShowConfirm(null);
+      setComment('');
+    } finally {
+      setIsSubmittingAction(false);
+    }
   };
 
   return (
@@ -188,26 +216,35 @@ export default function RequestDetailPage() {
 
       {/* Fixed Action Bar for Approver */}
       {isCurrentApprover && (
-        <div className="fixed bottom-0 inset-x-0 md:left-64 bg-white border-t border-gray-200 p-4 shadow-lg z-30 pb-safe">
+        <div className="fixed bottom-0 inset-x-0 md:left-[var(--sidebar-width)] bg-white border-t border-gray-200 p-4 shadow-lg z-30 pb-safe">
           <div className="max-w-4xl mx-auto">
             {!showConfirm ? (
               <div className="flex flex-wrap items-center justify-end gap-3">
                 <button
-                  onClick={() => setShowConfirm('reject')}
+                  onClick={() => {
+                    setActionError('');
+                    setShowConfirm('reject');
+                  }}
                   className="px-6 py-2.5 rounded-lg font-medium text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
                 >
                   Từ chối
                 </button>
                 {user.role === 'accountant' && ['payment', 'advance', 'purchase'].includes(req.type) && (
                   <button
-                    onClick={() => setShowConfirm('escalate')}
+                    onClick={() => {
+                      setActionError('');
+                      setShowConfirm('escalate');
+                    }}
                     className="px-6 py-2.5 rounded-lg font-medium text-purple-700 bg-purple-50 hover:bg-purple-100 transition-colors"
                   >
                     Chuyển CT HĐQT
                   </button>
                 )}
                 <button
-                  onClick={() => setShowConfirm('approve')}
+                  onClick={() => {
+                    setActionError('');
+                    setShowConfirm('approve');
+                  }}
                   className="px-6 py-2.5 rounded-lg font-medium text-white bg-emerald-600 hover:bg-emerald-700 transition-colors flex items-center gap-2"
                 >
                   <CheckCircle className="w-5 h-5" /> Phê duyệt
@@ -226,23 +263,31 @@ export default function RequestDetailPage() {
                   rows={2}
                   autoFocus
                 />
+                {actionError && (
+                  <p className="text-sm text-rose-600">{actionError}</p>
+                )}
                 <div className="flex justify-end gap-3">
                   <button
-                    onClick={() => setShowConfirm(null)}
+                    onClick={() => {
+                      setActionError('');
+                      setShowConfirm(null);
+                    }}
+                    disabled={isSubmittingAction}
                     className="px-4 py-2 rounded-lg font-medium text-gray-600 hover:bg-gray-100"
                   >
                     Hủy
                   </button>
                   <button
                     onClick={() => handleAction(showConfirm)}
+                    disabled={isSubmittingAction}
                     className={cn(
-                      "px-6 py-2 rounded-lg font-medium text-white transition-colors",
+                      "px-6 py-2 rounded-lg font-medium text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed",
                       showConfirm === 'approve' ? "bg-emerald-600 hover:bg-emerald-700" :
                         showConfirm === 'reject' ? "bg-red-600 hover:bg-red-700" :
                           "bg-purple-600 hover:bg-purple-700"
                     )}
                   >
-                    Xác nhận
+                    {isSubmittingAction ? 'Đang xử lý...' : 'Xác nhận'}
                   </button>
                 </div>
               </div>

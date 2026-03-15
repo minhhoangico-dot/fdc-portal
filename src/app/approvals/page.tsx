@@ -42,6 +42,7 @@ export default function ApprovalsPage() {
     kttEscalationCandidates,
     countsByType,
     countsByUrgency,
+    isLoading,
     isRefreshing,
     refresh,
     approveRequest,
@@ -69,18 +70,18 @@ export default function ApprovalsPage() {
     }
   };
 
-  const confirmApprove = () => {
+  const confirmApprove = async () => {
     if (confirmDialog?.type === 'single' && confirmDialog.id) {
-      approveRequest(confirmDialog.id);
+      await approveRequest(confirmDialog.id);
     } else if (confirmDialog?.type === 'batch') {
-      batchApprove(Array.from(selectedIds));
+      await batchApprove(Array.from(selectedIds));
       setSelectedIds(new Set());
     }
     setConfirmDialog(null);
   };
 
   const getUrgencyInfo = (createdAt: string) => {
-    const now = new Date('2026-03-03T03:58:03-08:00').getTime();
+    const now = Date.now();
     const createdTime = new Date(createdAt).getTime();
     const hoursWaiting = (now - createdTime) / (1000 * 60 * 60);
 
@@ -258,7 +259,16 @@ export default function ApprovalsPage() {
       </div>
 
       {/* Main Content */}
-      {totalPending === 0 ? (
+      {isLoading ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
+          <div className="h-5 w-48 bg-gray-100 rounded animate-pulse" />
+          <div className="space-y-3">
+            <div className="h-24 bg-gray-50 rounded-xl animate-pulse" />
+            <div className="h-24 bg-gray-50 rounded-xl animate-pulse" />
+            <div className="h-24 bg-gray-50 rounded-xl animate-pulse" />
+          </div>
+        </div>
+      ) : totalPending === 0 ? (
         <EmptyState
           title="Không có đề nghị cần duyệt"
           description="Bạn đã xử lý xong tất cả các đề nghị hiện tại. Tuyệt vời!"
