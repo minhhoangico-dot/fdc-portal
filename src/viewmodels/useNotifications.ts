@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notification } from '@/types/notification';
@@ -7,10 +7,11 @@ export function useNotifications() {
     const { user } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const hasLoaded = useRef(false);
 
     const fetchNotifications = useCallback(async () => {
         if (!user) return;
-        setIsLoading(true);
+        if (!hasLoaded.current) setIsLoading(true);
 
         const { data, error } = await supabase
             .from('fdc_notifications')
@@ -33,6 +34,7 @@ export function useNotifications() {
         }
 
         setIsLoading(false);
+        hasLoaded.current = true;
     }, [user]);
 
     useEffect(() => {

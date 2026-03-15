@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { parseISO } from "date-fns";
 import { supabase } from "@/lib/supabase";
 import {
@@ -101,6 +101,8 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const [isLoadingItemSnapshots, setIsLoadingItemSnapshots] = useState(false);
   const [isLoadingSnapshotHistory, setIsLoadingSnapshotHistory] = useState(false);
   const [isLoadingFilteredSnapshotHistory, setIsLoadingFilteredSnapshotHistory] = useState(false);
+  const hasLoadedSnapshotHistory = useRef(false);
+  const hasLoadedFilteredSnapshotHistory = useRef(false);
 
   type SortKey = "name" | "stock" | "value";
   type SortDir = "asc" | "desc";
@@ -230,7 +232,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const fetchSnapshotHistory = useCallback(async () => {
     if (!enabled) return;
 
-    setIsLoadingSnapshotHistory(true);
+    if (!hasLoadedSnapshotHistory.current) setIsLoadingSnapshotHistory(true);
     try {
       const oneYearAgo = new Date();
       oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -257,6 +259,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
       } else {
         setRawSnapshotHistory([]);
       }
+      hasLoadedSnapshotHistory.current = true;
     } finally {
       setIsLoadingSnapshotHistory(false);
     }
@@ -275,10 +278,11 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
 
     if (!hasFilters) {
       setFilteredSnapshotHistory([]);
+      hasLoadedFilteredSnapshotHistory.current = false;
       return;
     }
 
-    setIsLoadingFilteredSnapshotHistory(true);
+    if (!hasLoadedFilteredSnapshotHistory.current) setIsLoadingFilteredSnapshotHistory(true);
     try {
       if (moduleType === "pharmacy") {
         const { data, error } = await supabase.rpc("get_pharmacy_inventory_history", {
@@ -300,6 +304,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
           totalValue: Number(row.total_value) || 0,
         }));
         setFilteredSnapshotHistory(result);
+        hasLoadedFilteredSnapshotHistory.current = true;
       } else if (moduleType === "inventory") {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
@@ -364,6 +369,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
         );
 
         setFilteredSnapshotHistory(result);
+        hasLoadedFilteredSnapshotHistory.current = true;
       }
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
@@ -412,6 +418,8 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
       setIsLoadingItemSnapshots(false);
       setIsLoadingSnapshotHistory(false);
       setIsLoadingFilteredSnapshotHistory(false);
+      hasLoadedSnapshotHistory.current = false;
+      hasLoadedFilteredSnapshotHistory.current = false;
       return;
     }
 

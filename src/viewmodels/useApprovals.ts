@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Request, RequestType } from '@/types/request';
 import { supabase } from '@/lib/supabase';
@@ -13,10 +13,11 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
   const [requests, setRequests] = useState<Request[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [hasLoaded, setHasLoaded] = useState(false);
+  const hasLoadedRef = useRef(false);
 
   const fetchApprovals = useCallback(async () => {
     if (!enabled || !user) return;
-    setIsRefreshing(true);
+    if (!hasLoadedRef.current) setIsRefreshing(true);
 
     // We fetch all requests that the user has access to.
     // RLS policies already restrict to requests where user is an approver or super_admin
@@ -65,6 +66,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
     }
     setIsRefreshing(false);
     setHasLoaded(true);
+    hasLoadedRef.current = true;
   }, [enabled, user]);
 
   useEffect(() => {
@@ -72,6 +74,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       setRequests([]);
       setIsRefreshing(false);
       setHasLoaded(false);
+      hasLoadedRef.current = false;
       return;
     }
 

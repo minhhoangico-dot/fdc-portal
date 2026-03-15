@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { SupplyConsumption } from "@/types/inventory";
 import { format, parseISO } from "date-fns";
@@ -45,10 +45,11 @@ const ACCOUNT_LABELS: Record<string, string> = {
 export default function ConsumptionTab() {
   const [consumptionData, setConsumptionData] = useState<SupplyConsumption[]>([]);
   const [consumptionLoading, setConsumptionLoading] = useState(false);
+  const hasLoadedConsumption = useRef(false);
   const [accountFilter, setAccountFilter] = useState("all");
 
   const fetchConsumption = useCallback(async () => {
-    setConsumptionLoading(true);
+    if (!hasLoadedConsumption.current) setConsumptionLoading(true);
 
     try {
       const cutoffDate = new Date();
@@ -82,6 +83,7 @@ export default function ConsumptionTab() {
       }
 
       setConsumptionData(allRows);
+      hasLoadedConsumption.current = true;
     } finally {
       setConsumptionLoading(false);
     }

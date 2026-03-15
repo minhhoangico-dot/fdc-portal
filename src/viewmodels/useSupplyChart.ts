@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { SupplyChartPoint, SupplyTimeRange } from "@/types/inventory";
 
@@ -57,6 +57,7 @@ export function useSupplyChart() {
   const [monthlyData, setMonthlyData] = useState<MonthlyRow[]>([]);
   const [dailyData, setDailyData] = useState<DailyRow[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const hasLoaded = useRef(false);
 
   const fetchMonthlyStats = useCallback(async () => {
     const cutoff = monthsAgo(12);
@@ -103,10 +104,11 @@ export function useSupplyChart() {
   }, []);
 
   useEffect(() => {
-    setIsLoading(true);
-    Promise.all([fetchMonthlyStats(), fetchDailySummary()]).finally(() =>
-      setIsLoading(false)
-    );
+    if (!hasLoaded.current) setIsLoading(true);
+    Promise.all([fetchMonthlyStats(), fetchDailySummary()]).finally(() => {
+      hasLoaded.current = true;
+      setIsLoading(false);
+    });
 
     const channel = supabase
       .channel("supply-chart-realtime")
