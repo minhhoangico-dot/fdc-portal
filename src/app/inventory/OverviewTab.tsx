@@ -57,6 +57,10 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
   const yoyChange = latestPoint && firstPoint && latestPoint.consumptionLY > 0
     ? ((latestPoint.consumption - latestPoint.consumptionLY) / latestPoint.consumptionLY) * 100
     : 0;
+  const isInitialSnapshotHistoryLoad =
+    isLoadingSnapshotHistory && snapshotHistory.length === 0;
+  const isRefreshingSnapshotHistory =
+    isLoadingSnapshotHistory && snapshotHistory.length > 0;
 
   return (
     <div className="space-y-6">
@@ -176,7 +180,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
               Chưa có dữ liệu tiêu hao cho khoảng thời gian này.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={320}>
               <ComposedChart data={chartData} margin={{ top: 5, right: 10, left: -5, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorConsumption" x1="0" y1="0" x2="0" y2="1">
@@ -211,9 +215,37 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                   }}
                 />
                 <Legend />
-                <Bar yAxisId="right" dataKey="patientVolume" name="Lượt khám" fill="#10b981" opacity={0.35} radius={[4, 4, 0, 0]} barSize={28} />
-                <Area yAxisId="left" type="monotone" dataKey="consumption" name="Tiêu hao kỳ này" stroke="#6366f1" fill="url(#colorConsumption)" strokeWidth={2} />
-                <Line yAxisId="left" type="monotone" dataKey="consumptionLY" name="Cùng kỳ năm trước" stroke="#f59e0b" strokeWidth={2} strokeDasharray="6 3" dot />
+                <Bar
+                  yAxisId="right"
+                  dataKey="patientVolume"
+                  name="Lượt khám"
+                  fill="#10b981"
+                  opacity={0.35}
+                  radius={[4, 4, 0, 0]}
+                  barSize={28}
+                  isAnimationActive={false}
+                />
+                <Area
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="consumption"
+                  name="Tiêu hao kỳ này"
+                  stroke="#6366f1"
+                  fill="url(#colorConsumption)"
+                  strokeWidth={2}
+                  isAnimationActive={false}
+                />
+                <Line
+                  yAxisId="left"
+                  type="monotone"
+                  dataKey="consumptionLY"
+                  name="Cùng kỳ năm trước"
+                  stroke="#f59e0b"
+                  strokeWidth={2}
+                  strokeDasharray="6 3"
+                  dot={false}
+                  isAnimationActive={false}
+                />
               </ComposedChart>
             </ResponsiveContainer>
           )}
@@ -264,7 +296,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
               Chưa có dữ liệu tiêu hao cho khoảng thời gian này.
             </div>
           ) : (
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={224}>
               <AreaChart data={chartData} margin={{ top: 5, right: 10, left: -5, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorPerVisit" x1="0" y1="0" x2="0" y2="1">
@@ -305,6 +337,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                   stroke="#22c55e"
                   fill="url(#colorPerVisit)"
                   strokeWidth={2}
+                  isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -346,16 +379,21 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
             }
           }}
         >
-          <h3 className="text-base font-bold text-gray-900 mb-4">Giá trị tồn kho (1 năm)</h3>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-gray-900">Giá trị tồn kho (1 năm)</h3>
+            {isRefreshingSnapshotHistory ? (
+              <span className="text-[11px] font-medium text-gray-400">Đang cập nhật...</span>
+            ) : null}
+          </div>
           <div className="h-72">
-            {isLoadingSnapshotHistory ? (
+            {isInitialSnapshotHistoryLoad ? (
               <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
             ) : snapshotHistory.length === 0 ? (
               <div className="w-full h-full flex items-center justify-center text-sm text-gray-400">
                 Chưa có dữ liệu trong 1 năm gần nhất.
               </div>
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={288}>
                 <AreaChart data={snapshotHistory} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -367,7 +405,14 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
                   <XAxis dataKey="date" tickFormatter={v => { try { return format(parseISO(v), "dd/MM"); } catch { return v; } }} axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} tickFormatter={formatCompact} domain={["dataMin * 0.95", "dataMax * 1.05"]} />
                   <Tooltip contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} formatter={(v: number) => [formatCurrency(v), "Giá trị"]} labelFormatter={v => format(parseISO(v as string), "dd/MM/yyyy")} />
-                  <Area type="monotone" dataKey="totalValue" stroke="#6366f1" fill="url(#colorValue)" strokeWidth={2} />
+                  <Area
+                    type="monotone"
+                    dataKey="totalValue"
+                    stroke="#6366f1"
+                    fill="url(#colorValue)"
+                    strokeWidth={2}
+                    isAnimationActive={false}
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -411,13 +456,19 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
         >
           <h3 className="text-base font-bold text-gray-900 mb-4">Top 10 giá trị tồn kho</h3>
           <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height={288}>
               <BarChart data={topMaterials} layout="vertical" margin={{ top: 5, right: 5, left: 0, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                 <XAxis type="number" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: "#6b7280" }} tickFormatter={formatCompact} />
                 <YAxis type="category" dataKey="name" width={120} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: "#374151" }} />
                 <Tooltip cursor={{ fill: "#f3f4f6" }} contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }} formatter={(v: number) => [formatCurrency(v), "Giá trị"]} />
-                <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={16} />
+                <Bar
+                  dataKey="value"
+                  fill="#6366f1"
+                  radius={[0, 4, 4, 0]}
+                  barSize={16}
+                  isAnimationActive={false}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>

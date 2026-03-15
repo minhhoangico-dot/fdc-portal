@@ -325,7 +325,7 @@ export default function PharmacyPage() {
               </h3>
               <div className="h-72">
                 {snapshotHistory.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={288}>
                     <AreaChart data={snapshotHistory} margin={{ top: 5, right: 5, left: -10, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
@@ -354,7 +354,14 @@ export default function PharmacyPage() {
                         labelFormatter={(val) => { try { return format(parseISO(val as string), "dd/MM/yyyy"); } catch { return val as string; } }}
                         formatter={(value: number) => [formatCurrency(value), "Giá trị tồn"]}
                       />
-                      <Area type="monotone" dataKey="totalValue" stroke="#6366f1" strokeWidth={2} fill="url(#colorValue)" />
+                      <Area
+                        type="monotone"
+                        dataKey="totalValue"
+                        stroke="#6366f1"
+                        strokeWidth={2}
+                        fill="url(#colorValue)"
+                        isAnimationActive={false}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (
@@ -372,7 +379,7 @@ export default function PharmacyPage() {
               </h3>
               <div className="h-72">
                 {topMaterials.length > 0 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={288}>
                     <BarChart data={topMaterials} layout="vertical" margin={{ top: 5, right: 5, left: 10, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f3f4f6" />
                       <XAxis
@@ -390,7 +397,13 @@ export default function PharmacyPage() {
                         contentStyle={{ borderRadius: "8px", border: "none", boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)" }}
                         formatter={(value: number) => [formatCurrency(value), "Giá trị"]}
                       />
-                      <Bar dataKey="value" fill="#6366f1" radius={[0, 4, 4, 0]} barSize={16} />
+                      <Bar
+                        dataKey="value"
+                        fill="#6366f1"
+                        radius={[0, 4, 4, 0]}
+                        barSize={16}
+                        isAnimationActive={false}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
@@ -503,7 +516,7 @@ export default function PharmacyPage() {
                 {isLoadingListChart ? (
                   <div className="w-full h-full rounded-lg bg-gray-50 animate-pulse" />
                 ) : listChartData.length > 1 ? (
-                  <ResponsiveContainer width="100%" height="100%">
+                  <ResponsiveContainer width="100%" height={128}>
                     <AreaChart data={listChartData} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
                       <defs>
                         <linearGradient id="colorValueList" x1="0" y1="0" x2="0" y2="1">
@@ -824,7 +837,7 @@ export default function PharmacyPage() {
                   {isLoadingItemSnapshots ? (
                     <div className="h-full flex items-center justify-center text-gray-400 text-sm">Đang tải...</div>
                   ) : itemSnapshots.length > 1 ? (
-                    <ResponsiveContainer width="100%" height="100%">
+                    <ResponsiveContainer width="100%" height={140}>
                       <AreaChart data={itemSnapshots}>
                         <defs>
                           <linearGradient id="colorStock" x1="0" y1="0" x2="0" y2="1">
@@ -839,7 +852,14 @@ export default function PharmacyPage() {
                           labelFormatter={(val) => { try { return format(parseISO(val as string), "dd/MM/yyyy"); } catch { return val as string; } }}
                           formatter={(value: number) => [value, "Tồn kho"]}
                         />
-                        <Area type="monotone" dataKey="stock" stroke="#6366f1" strokeWidth={2} fill="url(#colorStock)" />
+                        <Area
+                          type="monotone"
+                          dataKey="stock"
+                          stroke="#6366f1"
+                          strokeWidth={2}
+                          fill="url(#colorStock)"
+                          isAnimationActive={false}
+                        />
                       </AreaChart>
                     </ResponsiveContainer>
                   ) : (

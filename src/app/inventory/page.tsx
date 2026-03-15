@@ -206,6 +206,7 @@ export default function InventoryPage() {
                   fill="url(#listValueGrad)"
                   dot={false}
                   activeDot={{ r: 4 }}
+                  isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>

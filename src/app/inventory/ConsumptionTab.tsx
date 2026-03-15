@@ -180,7 +180,7 @@ export default function ConsumptionTab() {
             {consumptionLoading ? (
               <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={288}>
                 <AreaChart
                   data={consumptionByDate}
                   margin={{ top: 5, right: 5, left: -10, bottom: 0 }}
@@ -243,6 +243,7 @@ export default function ConsumptionTab() {
                     stroke="#f59e0b"
                     fill="url(#colorQty)"
                     strokeWidth={2}
+                    isAnimationActive={false}
                   />
                   <Line
                     yAxisId="right"
@@ -252,6 +253,7 @@ export default function ConsumptionTab() {
                     stroke="#6366f1"
                     strokeWidth={2}
                     dot={false}
+                    isAnimationActive={false}
                   />
                 </AreaChart>
               </ResponsiveContainer>
@@ -265,7 +267,7 @@ export default function ConsumptionTab() {
             {consumptionLoading ? (
               <div className="w-full h-full rounded-xl bg-gray-50 animate-pulse" />
             ) : (
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height={288}>
                 <BarChart
                   data={topConsumers}
                   layout="vertical"
@@ -300,6 +302,7 @@ export default function ConsumptionTab() {
                     fill="#f59e0b"
                     radius={[0, 4, 4, 0]}
                     barSize={16}
+                    isAnimationActive={false}
                   />
                 </BarChart>
               </ResponsiveContainer>
