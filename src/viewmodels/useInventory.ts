@@ -211,10 +211,15 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const fetchAnomalies = useCallback(async () => {
     if (!enabled) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fdc_analytics_anomalies')
       .select('*')
       .order('detected_at', { ascending: false });
+
+    if (error) {
+      console.error('[useInventory] fetchAnomalies error:', error);
+    }
+
     if (data) {
       setAnomalies(data.map(item => ({
         id: item.id,

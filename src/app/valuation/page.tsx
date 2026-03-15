@@ -30,15 +30,22 @@ export default function ValuationPage() {
                 return;
             }
             setIsFetchingHistory(true);
-            const { data } = await supabase
-                .from('fdc_medicine_imports')
-                .select('*')
-                .eq('medicine_code', selectedItem.medicineCode)
-                .order('import_date', { ascending: false })
-                .limit(10);
+            try {
+                const { data, error } = await supabase
+                    .from('fdc_medicine_imports')
+                    .select('*')
+                    .eq('medicine_code', selectedItem.medicineCode)
+                    .order('import_date', { ascending: false })
+                    .limit(10);
 
-            setImportHistory(data || []);
-            setIsFetchingHistory(false);
+                if (error) {
+                    console.error('[valuation] fetchHistory error:', error);
+                }
+
+                setImportHistory(data || []);
+            } finally {
+                setIsFetchingHistory(false);
+            }
         };
         fetchHistory();
     }, [selectedItem]);

@@ -322,7 +322,8 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
   }, [requests]);
 
   const escalateRequest = useCallback((id: string, note: string) => {
-    return updateStepStatus(id, 'forwarded', note + (note ? ' - ' : '') + 'Đã chuyển CT HĐQT');
+    const comment = note ? `${note} - Đã chuyển CT HĐQT` : 'Đã chuyển CT HĐQT';
+    return updateStepStatus(id, 'forwarded', comment);
   }, [requests]);
 
   return {

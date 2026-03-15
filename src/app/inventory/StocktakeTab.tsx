@@ -14,6 +14,12 @@ interface StocktakeTabProps {
   filteredInventory: InventoryItem[];
 }
 
+const SUMMARY_COLOR_CLASSES: Record<"emerald" | "blue" | "rose", string> = {
+  emerald: "text-emerald-600",
+  blue: "text-blue-600",
+  rose: "text-rose-600",
+};
+
 export default function StocktakeTab({ filteredInventory }: StocktakeTabProps) {
   const [sessions, setSessions] = useState<StocktakeSession[]>([]);
   const [activeSession, setActiveSession] = useState<StocktakeSession | null>(null);
@@ -119,7 +125,9 @@ export default function StocktakeTab({ filteredInventory }: StocktakeTabProps) {
           ].map((s, i) => (
             <div key={i} className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
               <p className="text-sm text-gray-500">{s.label}</p>
-              <p className={`text-2xl font-bold text-${s.color}-600`}>{s.value}{s.total ? `/${s.total}` : ""}</p>
+              <p className={`text-2xl font-bold ${SUMMARY_COLOR_CLASSES[s.color as keyof typeof SUMMARY_COLOR_CLASSES]}`}>
+                {s.value}{s.total ? `/${s.total}` : ""}
+              </p>
             </div>
           ))}
         </div>

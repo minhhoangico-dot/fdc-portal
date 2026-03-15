@@ -37,10 +37,8 @@ export default function LoginPage() {
 
     if (error) {
       setError('Đăng nhập thất bại. Vui lòng kiểm tra lại email/mật khẩu.');
-    } else {
-      setTimeout(() => navigate(from, { replace: true }), 100);
+      setIsLoading(false);
     }
-    setIsLoading(false);
   };
 
   return (

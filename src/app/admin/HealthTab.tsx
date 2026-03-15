@@ -10,7 +10,7 @@ interface HealthTabProps {
   syncHistory: SyncRecord[];
   onManualSync: (type: string) => void;
   isSyncing: boolean;
-  refreshSyncData: () => void;
+  refreshSyncData: () => Promise<void>;
   syncMessage?: { type: 'success' | 'error'; text: string } | null;
   onDismissSyncMessage?: () => void;
 }
@@ -31,8 +31,8 @@ function getSyncTypeLabel(type: string): string {
   return map[type] || type.charAt(0).toUpperCase() + type.slice(1);
 }
 
-function formatSyncStatus(status: string): string {
-  return status === "success" || status === "completed"
+function formatSyncStatus(status: SyncRecord["status"]): string {
+  return status === "success"
     ? "Thành công"
     : status === "pending"
       ? "Đang xử lý"
@@ -64,11 +64,14 @@ export function HealthTab({
   const showMissingHeartbeatWarning =
     bridgeHealth.status === "offline" && !hasHeartbeat;
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     if (isRefreshing.current) return;
     isRefreshing.current = true;
-    refreshSyncData();
-    setTimeout(() => { isRefreshing.current = false; }, 1000);
+    try {
+      await refreshSyncData();
+    } finally {
+      isRefreshing.current = false;
+    }
   };
 
   return (
@@ -128,8 +131,8 @@ export function HealthTab({
             {(showStaleHeartbeatWarning || showMissingHeartbeatWarning) && (
               <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
                 {showStaleHeartbeatWarning
-                  ? `Máº¥t káº¿t ná»‘i vá»›i Bridge tá»« ${formatTimeAgo(bridgeHealth.lastHeartbeat)}`
-                  : "ChÆ°a nháº­n Ä‘Æ°á»£c tÃ­n hiá»‡u tá»« Bridge"}
+                  ? `Mất kết nối với Bridge từ ${formatTimeAgo(bridgeHealth.lastHeartbeat)}`
+                  : "Chưa nhận được tín hiệu từ Bridge"}
               </div>
             )}
           </div>
@@ -255,7 +258,7 @@ export function HealthTab({
                       <td className="px-4 py-3">
                         <span
                           className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                            sync.status === "success" || sync.status === "completed"
+                            sync.status === "success"
                               ? "bg-emerald-100 text-emerald-700"
                               : sync.status === "pending"
                                 ? "bg-amber-100 text-amber-700"
@@ -289,7 +292,7 @@ export function HealthTab({
                               <span className="text-gray-500">Trạng thái:</span>{" "}
                               <span
                                 className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                                  sync.status === "success" || sync.status === "completed"
+                                  sync.status === "success"
                                     ? "bg-emerald-100 text-emerald-700"
                                     : sync.status === "pending"
                                       ? "bg-amber-100 text-amber-700"

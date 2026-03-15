@@ -39,6 +39,12 @@ type DetailModalState = {
   rows: (string | number | null | undefined)[][];
 };
 
+const KPI_COLOR_CLASSES: Record<"indigo" | "rose" | "emerald", string> = {
+  indigo: "bg-indigo-50 text-indigo-600",
+  rose: "bg-rose-50 text-rose-600",
+  emerald: "bg-emerald-50 text-emerald-600",
+};
+
 export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotHistory, topMaterials }: OverviewTabProps) {
   const {
     timeRange, setTimeRange,
@@ -75,7 +81,7 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
       )}
       {/* KPIs */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
+        {[ 
           { label: "Tổng loại vật tư", value: stats.totalItems, icon: <Package className="w-5 h-5" />, color: "indigo" },
           { label: "Cảnh báo", value: stats.activeAnomaliesCount, icon: <AlertTriangle className="w-5 h-5" />, color: stats.activeAnomaliesCount > 0 ? "rose" : "emerald" },
           { label: "Giá trị tồn kho", value: formatCompact(stats.estimatedValue), icon: <DollarSign className="w-5 h-5" />, color: "emerald", isCurrency: true },
@@ -88,7 +94,13 @@ export default function OverviewTab({ stats, snapshotHistory, isLoadingSnapshotH
         ].map((kpi, i) => (
           <div key={i} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
             <div className="flex items-center gap-3 mb-2">
-              <div className={`w-10 h-10 rounded-full bg-${kpi.color}-50 flex items-center justify-center text-${kpi.color}-600`}>{kpi.icon}</div>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  KPI_COLOR_CLASSES[kpi.color as keyof typeof KPI_COLOR_CLASSES]
+                }`}
+              >
+                {kpi.icon}
+              </div>
               <span className="text-sm font-medium text-gray-500">{kpi.label}</span>
             </div>
             <p className={`text-2xl font-bold ${kpi.color === "rose" && stats.activeAnomaliesCount > 0 ? "text-rose-600" : "text-gray-900"}`}>

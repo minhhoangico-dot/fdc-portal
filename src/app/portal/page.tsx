@@ -311,7 +311,7 @@ export default function PortalPage() {
             <div
               className="h-full bg-indigo-500 rounded-full"
               style={{
-                width: `${(leaveBalance.used / leaveBalance.total) * 100}%`,
+                width: `${leaveBalance.total > 0 ? (leaveBalance.used / leaveBalance.total) * 100 : 0}%`,
               }}
             />
           </div>
@@ -384,7 +384,7 @@ export default function PortalPage() {
         </button>
 
         <Link
-          to="/requests/new"
+          to="/requests/create"
           className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 transition-all group"
         >
           <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">

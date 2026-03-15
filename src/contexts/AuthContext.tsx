@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '@/types/user';
+import { User, Role } from '@/types/user';
 import { supabase } from '@/lib/supabase';
 
 interface AuthContextType {
@@ -57,9 +57,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           id: data.id,
           name: data.full_name,
           email: data.email,
-          role: data.role as any,
+          role: data.role as Role,
           department: data.department_name,
           avatarUrl: data.avatar_url,
+          isActive: data.is_active ?? true,
+          hikvisionEmployeeId: data.hikvision_employee_id || undefined,
         });
       }
     } catch (error) {
