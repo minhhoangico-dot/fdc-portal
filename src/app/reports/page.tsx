@@ -31,6 +31,7 @@ export default function ReportsPage() {
     summary,
     requests,
     isLoading,
+    fetchError,
     uniqueDepartments,
     exportCsv,
     refresh,
@@ -155,6 +156,13 @@ export default function ReportsPage() {
           </select>
         </div>
       </div>
+
+      {/* Error Banner */}
+      {fetchError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-sm text-red-700">
+          <strong>Lỗi truy vấn:</strong> {fetchError}
+        </div>
+      )}
 
       {/* KPI Cards */}
       {isLoading ? (

@@ -81,6 +81,7 @@ export function useReports() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const hasLoaded = useRef(false);
 
   const [filters, setFilters] = useState<ReportFilters>({
@@ -126,8 +127,12 @@ export function useReports() {
 
     const { data, error } = await query;
 
-    if (!error && data) {
-      setRequests(data);
+    if (error) {
+      console.error('[useReports] Supabase error:', error);
+      setFetchError(error.message);
+    } else {
+      setFetchError(null);
+      setRequests(data || []);
     }
 
     setIsLoading(false);
@@ -262,6 +267,7 @@ export function useReports() {
     summary,
     requests,
     isLoading,
+    fetchError,
     uniqueDepartments,
     exportCsv,
     refresh: fetchReportData,
