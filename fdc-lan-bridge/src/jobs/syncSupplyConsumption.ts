@@ -4,6 +4,8 @@ import { misaPool } from "../db/misa";
 import { logger } from "../lib/logger";
 import { logSync } from "../lib/syncLog";
 
+const SUPPLY_CONSUMPTION_LOOKBACK_DAYS = 365;
+
 export async function syncSupplyConsumptionJob(): Promise<void> {
   const startTime = Date.now();
   let recordsSynced = 0;
@@ -26,7 +28,7 @@ export async function syncSupplyConsumptionJob(): Promise<void> {
                 SUM(ISNULL(l.OutwardAmount, 0)) as outward_amount
             FROM InventoryLedger l
             WHERE l.AccountNumber LIKE '152%'
-              AND l.PostedDate >= DATEADD(DAY, -93, GETDATE())
+              AND CAST(l.PostedDate AS date) >= CAST(DATEADD(DAY, -${SUPPLY_CONSUMPTION_LOOKBACK_DAYS}, GETDATE()) AS date)
               AND l.OutwardQuantity > 0
             GROUP BY CONVERT(VARCHAR(10), l.PostedDate, 23), l.InventoryItemCode
         `);

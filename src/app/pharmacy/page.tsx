@@ -81,9 +81,18 @@ export default function PharmacyPage() {
     stats,
   } = useInventory('pharmacy');
 
-  const listChartData = filteredSnapshotHistory.length > 0 ? filteredSnapshotHistory : snapshotHistory;
-  const isLoadingListChart =
-    isLoadingFilteredSnapshotHistory || (filteredSnapshotHistory.length === 0 && isLoadingSnapshotHistory);
+  const hasListChartFilters =
+    filterWarehouse !== "all" ||
+    filterCategory !== "all" ||
+    filterStatus !== "all" ||
+    Boolean(searchQuery.trim());
+  const listChartData = hasListChartFilters ? filteredSnapshotHistory : snapshotHistory;
+  const isLoadingListChart = hasListChartFilters
+    ? isLoadingFilteredSnapshotHistory && filteredSnapshotHistory.length === 0
+    : isLoadingSnapshotHistory && snapshotHistory.length === 0;
+  const isRefreshingListChart = hasListChartFilters
+    ? isLoadingFilteredSnapshotHistory && filteredSnapshotHistory.length > 0
+    : isLoadingSnapshotHistory && snapshotHistory.length > 0;
 
   // Import history state for side panel
   const [importHistory, setImportHistory] = React.useState<any[]>([]);
@@ -482,9 +491,14 @@ export default function PharmacyPage() {
             </div>
 
             <div>
-              <p className="text-xs font-medium text-gray-400 mb-1">
-                Biến động giá trị tồn kho ({filteredSnapshotHistory.length > 0 ? "theo bộ lọc" : "1 năm — toàn kho"})
-              </p>
+              <div className="mb-1 flex items-center justify-between gap-3">
+                <p className="text-xs font-medium text-gray-400">
+                  Biến động giá trị tồn kho ({hasListChartFilters ? "theo bộ lọc" : "1 năm — toàn kho"})
+                </p>
+                {isRefreshingListChart ? (
+                  <span className="text-[11px] font-medium text-gray-400">Đang cập nhật...</span>
+                ) : null}
+              </div>
               <div className="h-32">
                 {isLoadingListChart ? (
                   <div className="w-full h-full rounded-lg bg-gray-50 animate-pulse" />
@@ -504,7 +518,7 @@ export default function PharmacyPage() {
                           try {
                             return format(
                               parseISO(v),
-                              filteredSnapshotHistory.length > 0 ? "dd/MM" : "MM/yy",
+                              hasListChartFilters ? "dd/MM" : "MM/yy",
                             );
                           } catch {
                             return v;
@@ -524,7 +538,14 @@ export default function PharmacyPage() {
                         labelFormatter={(v) => { try { return format(parseISO(v as string), "dd/MM/yyyy"); } catch { return v as string; } }}
                         formatter={(v: number) => [formatCurrency(v), "Giá trị tồn"]}
                       />
-                      <Area type="monotone" dataKey="totalValue" stroke="#6366f1" strokeWidth={1.5} fill="url(#colorValueList)" />
+                      <Area
+                        type="monotone"
+                        dataKey="totalValue"
+                        stroke="#6366f1"
+                        strokeWidth={1.5}
+                        fill="url(#colorValueList)"
+                        isAnimationActive={false}
+                      />
                     </AreaChart>
                   </ResponsiveContainer>
                 ) : (

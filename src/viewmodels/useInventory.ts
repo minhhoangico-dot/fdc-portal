@@ -78,6 +78,8 @@ const matchesInventoryHistoryFilters = (
   return true;
 };
 
+const EMPTY_FILTER_IDS: string[] = [];
+
 export function useInventory(moduleType: InventoryModuleType = 'all') {
   const [activeTab, setActiveTab] = useState<"overview" | "list" | "anomalies">("overview");
   const [searchQuery, setSearchQuery] = useState("");
@@ -99,6 +101,19 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
   type SortDir = "asc" | "desc";
   const [sortKey, setSortKey] = useState<SortKey>("value");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const inventoryHistoryTargetIds = useMemo(() => {
+    if (moduleType !== "inventory") {
+      return EMPTY_FILTER_IDS;
+    }
+
+    return inventory
+      .filter((item) =>
+        matchesInventoryHistoryFilters(item, filterCategory, searchQuery),
+      )
+      .map((item) => item.sku)
+      .filter(Boolean);
+  }, [inventory, moduleType, filterCategory, searchQuery]);
 
   // Fetch inventory, preferring today's snapshot but falling back to latest available date
   const fetchInventory = useCallback(async () => {
@@ -276,14 +291,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
         const oneYearAgo = new Date();
         oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
         const cutoff = formatLocalDate(oneYearAgo);
-        const matchingIds = inventory
-          .filter((item) =>
-            matchesInventoryHistoryFilters(item, filterCategory, searchQuery),
-          )
-          .map((item) => item.sku)
-          .filter(Boolean);
-
-        if (matchingIds.length === 0) {
+        if (inventoryHistoryTargetIds.length === 0) {
           setFilteredSnapshotHistory([]);
           return;
         }
@@ -292,8 +300,8 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
         const PAGE_SIZE = 1000;
         const ID_BATCH_SIZE = 100;
 
-        for (let batchStart = 0; batchStart < matchingIds.length; batchStart += ID_BATCH_SIZE) {
-          const idBatch = matchingIds.slice(batchStart, batchStart + ID_BATCH_SIZE);
+        for (let batchStart = 0; batchStart < inventoryHistoryTargetIds.length; batchStart += ID_BATCH_SIZE) {
+          const idBatch = inventoryHistoryTargetIds.slice(batchStart, batchStart + ID_BATCH_SIZE);
           let from = 0;
           let hasMore = true;
 
@@ -347,7 +355,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
     }
-  }, [inventory, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
+  }, [inventoryHistoryTargetIds, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
 
   // Fetch per-item snapshot history (when selecting an item)
   const fetchItemSnapshots = useCallback(async (itemName: string, warehouse: string) => {
