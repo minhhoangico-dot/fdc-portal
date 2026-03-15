@@ -18,6 +18,7 @@ import {
   syncMisaSuppliesJob,
 } from "./jobs/syncMisaSupplies";
 import { syncSupplyConsumptionJob } from "./jobs/syncSupplyConsumption";
+import { syncSupplyInwardJob } from "./jobs/syncSupplyInward";
 import { syncSupplyMonthlyStatsJob } from "./jobs/syncSupplyMonthlyStats";
 
 import { syncAttendanceJob } from "./jobs/syncAttendance";
@@ -86,6 +87,7 @@ app.post("/sync/:type", async (req: Request, res: Response) => {
           await scanMisaPhieuchiJob();
           await syncMisaSuppliesJob();
           await syncSupplyConsumptionJob();
+          await syncSupplyInwardJob();
           await syncSupplyMonthlyStatsJob();
         })();
         return res.json({ ok: true });

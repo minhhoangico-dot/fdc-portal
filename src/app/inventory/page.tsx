@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { useInventory } from "@/viewmodels/useInventory";
 import {
   Search, AlertTriangle, X, BarChart2, List,
-  ClipboardCheck, CheckCircle2, Activity,
+  ClipboardCheck, CheckCircle2, Activity, ArrowUpDown,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import {
@@ -10,6 +10,7 @@ import {
 } from "recharts";
 import OverviewTab from "./OverviewTab";
 import ConsumptionTab from "./ConsumptionTab";
+import ImportExportTab from "./ImportExportTab";
 import StocktakeTab from "./StocktakeTab";
 
 const formatCurrency = (value: number) =>
@@ -22,7 +23,7 @@ const formatCompact = (value: number) => {
   return value.toString();
 };
 
-type TabType = "overview" | "list" | "consumption" | "stocktake" | "anomalies";
+type TabType = "overview" | "list" | "consumption" | "import-export" | "stocktake" | "anomalies";
 
 type ListSortKey = "name" | "stock" | "value";
 type SortDir = "asc" | "desc";
@@ -107,6 +108,7 @@ export default function InventoryPage() {
     { key: "overview", label: "Tổng quan", icon: <BarChart2 className="w-4 h-4" /> },
     { key: "list", label: "Danh sách", icon: <List className="w-4 h-4" /> },
     { key: "consumption", label: "Tiêu thụ", icon: <Activity className="w-4 h-4" /> },
+    { key: "import-export", label: "Nhập xuất", icon: <ArrowUpDown className="w-4 h-4" /> },
     { key: "stocktake", label: "Kiểm kê", icon: <ClipboardCheck className="w-4 h-4" /> },
     { key: "anomalies", label: "Bất thường", icon: <AlertTriangle className="w-4 h-4" /> },
   ];
@@ -302,10 +304,13 @@ export default function InventoryPage() {
       {/* TAB 3: CONSUMPTION */}
       {activeTab === "consumption" && <ConsumptionTab />}
 
-      {/* TAB 4: STOCKTAKE */}
+      {/* TAB 4: IMPORT/EXPORT */}
+      {activeTab === "import-export" && <ImportExportTab />}
+
+      {/* TAB 5: STOCKTAKE */}
       {activeTab === "stocktake" && <StocktakeTab filteredInventory={filteredInventory} />}
 
-      {/* TAB 5: ANOMALIES */}
+      {/* TAB 6: ANOMALIES */}
       {activeTab === "anomalies" && (
         <div className="space-y-6">
           {anomalies.filter(a => !a.acknowledged).length > 0 ? (

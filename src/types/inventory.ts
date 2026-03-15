@@ -91,6 +91,17 @@ export interface SupplyChartPoint {
   consumptionPerVisit: number;
 }
 
+// Supply inward types
+export interface SupplyInward {
+  id: string;
+  report_date: string;
+  account: string;
+  item_code: string;
+  item_name: string;
+  inward_qty: number;
+  inward_amount: number;
+}
+
 // Supply consumption types
 export interface SupplyConsumption {
   id: string;
