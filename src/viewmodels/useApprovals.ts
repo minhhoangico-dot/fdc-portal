@@ -3,13 +3,18 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Request, RequestType } from '@/types/request';
 import { supabase } from '@/lib/supabase';
 
-export function useApprovals() {
+interface UseApprovalsOptions {
+  enabled?: boolean;
+}
+
+export function useApprovals(options: UseApprovalsOptions = {}) {
   const { user } = useAuth();
+  const enabled = options.enabled ?? true;
   const [requests, setRequests] = useState<Request[]>([]);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
   const fetchApprovals = useCallback(async () => {
-    if (!user) return;
+    if (!enabled || !user) return;
     setIsRefreshing(true);
 
     // We fetch all requests that the user has access to.
@@ -58,9 +63,15 @@ export function useApprovals() {
       setRequests(mapped);
     }
     setIsRefreshing(false);
-  }, [user]);
+  }, [enabled, user]);
 
   useEffect(() => {
+    if (!enabled) {
+      setRequests([]);
+      setIsRefreshing(false);
+      return;
+    }
+
     fetchApprovals();
 
     const channel = supabase
@@ -76,14 +87,18 @@ export function useApprovals() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchApprovals]);
+  }, [enabled, fetchApprovals]);
 
   const refresh = fetchApprovals;
 
   const [activeDelegations, setActiveDelegations] = useState<Array<{ delegator_id: string; request_types: string[] }>>([]);
 
   useEffect(() => {
-    if (!user) return;
+    if (!enabled || !user) {
+      setActiveDelegations([]);
+      return;
+    }
+
     const today = new Date().toISOString().split('T')[0];
     supabase
       .from('fdc_delegations')
@@ -94,7 +109,7 @@ export function useApprovals() {
       .then(({ data }) => {
         if (data) setActiveDelegations(data);
       });
-  }, [user]);
+  }, [enabled, user]);
 
   const pendingApprovals = useMemo(() => {
     if (!user) return [];

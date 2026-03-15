@@ -8,8 +8,20 @@ import { validateHikvisionEmployeeId } from "./hikvision";
 
 export type AdminTab = "users" | "approval" | "misa" | "health" | "audit";
 
-export function useAdmin() {
+interface UseAdminOptions {
+  enabled?: boolean;
+  preload?: Array<"users" | "approval" | "misa" | "sync" | "audit">;
+  useActiveTab?: boolean;
+}
+
+const EMPTY_PRELOADS: Array<"users" | "approval" | "misa" | "sync" | "audit"> = [];
+
+export function useAdmin(options: UseAdminOptions = {}) {
   const { user: currentUser } = useAuth();
+  const enabled = options.enabled ?? true;
+  const useActiveTab = options.useActiveTab ?? true;
+  const preload = options.preload ?? EMPTY_PRELOADS;
+  const preloadKey = [...preload].sort().join("|");
   const [activeTab, setActiveTab] = useState<AdminTab>("users");
 
   // Users state
@@ -20,6 +32,8 @@ export function useAdmin() {
   const [userSearch, setUserSearch] = useState("");
 
   const fetchUsers = useCallback(async () => {
+    if (!enabled) return;
+
     const { data } = await supabase.from("fdc_user_mapping").select("*").order("full_name");
     if (data) {
       setUsers(
@@ -35,7 +49,7 @@ export function useAdmin() {
         })),
       );
     }
-  }, []);
+  }, [enabled]);
 
   const handleRoleChange = async (userId: string, newRole: Role) => {
     const { error } = await supabase
@@ -118,6 +132,8 @@ export function useAdmin() {
   const [selectedConfig, setSelectedConfig] = useState<any>(null);
 
   const fetchApprovalConfigs = useCallback(async () => {
+    if (!enabled) return;
+
     const { data } = await supabase.from("fdc_approval_templates").select("*");
     if (data) {
       const mapped = data.map((c) => ({
@@ -130,7 +146,7 @@ export function useAdmin() {
       setApprovalConfigs(mapped);
       if (mapped.length > 0 && !selectedConfig) setSelectedConfig(mapped[0]);
     }
-  }, [selectedConfig]);
+  }, [enabled, selectedConfig]);
 
   const persistApprovalSteps = async (configId: string, steps: any[]) => {
     await supabase
@@ -239,6 +255,8 @@ export function useAdmin() {
   const [misaScanResults, setMisaScanResults] = useState<any[]>([]);
 
   const fetchMisaKeywords = useCallback(async () => {
+    if (!enabled) return;
+
     const { data } = await supabase.from("fdc_misa_scan_keywords").select("*");
     if (data) {
       setMisaKeywords(
@@ -251,7 +269,7 @@ export function useAdmin() {
         })),
       );
     }
-  }, []);
+  }, [enabled]);
 
   const toggleKeywordActive = async (id: string) => {
     const keyword = misaKeywords.find((k) => k.id === id);
@@ -294,6 +312,8 @@ export function useAdmin() {
   };
 
   const fetchMisaScanResults = useCallback(async () => {
+    if (!enabled) return;
+
     const { data } = await supabase
       .from("fdc_misa_phieuchi_scan")
       .select("*")
@@ -313,7 +333,7 @@ export function useAdmin() {
         })),
       );
     }
-  }, []);
+  }, [enabled]);
 
   // System Health state
   const [bridgeHealth, setBridgeHealth] = useState<BridgeHealth>({
@@ -330,6 +350,8 @@ export function useAdmin() {
   const dismissSyncMessage = useCallback(() => setSyncMessage(null), []);
 
   const fetchSyncData = useCallback(async () => {
+    if (!enabled) return;
+
     const { data: healthData, error: healthError } = await supabase
       .from("fdc_sync_health")
       .select("bridge_status, his_connected, misa_connected, last_heartbeat, queue_depth")
@@ -382,7 +404,7 @@ export function useAdmin() {
         ),
       );
     }
-  }, []);
+  }, [enabled]);
 
   const handleManualSync = async (type: string) => {
     if (isSyncing) return;
@@ -420,6 +442,8 @@ export function useAdmin() {
   const [auditSearch, setAuditSearch] = useState("");
 
   const fetchAuditLogs = useCallback(async () => {
+    if (!enabled) return;
+
     const { data } = await supabase.from("fdc_audit_log").select(
       `
       *,
@@ -440,7 +464,7 @@ export function useAdmin() {
         })),
       );
     }
-  }, []);
+  }, [enabled]);
 
   const handleExportAuditCsv = () => {
     const header = ["timestamp", "user", "action", "entity", "details"];
@@ -506,6 +530,49 @@ export function useAdmin() {
   };
 
   useEffect(() => {
+    if (enabled) return;
+
+    setUsers([]);
+    setBridgeHealth({
+      status: "offline",
+      lastHeartbeat: "",
+      hisConnected: false,
+      misaConnected: false,
+      queueDepth: 0,
+    });
+    setSyncHistory([]);
+  }, [enabled]);
+
+  useEffect(() => {
+    if (!enabled) return;
+
+    const preloadSet = new Set(
+      preloadKey
+        ? (preloadKey.split("|") as Array<"users" | "approval" | "misa" | "sync" | "audit">)
+        : [],
+    );
+    if (preloadSet.has("users")) fetchUsers();
+    if (preloadSet.has("approval")) fetchApprovalConfigs();
+    if (preloadSet.has("misa")) {
+      fetchMisaKeywords();
+      fetchMisaScanResults();
+    }
+    if (preloadSet.has("sync")) fetchSyncData();
+    if (preloadSet.has("audit")) fetchAuditLogs();
+  }, [
+    enabled,
+    preloadKey,
+    fetchUsers,
+    fetchApprovalConfigs,
+    fetchMisaKeywords,
+    fetchMisaScanResults,
+    fetchSyncData,
+    fetchAuditLogs,
+  ]);
+
+  useEffect(() => {
+    if (!enabled || !useActiveTab) return;
+
     if (activeTab === "users") fetchUsers();
     else if (activeTab === "approval") fetchApprovalConfigs();
     else if (activeTab === "misa") {
@@ -514,6 +581,8 @@ export function useAdmin() {
     } else if (activeTab === "health") fetchSyncData();
     else if (activeTab === "audit") fetchAuditLogs();
   }, [
+    enabled,
+    useActiveTab,
     activeTab,
     fetchUsers,
     fetchApprovalConfigs,

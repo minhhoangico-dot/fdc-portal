@@ -1,25 +1,21 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import { usePortal } from "@/viewmodels/usePortal";
 import {
   ChevronLeft,
   ChevronRight,
   CalendarDays,
-  Clock,
-  CheckCircle2,
-  XCircle,
   AlertCircle,
   Plus,
   FileText,
   Key,
   CreditCard,
   Briefcase,
-  User,
   X,
 } from "lucide-react";
 import { PasswordChangeModal } from "@/components/layout/PasswordChangeModal";
-import { format, isSameMonth, isToday, parseISO, getDay } from "date-fns";
-import { vi } from "date-fns/locale";
-import { REQUEST_STATUS, REQUEST_TYPES } from "@/lib/constants";
+import { format, parseISO } from "date-fns";
+import { REQUEST_STATUS } from "@/lib/constants";
 
 export default function PortalPage() {
   const {
@@ -29,10 +25,12 @@ export default function PortalPage() {
     handleNextMonth,
     attendanceRecords,
     attendanceSummary,
+    todayAttendanceRecord,
     leaveBalance,
     recentRequests,
     isLeaveModalOpen,
     setIsLeaveModalOpen,
+    requiresDirectorApproval,
     submitLeaveRequest,
   } = usePortal();
 
@@ -115,6 +113,24 @@ export default function PortalPage() {
     return null;
   });
 
+  const workBadge = todayAttendanceRecord?.checkIn
+    ? todayAttendanceRecord.checkOut
+      ? {
+          label: "Đã tan ca",
+          className: "bg-gray-100 text-gray-700 border-gray-200",
+          dotClassName: "bg-gray-400",
+        }
+      : {
+          label: "Đang làm việc",
+          className: "bg-emerald-50 text-emerald-700 border-emerald-200",
+          dotClassName: "bg-emerald-500",
+        }
+    : {
+        label: "Chưa chấm công",
+        className: "bg-amber-50 text-amber-700 border-amber-200",
+        dotClassName: "bg-amber-500",
+      };
+
   return (
     <div className="max-w-3xl mx-auto pb-24 space-y-6">
       {/* 1. Profile Header */}
@@ -142,14 +158,14 @@ export default function PortalPage() {
                 </span>
               )}
               <span className="text-sm text-gray-400">
-                • {currentUser.id.toUpperCase()}
+                • {currentUser.id.slice(0, 8).toUpperCase()}
               </span>
             </div>
           </div>
           <div className="flex flex-col items-end">
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-              Đang làm việc
+            <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ${workBadge.className}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${workBadge.dotClassName}`}></span>
+              {workBadge.label}
             </span>
           </div>
         </div>
@@ -309,12 +325,12 @@ export default function PortalPage() {
             <FileText className="w-5 h-5 text-indigo-500" />
             Đề xuất gần đây
           </h2>
-          <a
-            href="/requests"
+          <Link
+            to="/requests"
             className="text-sm font-medium text-indigo-600 hover:text-indigo-700"
           >
             Xem tất cả
-          </a>
+          </Link>
         </div>
 
         <div className="space-y-3">
@@ -367,8 +383,8 @@ export default function PortalPage() {
           </span>
         </button>
 
-        <a
-          href="/requests/new"
+        <Link
+          to="/requests/new"
           className="flex flex-col items-center justify-center gap-2 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-200 hover:bg-indigo-50 transition-all group"
         >
           <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -377,7 +393,7 @@ export default function PortalPage() {
           <span className="text-sm font-medium text-gray-700 group-hover:text-emerald-700">
             Tạo đề nghị
           </span>
-        </a>
+        </Link>
 
         <button
           onClick={() => setIsPasswordModalOpen(true)}
@@ -451,12 +467,14 @@ export default function PortalPage() {
                   </span>
                 </div>
               )}
-              <div className="flex items-center justify-between">
-                <span className="text-gray-500">Số giờ làm</span>
-                <span className="font-medium text-gray-900">
-                  {selectedDay.hoursWorked}h
-                </span>
-              </div>
+              {selectedDay.hoursWorked != null && (
+                <div className="flex items-center justify-between">
+                  <span className="text-gray-500">Số giờ làm</span>
+                  <span className="font-medium text-gray-900">
+                    {selectedDay.hoursWorked}h
+                  </span>
+                </div>
+              )}
               {selectedDay.overtime > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-gray-500">Tăng ca</span>
@@ -529,9 +547,7 @@ export default function PortalPage() {
               {/* Auto-detect notice */}
               {startDate &&
                 endDate &&
-                (new Date(endDate).getTime() - new Date(startDate).getTime() >
-                  0 ||
-                  new Date(startDate).getDay() === 1) && (
+                requiresDirectorApproval(startDate, endDate) && (
                   <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
                     <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
                     <div className="text-sm text-amber-800">
@@ -562,9 +578,7 @@ export default function PortalPage() {
 
                 {startDate &&
                   endDate &&
-                  (new Date(endDate).getTime() - new Date(startDate).getTime() >
-                    0 ||
-                    new Date(startDate).getDay() === 1) && (
+                  requiresDirectorApproval(startDate, endDate) && (
                     <>
                       <div className="w-px h-4 bg-gray-300 ml-4 my-1"></div>
                       <div className="flex items-center gap-2">

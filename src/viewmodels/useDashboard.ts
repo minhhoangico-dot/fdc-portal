@@ -10,15 +10,59 @@ import { FileText, Calendar, Clock, CheckCircle, Package, Settings, RefreshCw, U
 
 export function useDashboard() {
   const { user } = useAuth();
-  const { requests: myAllRequests } = useRequests();
-  const { pendingApprovals } = useApprovals();
-  const { anomalies } = useInventory();
+  const { requests: visibleRequests } = useRequests();
+  const approvalEnabled = user?.role === 'dept_head' || user?.role === 'super_admin' || user?.role === 'director' || user?.role === 'chairman';
+  const inventoryEnabled = user?.role === 'super_admin';
+  const adminEnabled = user?.role === 'super_admin' || user?.role === 'director' || user?.role === 'chairman';
+  const adminPreload: Array<'users' | 'approval' | 'misa' | 'sync' | 'audit'> =
+    user?.role === 'super_admin'
+      ? ['sync']
+      : user?.role === 'director' || user?.role === 'chairman'
+        ? ['users']
+        : [];
+
+  const { pendingApprovals } = useApprovals({ enabled: approvalEnabled });
+  const { anomalies } = useInventory('all', { enabled: inventoryEnabled });
   const { attendanceSummary } = useAttendance();
-  const { users, bridgeHealth, syncHistory } = useAdmin();
+  const { users, bridgeHealth, syncHistory } = useAdmin({
+    enabled: adminEnabled,
+    preload: adminPreload,
+    useActiveTab: false,
+  });
 
   if (!user) return null;
 
   const todayDate = formatDate(new Date());
+  const myRequests = visibleRequests.filter((request) => request.requesterId === user.id);
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const systemRequestsThisMonth = visibleRequests.filter((request) => {
+    const createdAt = new Date(request.createdAt);
+    return createdAt.getMonth() === currentMonth && createdAt.getFullYear() === currentYear;
+  });
+  const approvedThisMonth = systemRequestsThisMonth.filter(
+    (request) => request.status === 'approved' || request.status === 'completed',
+  );
+  const avgApprovalHoursSource = approvedThisMonth.filter(
+    (request) =>
+      Boolean(request.createdAt) &&
+      Boolean(request.updatedAt) &&
+      !Number.isNaN(new Date(request.createdAt).getTime()) &&
+      !Number.isNaN(new Date(request.updatedAt).getTime()),
+  );
+  const avgTimeHours =
+    avgApprovalHoursSource.length > 0
+      ? Number(
+          (
+            avgApprovalHoursSource.reduce((sum, request) => {
+              const durationMs =
+                new Date(request.updatedAt).getTime() -
+                new Date(request.createdAt).getTime();
+              return sum + durationMs / (1000 * 60 * 60);
+            }, 0) / avgApprovalHoursSource.length
+          ).toFixed(1),
+        )
+      : 0;
 
   // Base Quick Actions
   let quickActions = [
@@ -47,13 +91,13 @@ export function useDashboard() {
   }
 
   // Recent Activity (last 5 requests by user)
-  const recentActivity = [...myAllRequests].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5);
+  const recentActivity = [...myRequests].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5);
 
   // My Requests Summary
   const myRequestsSummary = {
-    pending: myAllRequests.filter(r => r.status === 'pending' || r.status === 'escalated').length,
-    approved: myAllRequests.filter(r => r.status === 'approved' || r.status === 'completed').length,
-    rejected: myAllRequests.filter(r => r.status === 'rejected' || r.status === 'cancelled').length,
+    pending: myRequests.filter(r => r.status === 'pending' || r.status === 'escalated').length,
+    approved: myRequests.filter(r => r.status === 'approved' || r.status === 'completed').length,
+    rejected: myRequests.filter(r => r.status === 'rejected' || r.status === 'cancelled').length,
   };
 
   const data: any = {
@@ -68,8 +112,6 @@ export function useDashboard() {
   // Dept Head specific
   if (user.role === 'dept_head') {
     data.deptPendingApprovals = pendingApprovals.filter(r => r.department === user.department);
-    // Using system-wide attendance for now (requires useAttendance extension to filter by dept)
-    data.deptAttendanceSummary = attendanceSummary;
   }
 
   // KTT / Super Admin specific
@@ -82,18 +124,24 @@ export function useDashboard() {
     data.systemPendingByType = systemPendingByType;
     data.bridgeHealth = bridgeHealth;
 
-    const lastMisaSync = syncHistory.find(s => s.type === 'invoice' && s.status === 'success');
+    const misaSyncRuns = syncHistory
+      .filter((sync) => sync.type === 'scanMisaPhieuchi' && sync.status === 'success')
+      .sort((a, b) => new Date(b.completedAt || b.startedAt).getTime() - new Date(a.completedAt || a.startedAt).getTime());
+    const lastMisaSync = misaSyncRuns[0];
     data.misaSyncStatus = {
-      lastSync: lastMisaSync ? lastMisaSync.completedAt : new Date().toISOString(),
-      paymentsMatched: 15
+      lastSync: lastMisaSync?.completedAt || null,
+      paymentsMatched: lastMisaSync?.recordsSynced || 0,
     };
 
     data.anomalyCount = anomalies.filter(a => !a.acknowledged).length;
 
     data.stats = {
-      totalRequests: myAllRequests.length + pendingApprovals.length, // approximation
-      approvalRate: 85,
-      avgTimeHours: 4.5
+      totalRequests: systemRequestsThisMonth.length,
+      approvalRate:
+        systemRequestsThisMonth.length > 0
+          ? Math.round((approvedThisMonth.length / systemRequestsThisMonth.length) * 100)
+          : 0,
+      avgTimeHours,
     };
   }
 

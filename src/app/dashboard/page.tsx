@@ -3,7 +3,7 @@ import { useDashboard } from '@/viewmodels/useDashboard';
 import { Link } from 'react-router-dom';
 import { REQUEST_TYPES, REQUEST_STATUS } from '@/lib/constants';
 import { formatTimeAgo, cn } from '@/lib/utils';
-import { AlertTriangle, CheckCircle, Clock, Server, TrendingUp, XCircle, RefreshCw } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Server, XCircle, RefreshCw } from 'lucide-react';
 
 export default function DashboardPage() {
   const data = useDashboard();
@@ -18,7 +18,6 @@ export default function DashboardPage() {
     myRequestsSummary,
     attendanceSummary,
     deptPendingApprovals,
-    deptAttendanceSummary,
     systemPendingByType,
     bridgeHealth,
     misaSyncStatus,
@@ -27,6 +26,23 @@ export default function DashboardPage() {
     directorPendingRequests,
     deptStaffCounts
   } = data;
+
+  const workdaysInMonth = React.useMemo(() => {
+    const year = new Date().getFullYear();
+    const month = new Date().getMonth();
+    let count = 0;
+    const day = new Date(year, month, 1);
+
+    while (day.getMonth() === month) {
+      const weekDay = day.getDay();
+      if (weekDay !== 0 && weekDay !== 6) {
+        count += 1;
+      }
+      day.setDate(day.getDate() + 1);
+    }
+
+    return count;
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -95,10 +111,7 @@ export default function DashboardPage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Tổng đề nghị tháng</h3>
-                  <div className="flex items-end gap-2">
-                    <span className="text-3xl font-bold text-gray-900">{stats.totalRequests}</span>
-                    <span className="text-sm text-emerald-600 flex items-center mb-1"><TrendingUp className="w-4 h-4 mr-1"/> +12%</span>
-                  </div>
+                  <div className="text-3xl font-bold text-gray-900">{stats.totalRequests}</div>
                 </div>
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
                   <h3 className="text-sm font-medium text-gray-500 mb-1">Tỷ lệ duyệt</h3>
@@ -192,32 +205,18 @@ export default function DashboardPage() {
             <div className="mb-4">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-gray-600">Cá nhân</span>
-                <span className="font-medium">{attendanceSummary.present} / 22 ngày</span>
+                <span className="font-medium">{attendanceSummary.present} / {workdaysInMonth} ngày</span>
               </div>
               <div className="h-2 w-full bg-gray-100 rounded-full overflow-hidden flex">
-                <div className="bg-emerald-500 h-full" style={{ width: `${(attendanceSummary.present / 22) * 100}%` }}></div>
-                <div className="bg-amber-400 h-full" style={{ width: `${(attendanceSummary.late / 22) * 100}%` }}></div>
-                <div className="bg-red-500 h-full" style={{ width: `${(attendanceSummary.absent / 22) * 100}%` }}></div>
+                <div className="bg-emerald-500 h-full" style={{ width: `${(attendanceSummary.present / workdaysInMonth) * 100}%` }}></div>
+                <div className="bg-amber-400 h-full" style={{ width: `${(attendanceSummary.late / workdaysInMonth) * 100}%` }}></div>
+                <div className="bg-red-500 h-full" style={{ width: `${(attendanceSummary.absent / workdaysInMonth) * 100}%` }}></div>
               </div>
               <div className="flex gap-3 mt-2 text-xs text-gray-500">
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Đúng giờ ({attendanceSummary.present})</span>
                 <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-400"></span> Đi muộn ({attendanceSummary.late})</span>
               </div>
             </div>
-
-            {/* Dept Attendance */}
-            {user.role === 'dept_head' && deptAttendanceSummary && (
-              <div className="pt-4 border-t border-gray-100">
-                <div className="flex justify-between text-sm mb-1">
-                  <span className="text-gray-600">Toàn khoa</span>
-                  <span className="font-medium">{deptAttendanceSummary.present} nhân sự</span>
-                </div>
-                <div className="flex gap-3 mt-2 text-xs text-gray-500">
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500"></span> Có mặt ({deptAttendanceSummary.present})</span>
-                  <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Vắng ({deptAttendanceSummary.absent})</span>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Recent Activity */}
@@ -273,7 +272,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right">
                       <div className="text-xs font-medium text-gray-900">{misaSyncStatus?.paymentsMatched} chứng từ</div>
-                      <div className="text-[10px] text-gray-500">{misaSyncStatus?.lastSync ? formatTimeAgo(misaSyncStatus.lastSync) : ''}</div>
+                      <div className="text-[10px] text-gray-500">{misaSyncStatus?.lastSync ? formatTimeAgo(misaSyncStatus.lastSync) : 'Chưa có'}</div>
                     </div>
                   </div>
                 </div>

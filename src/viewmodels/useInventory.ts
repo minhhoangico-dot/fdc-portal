@@ -11,6 +11,10 @@ import {
 
 type InventoryModuleType = "pharmacy" | "inventory" | "all";
 
+interface UseInventoryOptions {
+  enabled?: boolean;
+}
+
 const formatLocalDate = (date: Date): string => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -80,7 +84,8 @@ const matchesInventoryHistoryFilters = (
 
 const EMPTY_FILTER_IDS: string[] = [];
 
-export function useInventory(moduleType: InventoryModuleType = 'all') {
+export function useInventory(moduleType: InventoryModuleType = 'all', options: UseInventoryOptions = {}) {
+  const enabled = options.enabled ?? true;
   const [activeTab, setActiveTab] = useState<"overview" | "list" | "anomalies">("overview");
   const [searchQuery, setSearchQuery] = useState("");
   const [filterWarehouse, setFilterWarehouse] = useState<string>("all");
@@ -117,6 +122,8 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
 
   // Fetch inventory, preferring today's snapshot but falling back to latest available date
   const fetchInventory = useCallback(async () => {
+    if (!enabled) return;
+
     const todayDate = formatLocalDate(new Date());
 
     const loadForDate = async (snapshotDate: string) => {
@@ -196,10 +203,12 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
     } else {
       setInventory([]);
     }
-  }, [moduleType]);
+  }, [enabled, moduleType]);
 
   // Fetch anomalies
   const fetchAnomalies = useCallback(async () => {
+    if (!enabled) return;
+
     const { data } = await supabase
       .from('fdc_analytics_anomalies')
       .select('*')
@@ -215,10 +224,12 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
         acknowledged: item.is_acknowledged || false
       })));
     }
-  }, []);
+  }, [enabled]);
 
   // Fetch 1-year daily history and compact to weekly points in the client.
   const fetchSnapshotHistory = useCallback(async () => {
+    if (!enabled) return;
+
     setIsLoadingSnapshotHistory(true);
     try {
       const oneYearAgo = new Date();
@@ -249,9 +260,11 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
     } finally {
       setIsLoadingSnapshotHistory(false);
     }
-  }, [moduleType]);
+  }, [enabled, moduleType]);
 
   const fetchFilteredSnapshotHistory = useCallback(async () => {
+    if (!enabled) return;
+
     const hasFilters =
       moduleType === "inventory"
         ? filterCategory !== "all" || Boolean(searchQuery?.trim())
@@ -355,10 +368,12 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
     }
-  }, [inventoryHistoryTargetIds, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
+  }, [enabled, inventoryHistoryTargetIds, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
 
   // Fetch per-item snapshot history (when selecting an item)
   const fetchItemSnapshots = useCallback(async (itemName: string, warehouse: string) => {
+    if (!enabled) return;
+
     setIsLoadingItemSnapshots(true);
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -385,9 +400,21 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
       setItemSnapshots([]);
     }
     setIsLoadingItemSnapshots(false);
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
+    if (!enabled) {
+      setInventory([]);
+      setAnomalies([]);
+      setRawSnapshotHistory([]);
+      setFilteredSnapshotHistory([]);
+      setItemSnapshots([]);
+      setIsLoadingItemSnapshots(false);
+      setIsLoadingSnapshotHistory(false);
+      setIsLoadingFilteredSnapshotHistory(false);
+      return;
+    }
+
     fetchInventory();
     fetchAnomalies();
     fetchSnapshotHistory();
@@ -413,7 +440,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
       supabase.removeChannel(channel);
       if (snapshotTimeout) clearTimeout(snapshotTimeout);
     };
-  }, [fetchInventory, fetchAnomalies, fetchSnapshotHistory, fetchFilteredSnapshotHistory]);
+  }, [enabled, fetchInventory, fetchAnomalies, fetchSnapshotHistory, fetchFilteredSnapshotHistory]);
 
   const filteredAnomalies = useMemo(() => {
     return anomalies.filter(a => inventory.some(i => i.name === a.materialId));
@@ -452,12 +479,17 @@ export function useInventory(moduleType: InventoryModuleType = 'all') {
 
   // When selectedItem changes, fetch its per-item snapshots
   useEffect(() => {
+    if (!enabled) {
+      setItemSnapshots([]);
+      return;
+    }
+
     if (selectedItem) {
       fetchItemSnapshots(selectedItem.name, selectedItem.warehouse);
     } else {
       setItemSnapshots([]);
     }
-  }, [selectedItem, fetchItemSnapshots]);
+  }, [enabled, selectedItem, fetchItemSnapshots]);
 
   // Filtered inventory list
   const filteredInventory = useMemo(() => {

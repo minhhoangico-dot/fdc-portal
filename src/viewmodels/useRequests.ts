@@ -3,6 +3,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Request, RequestStatus, RequestType, Priority } from '@/types/request';
 import { supabase } from '@/lib/supabase';
 
+const REQUEST_ADMIN_ROLES = new Set(['super_admin', 'director', 'chairman']);
+
 export function useRequests() {
   const { user } = useAuth();
   const [requests, setRequests] = useState<Request[]>([]);
@@ -17,7 +19,7 @@ export function useRequests() {
     }
 
     const fetchRequests = async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('fdc_approval_requests')
         .select(`
           *,
@@ -28,6 +30,12 @@ export function useRequests() {
           )
         `)
         .order('created_at', { ascending: false });
+
+      if (!REQUEST_ADMIN_ROLES.has(user.role)) {
+        query = query.eq('requester_id', user.id);
+      }
+
+      const { data, error } = await query;
 
       if (error) {
         console.error('Error fetching requests:', error);
@@ -157,7 +165,7 @@ export function useRequests() {
         if (!finalApproverId && step.approverRole) {
           let query = supabase.from('fdc_user_mapping').select('id').eq('role', step.approverRole);
           if (step.approverRole === 'dept_head') {
-            query = query.eq('department', user.department || 'Chung');
+            query = query.eq('department_name', user.department || 'Chung');
           }
           const { data: approvers, error: approverErr } = await query.limit(1);
           if (!approverErr && approvers && approvers.length > 0) {
