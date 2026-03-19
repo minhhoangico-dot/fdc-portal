@@ -1,0 +1,67 @@
+.weekly-report-tv {
+  --tv-scale: 1;
+  --base-font: 17.5px;
+  --title-font: 20px;
+  --kpi-font: 40px;
+  --row-height: 40px;
+  --card-title: 18px;
+  --table-font: 17px;
+  --header-height: 48px;
+}
+
+@media (min-width: 1920px) {
+  .weekly-report-tv {
+    --tv-scale: 1.25;
+    --base-font: 20px;
+    --title-font: 24px;
+    --kpi-font: 50px;
+    --row-height: 48px;
+    --card-title: 22px;
+    --table-font: 20px;
+    --header-height: 52px;
+  }
+}
+
+@media (min-width: 2560px) {
+  .weekly-report-tv {
+    --tv-scale: 1.5;
+    --base-font: 25px;
+    --title-font: 30px;
+    --kpi-font: 70px;
+    --row-height: 64px;
+    --card-title: 30px;
+    --table-font: 25px;
+    --header-height: 60px;
+  }
+}
+
+.weekly-report-tv.tv-mode {
+  --tv-scale: 1.5;
+  --base-font: 20px;
+  --title-font: 22px;
+  --kpi-font: 45px;
+  --row-height: 44px;
+  --card-title: 20px;
+  --table-font: 20px;
+  --header-height: 48px;
+}
+
+.weekly-report-tv table {
+  border-collapse: collapse;
+}
+
+.weekly-report-tv .weekly-report-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.6) transparent;
+}
+
+.weekly-report-tv .weekly-report-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.weekly-report-tv .weekly-report-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.6);
+  border-radius: 999px;
+}
+

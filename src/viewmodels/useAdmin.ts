@@ -6,7 +6,7 @@ import { User, Role } from "@/types/user";
 import { BridgeHealth, SyncRecord } from "@/types/sync";
 import { validateHikvisionEmployeeId } from "./hikvision";
 
-export type AdminTab = "users" | "approval" | "misa" | "health" | "audit";
+export type AdminTab = "users" | "approval" | "misa" | "health" | "audit" | "weekly_report";
 
 interface UseAdminOptions {
   enabled?: boolean;

@@ -1,5 +1,6 @@
 import React from "react";
-import { Users, Settings, Key, Activity, Shield } from "lucide-react";
+import { Users, Settings, Key, Activity, Shield, BarChart3 } from "lucide-react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useAdmin, AdminTab } from "@/viewmodels/useAdmin";
 import { UsersTab } from "./UsersTab";
@@ -7,11 +8,13 @@ import { ApprovalTab } from "./ApprovalTab";
 import { MisaTab } from "./MisaTab";
 import { HealthTab } from "./HealthTab";
 import { AuditTab } from "./AuditTab";
+import { WeeklyReportTab } from "./WeeklyReportTab";
 import { DelegationModal } from "./DelegationModal";
 import { AddUserModal } from "./AddUserModal";
 
 export default function AdminPage() {
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
   const {
     activeTab,
     setActiveTab,
@@ -56,42 +59,49 @@ export default function AdminPage() {
     validateHikvisionEmployeeId,
   } = useAdmin();
 
+  React.useEffect(() => {
+    if (searchParams.get("tab") === "weekly_report") {
+      setActiveTab("weekly_report");
+    }
+  }, [searchParams, setActiveTab]);
+
   if (!user || user.role !== "super_admin") {
     return (
       <div className="flex items-center justify-center h-96">
-        <p className="text-gray-500 text-lg">Bạn không có quyền truy cập trang này.</p>
+        <p className="text-gray-500 text-lg">Báº¡n khÃ´ng cÃ³ quyá»n truy cáº­p trang nÃ y.</p>
       </div>
     );
   }
 
   const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { id: "users", label: "Người dùng", icon: <Users className="w-4 h-4" /> },
+    { id: "users", label: "NgÆ°á»i dÃ¹ng", icon: <Users className="w-4 h-4" /> },
     {
       id: "approval",
-      label: "Cấu hình phê duyệt",
+      label: "Cáº¥u hÃ¬nh phÃª duyá»‡t",
       icon: <Settings className="w-4 h-4" />,
     },
-    { id: "misa", label: "Từ khóa MISA", icon: <Key className="w-4 h-4" /> },
-    { id: "health", label: "Hệ thống", icon: <Activity className="w-4 h-4" /> },
-    { id: "audit", label: "Nhật ký", icon: <Shield className="w-4 h-4" /> },
+    { id: "misa", label: "Tá»« khÃ³a MISA", icon: <Key className="w-4 h-4" /> },
+    { id: "health", label: "Há»‡ thá»‘ng", icon: <Activity className="w-4 h-4" /> },
+    { id: "audit", label: "Nháº­t kÃ½", icon: <Shield className="w-4 h-4" /> },
+    { id: "weekly_report", label: "BÃ¡o cÃ¡o giao ban", icon: <BarChart3 className="w-4 h-4" /> },
   ];
 
   return (
     <div className="max-w-7xl mx-auto pb-24 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Quản trị hệ thống</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Quáº£n trá»‹ há»‡ thá»‘ng</h1>
       </div>
 
-      {/* Tabs */}
       <div className="bg-white rounded-xl border border-gray-200 p-1 flex overflow-x-auto hide-scrollbar">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${activeTab === tab.id
-              ? "bg-indigo-50 text-indigo-700"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
+            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${
+              activeTab === tab.id
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+            }`}
           >
             {tab.icon}
             {tab.label}
@@ -99,7 +109,6 @@ export default function AdminPage() {
         ))}
       </div>
 
-      {/* Tab Content */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[600px]">
         {activeTab === "users" && (
           <UsersTab
@@ -107,8 +116,8 @@ export default function AdminPage() {
             onRoleChange={(id, role) => handleRoleChange(id, role as any)}
             onResetPassword={handleResetPassword}
             onOpenAddUser={() => setIsAddUserModalOpen(true)}
-            onOpenDelegation={(user) => {
-              setSelectedUser(user);
+            onOpenDelegation={(nextUser) => {
+              setSelectedUser(nextUser);
               setIsDelegationModalOpen(true);
             }}
             search={userSearch}
@@ -161,6 +170,8 @@ export default function AdminPage() {
             onExportCsv={handleExportAuditCsv}
           />
         )}
+
+        {activeTab === "weekly_report" && <WeeklyReportTab />}
       </div>
 
       <DelegationModal

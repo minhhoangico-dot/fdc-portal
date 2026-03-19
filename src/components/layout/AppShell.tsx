@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
@@ -10,7 +10,6 @@ const APPROVER_ROLES = new Set(['dept_head', 'accountant', 'director', 'chairman
 
 export function AppShell() {
   const { user } = useAuth();
-  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const approvalEnabled = Boolean(user && APPROVER_ROLES.has(user.role));
   const { pendingApprovals } = useApprovals({ enabled: approvalEnabled });
@@ -18,7 +17,7 @@ export function AppShell() {
   const shellStyle = { ['--sidebar-width' as any]: '16rem' } as React.CSSProperties;
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return null;
   }
 
   return (
