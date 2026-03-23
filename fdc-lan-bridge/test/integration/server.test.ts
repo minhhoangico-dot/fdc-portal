@@ -1,7 +1,12 @@
 import request from "supertest";
 
+const mockHisQuery = jest.fn();
+
 jest.mock("../../src/db/his", () => ({
   checkHisConnection: async () => true,
+  hisPool: {
+    query: mockHisQuery,
+  },
 }));
 
 jest.mock("../../src/db/misa", () => ({
@@ -131,72 +136,9 @@ const mockGetLabDashboardCurrent = jest.fn(async () => ({
   ],
 }));
 
-const mockGetLabDashboardDetails = jest.fn(async () => ({
-  meta: {
-    generatedAt: '2026-03-23T02:10:00.000Z',
-    asOfDate: '2026-03-23',
-    section: 'tat',
-    focus: 'average',
-    title: 'Chi tiết TAT trung bình',
-    description: 'Các hồ sơ đã có kết quả trong ngày, sắp theo tổng phút giảm dần.',
-    sourceDetails: [
-      {
-        key: 'tat',
-        label: 'TAT',
-        source: 'his',
-        generatedAt: '2026-03-23T02:10:00.000Z',
-        dataDate: '2026-03-23',
-        summary: 'Danh sách này lấy từ các hồ sơ xét nghiệm đã hoàn thành trong ngày 2026-03-23 để đối soát thời gian xử lý và trả kết quả.',
-        displayedRowCount: 1,
-        datasets: [
-          {
-            key: 'lab_root_orders',
-            label: 'Hồ sơ xét nghiệm gốc',
-            role: 'Là tập hồ sơ đầu vào để tính các mốc thời gian TAT.',
-          },
-        ],
-        pipeline: [
-          {
-            key: 'focus_average',
-            label: 'Giữ danh sách TAT tổng',
-            ruleSummary: 'Giữ toàn bộ hồ sơ hoàn thành có tổng TAT hợp lệ rồi sắp theo tổng TAT giảm dần để phục vụ đối soát.',
-            inputCount: 1,
-            outputCount: 1,
-          },
-        ],
-        focusReason: 'Mục này giữ toàn bộ hồ sơ hoàn thành có tổng TAT hợp lệ và sắp các hồ sơ có thời gian dài hơn lên trước để hỗ trợ đối soát.',
-        metricExplanation: [
-          {
-            label: 'Tổng TAT',
-            description: 'Tổng TAT được tính bằng thời điểm trả kết quả trừ thời điểm tiếp nhận.',
-          },
-        ],
-        calculationNotes: [
-          'Dùng các hồ sơ xét nghiệm gốc có requested_at trong ngày.',
-          'TAT = result_at - requested_at.',
-        ],
-      },
-    ],
-  },
-  rows: [
-    {
-      kind: 'tat',
-      patientCode: 'BN001245',
-      subgroupKey: 'hoa-sinh',
-      subgroupName: 'Hóa sinh',
-      requestedAt: '2026-03-23T01:00:00.000Z',
-      processingAt: '2026-03-23T01:20:00.000Z',
-      resultAt: '2026-03-23T02:30:00.000Z',
-      totalMinutes: 90,
-      requestedToProcessingMinutes: 20,
-      processingToResultMinutes: 70,
-    },
-  ],
-}));
-
 jest.mock("../../src/labDashboard/service", () => ({
+  ...jest.requireActual("../../src/labDashboard/service"),
   getLabDashboardCurrent: mockGetLabDashboardCurrent,
-  getLabDashboardDetails: mockGetLabDashboardDetails,
 }));
 
 const mockGetCurrentWeeklyReport = jest.fn(async () => ({
@@ -355,9 +297,26 @@ jest.mock("../../src/weeklyReport/service", () => ({
   searchWeeklyReportServiceCatalogByTerm: mockSearchWeeklyReportServiceCatalogByTerm,
 }));
 
+function buildTatTimelineRow() {
+  return {
+    servicedataid: 1,
+    patientcode: "BN001245",
+    dm_servicesubgroupid: 301,
+    subgroup_name: "Hóa sinh",
+    requested_at: "2026-03-23T01:00:00.000Z",
+    processing_at: "2026-03-23T01:20:00.000Z",
+    result_at: "2026-03-23T02:30:00.000Z",
+    total_minutes: 90,
+    requested_to_processing_minutes: 20,
+    processing_to_result_minutes: 70,
+    stage: "completed",
+  };
+}
+
 describe("server routes", () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockHisQuery.mockReset();
     selectMock.mockReturnValue({ eq: eqMock });
     eqMock.mockReturnValue({ maybeSingle: maybeSingleMock });
     maybeSingleMock.mockResolvedValue({
@@ -439,7 +398,11 @@ describe("server routes", () => {
     expect(mockGetLabDashboardCurrent).toHaveBeenCalledWith("2026-03-22");
   });
 
-  it("GET /lab-dashboard/details returns masked lab detail payload", async () => {
+  it("GET /lab-dashboard/details returns masked lab detail payload from the real detail service", async () => {
+    mockHisQuery.mockResolvedValueOnce({
+      rows: [buildTatTimelineRow()],
+    });
+
     const { app } = await import("../../src/server");
     const res = await request(app)
       .get("/lab-dashboard/details")
@@ -457,14 +420,54 @@ describe("server routes", () => {
         metricExplanation: expect.any(Array),
       }),
     );
+    expect(res.body.meta.sourceDetails[0].pipeline.at(-1)).toEqual(
+      expect.objectContaining({
+        key: "focus_average",
+        outputCount: res.body.rows.length,
+      }),
+    );
     expect(res.body.rows[0].patientCode).toBe("BN001245");
     expect(res.body.rows[0]).not.toHaveProperty("patientName");
     expect(JSON.stringify(res.body)).not.toContain("patientName");
-    expect(mockGetLabDashboardDetails).toHaveBeenCalledWith({
+    expect(mockHisQuery).toHaveBeenCalledTimes(1);
+  });
+
+  it("getLabDashboardDetails preserves fetched rows in provenance fallback when provenance building fails", async () => {
+    mockHisQuery.mockResolvedValueOnce({
+      rows: [buildTatTimelineRow()],
+    });
+
+    const sourceProvenance = await import("../../src/labDashboard/sourceProvenance");
+    const provenanceSpy = jest
+      .spyOn(sourceProvenance, "buildTatSourceProvenance")
+      .mockImplementationOnce(() => {
+        throw new Error("builder failed");
+      });
+
+    const { getLabDashboardDetails } = await import("../../src/labDashboard/service");
+    const result = await getLabDashboardDetails({
       asOfDate: "2026-03-23",
       section: "tat",
       focus: "average",
     });
+
+    expect(result.rows).toHaveLength(1);
+    expect(result.meta.sourceDetails[0]).toEqual(
+      expect.objectContaining({
+        error: "builder failed",
+        displayedRowCount: 1,
+        pipeline: expect.any(Array),
+        focusReason: expect.any(String),
+      }),
+    );
+    expect(result.meta.sourceDetails[0].pipeline?.at(-1)).toEqual(
+      expect.objectContaining({
+        key: "focus_average",
+        outputCount: 1,
+      }),
+    );
+
+    provenanceSpy.mockRestore();
   });
 
   it("GET /lab-dashboard/details returns 400 for invalid query combinations", async () => {
@@ -475,7 +478,7 @@ describe("server routes", () => {
 
     expect(res.status).toBe(400);
     expect(res.body).toEqual({ error: "Invalid focus for section queue" });
-    expect(mockGetLabDashboardDetails).not.toHaveBeenCalled();
+    expect(mockHisQuery).not.toHaveBeenCalled();
   });
 
   it("GET /tv-access/check allows requests from an allowlisted Cloudflare IP", async () => {
@@ -489,9 +492,7 @@ describe("server routes", () => {
     ];
 
     const { app } = await import("../../src/server");
-    const res = await request(app)
-      .get("/tv-access/check")
-      .set("CF-Connecting-IP", "203.0.113.42");
+    const res = await request(app).get("/tv-access/check").set("CF-Connecting-IP", "203.0.113.42");
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -548,9 +549,7 @@ describe("server routes", () => {
     ];
 
     const { app } = await import("../../src/server");
-    const res = await request(app)
-      .get("/tv-access/check")
-      .set("CF-Connecting-IP", "198.51.100.10");
+    const res = await request(app).get("/tv-access/check").set("CF-Connecting-IP", "198.51.100.10");
 
     expect(res.status).toBe(200);
     expect(res.body.status).toBe("deny");
@@ -586,9 +585,7 @@ describe("server routes", () => {
 
   it("POST /weekly-report/generate triggers manual snapshot generation", async () => {
     const { app } = await import("../../src/server");
-    const res = await request(app)
-      .post("/weekly-report/generate")
-      .send({ date: "2026-03-19T00:00:00.000Z" });
+    const res = await request(app).post("/weekly-report/generate").send({ date: "2026-03-19T00:00:00.000Z" });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({

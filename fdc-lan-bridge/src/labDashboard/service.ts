@@ -34,6 +34,7 @@ import {
   LabDashboardMeta,
   LabDashboardPayload,
   LabDashboardQueue,
+  LabDashboardQueueDetailRow,
   LabDashboardQueueFocus,
   LabDashboardReagent,
   LabDashboardReagentDetailRow,
@@ -42,6 +43,7 @@ import {
   LabDashboardSectionFreshness,
   LabDashboardTat,
   LabDashboardTatByType,
+  LabDashboardTatDetailRow,
   LabDashboardTatFocus,
   LabDashboardTimelineProvenanceRow,
 } from "./types";
@@ -1000,10 +1002,12 @@ async function loadQueueDetail(
   focus: LabDashboardQueueFocus,
 ): Promise<{ rows: LabDashboardDetailRow[]; sourceInfo: LabDashboardDetailSourceInfo }> {
   const freshness = buildFreshness("his", generatedAt, asOfDate);
+  let timelineRows: LabDashboardTimelineDetailInput[] = [];
+  let rows: LabDashboardQueueDetailRow[] = [];
 
   try {
-    const timelineRows = await fetchTimelineDetailRows(asOfDate);
-    const rows = buildQueueDetailRows(timelineRows, focus);
+    timelineRows = await fetchTimelineDetailRows(asOfDate);
+    rows = buildQueueDetailRows(timelineRows, focus);
     return {
       rows,
       sourceInfo: buildQueueSourceProvenance({
@@ -1019,14 +1023,14 @@ async function loadQueueDetail(
     const message = errorMessageFor(error, "Unable to load queue detail rows.");
     logger.error("Lab dashboard queue detail failed", error);
     return {
-      rows: [],
+      rows,
       sourceInfo: buildQueueSourceProvenance({
         asOfDate,
         generatedAt: freshness.generatedAt,
         dataDate: freshness.dataDate,
         focus,
-        timelineRows: [],
-        displayedRows: [],
+        timelineRows,
+        displayedRows: rows,
         error: message,
       }),
     };
@@ -1039,10 +1043,12 @@ async function loadTatDetail(
   focus: LabDashboardTatFocus,
 ): Promise<{ rows: LabDashboardDetailRow[]; sourceInfo: LabDashboardDetailSourceInfo }> {
   const freshness = buildFreshness("his", generatedAt, asOfDate);
+  let timelineRows: LabDashboardTimelineDetailInput[] = [];
+  let rows: LabDashboardTatDetailRow[] = [];
 
   try {
-    const timelineRows = await fetchTimelineDetailRows(asOfDate);
-    const rows = buildTatDetailRows(timelineRows, focus);
+    timelineRows = await fetchTimelineDetailRows(asOfDate);
+    rows = buildTatDetailRows(timelineRows, focus);
     return {
       rows,
       sourceInfo: buildTatSourceProvenance({
@@ -1058,14 +1064,14 @@ async function loadTatDetail(
     const message = errorMessageFor(error, "Unable to load TAT detail rows.");
     logger.error("Lab dashboard tat detail failed", error);
     return {
-      rows: [],
+      rows,
       sourceInfo: buildTatSourceProvenance({
         asOfDate,
         generatedAt: freshness.generatedAt,
         dataDate: freshness.dataDate,
         focus,
-        timelineRows: [],
-        displayedRows: [],
+        timelineRows: timelineRows as LabDashboardTimelineProvenanceRow[],
+        displayedRows: rows,
         error: message,
       }),
     };
@@ -1077,9 +1083,10 @@ async function loadAbnormalDetail(
   generatedAt: string,
 ): Promise<{ rows: LabDashboardDetailRow[]; sourceInfo: LabDashboardDetailSourceInfo }> {
   const freshness = buildFreshness("his", generatedAt, asOfDate);
+  let rows: LabDashboardAbnormalDetailRow[] = [];
 
   try {
-    const rows = await buildAbnormalDetailRows(asOfDate, generatedAt);
+    rows = await buildAbnormalDetailRows(asOfDate, generatedAt);
     return {
       rows,
       sourceInfo: buildAbnormalSourceProvenance({
@@ -1095,14 +1102,14 @@ async function loadAbnormalDetail(
     const message = errorMessageFor(error, "Unable to load abnormal detail rows.");
     logger.error("Lab dashboard abnormal detail failed", error);
     return {
-      rows: [],
+      rows,
       sourceInfo: buildAbnormalSourceProvenance({
         asOfDate,
         generatedAt: freshness.generatedAt,
         dataDate: freshness.dataDate,
         focus: "all",
-        abnormalRows: [],
-        displayedRows: [],
+        abnormalRows: rows,
+        displayedRows: rows,
         error: message,
       }),
     };
@@ -1114,10 +1121,21 @@ async function loadReagentDetail(
   focus: LabDashboardReagentFocus,
 ): Promise<{ rows: LabDashboardDetailRow[]; sourceInfo: LabDashboardDetailSourceInfo }> {
   const freshness = buildFreshness("supabase", generatedAt);
+  let snapshotDate = freshness.dataDate || "";
+  let positiveSnapshotRows: LabDashboardReagentSnapshotSourceRow[] = [];
+  let labScopedRows: LabDashboardReagentSnapshotSourceRow[] = [];
+  let matchedRows: LabDashboardReagentSnapshotSourceRow[] = [];
+  let claimedRows: LabDashboardReagentDetailRow[] = [];
+  let rows: LabDashboardReagentDetailRow[] = [];
 
   try {
     const result = await buildReagentSummary(generatedAt);
-    const rows = buildReagentDetailRows(result.detailRows, focus);
+    snapshotDate = result.snapshotDate;
+    positiveSnapshotRows = result.positiveSnapshotRows;
+    labScopedRows = result.labScopedRows;
+    matchedRows = result.matchedRows;
+    claimedRows = result.detailRows;
+    rows = buildReagentDetailRows(result.detailRows, focus);
     return {
       rows,
       sourceInfo: buildReagentSourceProvenance({
@@ -1138,17 +1156,17 @@ async function loadReagentDetail(
     const message = errorMessageFor(error, "Unable to load reagent detail rows.");
     logger.error("Lab dashboard reagent detail failed", error);
     return {
-      rows: [],
+      rows,
       sourceInfo: buildReagentSourceProvenance({
         generatedAt: freshness.generatedAt,
         dataDate: freshness.dataDate,
-        snapshotDate: freshness.dataDate || "",
+        snapshotDate,
         focus,
-        positiveSnapshotRows: [],
-        labScopedRows: [],
-        matchedRows: [],
-        claimedRows: [],
-        displayedRows: [],
+        positiveSnapshotRows,
+        labScopedRows,
+        matchedRows,
+        claimedRows,
+        displayedRows: rows,
         claimOrder: REAGENT_CONFIGS.map((config) => config.key),
         claimOrderDisplayLabels: REAGENT_CONFIGS.map((config) => config.name),
         error: message,
