@@ -3,7 +3,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { LabDashboardTimelineDetailInput } from "./detailHelpers";
 import {
   LabDashboardAbnormalDetailRow,
   LabDashboardAbnormalFocus,
@@ -18,6 +17,7 @@ import {
   LabDashboardSectionSource,
   LabDashboardTatDetailRow,
   LabDashboardTatFocus,
+  LabDashboardTimelineProvenanceRow,
 } from "./types";
 
 interface BaseSourceInfoInput {
@@ -29,14 +29,14 @@ interface BaseSourceInfoInput {
 interface QueueSourceProvenanceInput extends BaseSourceInfoInput {
   asOfDate: string;
   focus: LabDashboardQueueFocus;
-  timelineRows: LabDashboardTimelineDetailInput[];
+  timelineRows: LabDashboardTimelineProvenanceRow[];
   displayedRows: LabDashboardQueueDetailRow[];
 }
 
 interface TatSourceProvenanceInput extends BaseSourceInfoInput {
   asOfDate: string;
   focus: LabDashboardTatFocus;
-  timelineRows: LabDashboardTimelineDetailInput[];
+  timelineRows: LabDashboardTimelineProvenanceRow[];
   displayedRows: LabDashboardTatDetailRow[];
 }
 
@@ -121,7 +121,7 @@ function normalizeLabelFromSlug(value: string): string {
 function getTatFocusStep(
   focus: LabDashboardTatFocus,
   displayedRows: LabDashboardTatDetailRow[],
-  metricReadyRows: LabDashboardTimelineDetailInput[],
+  metricReadyRows: LabDashboardTimelineProvenanceRow[],
 ): {
   step: LabDashboardDetailPipelineStep;
   focusReason: string;
@@ -132,20 +132,20 @@ function getTatFocusStep(
     return {
       step: buildPipelineStep(
         "focus_requested_to_processing",
-        "Lọc theo focus Tiếp nhận → xử lý",
+        "Giữ hồ sơ theo mục Tiếp nhận → xử lý",
         "Chỉ giữ các hồ sơ hoàn thành có đủ mốc tiếp nhận và mốc bắt đầu xử lý hợp lệ.",
         metricReadyRows.length,
         displayedRows.length,
       ),
       focusReason:
-        "Focus Tiếp nhận → xử lý chỉ giữ các hồ sơ hoàn thành có đủ hai mốc thời gian để đối soát thời gian từ lúc tiếp nhận đến lúc bắt đầu xử lý.",
+        "Mục Tiếp nhận → xử lý chỉ giữ các hồ sơ hoàn thành có đủ hai mốc thời gian để đối soát thời gian từ lúc tiếp nhận đến lúc bắt đầu xử lý.",
       metricExplanation: [
         {
           label: "Thời gian tiếp nhận → xử lý",
           description: "Thời gian này được tính bằng thời điểm bắt đầu xử lý trừ thời điểm tiếp nhận.",
         },
       ],
-      note: "requested_to_processing = processing_at - requested_at.",
+      note: "Thời gian tiếp nhận → xử lý được tính bằng lúc bắt đầu xử lý trừ lúc tiếp nhận.",
     };
   }
 
@@ -153,20 +153,20 @@ function getTatFocusStep(
     return {
       step: buildPipelineStep(
         "focus_processing_to_result",
-        "Lọc theo focus Xử lý → trả kết quả",
+        "Giữ hồ sơ theo mục Xử lý → trả kết quả",
         "Chỉ giữ các hồ sơ hoàn thành có đủ mốc bắt đầu xử lý và mốc trả kết quả hợp lệ.",
         metricReadyRows.length,
         displayedRows.length,
       ),
       focusReason:
-        "Focus Xử lý → trả kết quả chỉ giữ các hồ sơ hoàn thành có đủ mốc bắt đầu xử lý và mốc trả kết quả, sau đó sắp theo thời gian chờ trả kết quả dài nhất.",
+        "Mục Xử lý → trả kết quả chỉ giữ các hồ sơ hoàn thành có đủ mốc bắt đầu xử lý và mốc trả kết quả, sau đó sắp theo thời gian chờ trả kết quả dài nhất.",
       metricExplanation: [
         {
           label: "Thời gian xử lý → trả kết quả",
           description: "Thời gian này được tính bằng thời điểm trả kết quả trừ thời điểm bắt đầu xử lý.",
         },
       ],
-      note: "processing_to_result = result_at - processing_at.",
+      note: "Thời gian xử lý → trả kết quả được tính bằng lúc trả kết quả trừ lúc bắt đầu xử lý.",
     };
   }
 
@@ -180,14 +180,14 @@ function getTatFocusStep(
         metricReadyRows.length,
         displayedRows.length,
       ),
-      focusReason: `Focus nhóm ${subgroupName} chỉ giữ các hồ sơ hoàn thành thuộc đúng nhóm xét nghiệm này, nên danh sách cuối cùng chỉ còn các dòng của ${subgroupName}.`,
+      focusReason: `Mục nhóm ${subgroupName} chỉ giữ các hồ sơ hoàn thành thuộc đúng nhóm xét nghiệm này, nên danh sách cuối cùng chỉ còn các dòng của ${subgroupName}.`,
       metricExplanation: [
         {
           label: "Lọc theo nhóm xét nghiệm",
           description: `Chỉ các hồ sơ hoàn thành thuộc nhóm ${subgroupName} mới được giữ lại trước khi sắp thứ tự hiển thị.`,
         },
       ],
-      note: `Focus nhóm chỉ giữ lại các hồ sơ thuộc subgroup ${subgroupName}.`,
+      note: `Mục nhóm chỉ giữ lại các hồ sơ thuộc nhóm xét nghiệm ${subgroupName}.`,
     };
   }
 
@@ -202,14 +202,14 @@ function getTatFocusStep(
       displayedRows.length,
     ),
     focusReason:
-      "Focus này giữ toàn bộ hồ sơ hoàn thành có tổng TAT hợp lệ và sắp các hồ sơ có thời gian dài hơn lên trước để hỗ trợ đối soát.",
+      "Mục này giữ toàn bộ hồ sơ hoàn thành có tổng TAT hợp lệ và sắp các hồ sơ có thời gian dài hơn lên trước để hỗ trợ đối soát.",
     metricExplanation: [
       {
         label: "Tổng TAT",
         description: "Tổng TAT được tính bằng thời điểm trả kết quả trừ thời điểm tiếp nhận.",
       },
     ],
-    note: "total TAT = result_at - requested_at; danh sách sắp theo metric đang được chọn giảm dần.",
+    note: "Tổng TAT được tính bằng lúc trả kết quả trừ lúc tiếp nhận; danh sách được sắp theo chỉ số đang xem từ cao xuống thấp.",
   };
 }
 
@@ -227,22 +227,22 @@ export function buildQueueSourceProvenance(input: QueueSourceProvenanceInput): L
         : "Chỉ giữ các hồ sơ đã có kết quả cuối hợp lệ trong ngày đang xem.";
   const focusReason =
     input.focus === "waiting"
-      ? `Focus ${focusLabel} chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối, nên ${input.displayedRows.length} dòng cuối cùng chính là danh sách đang hiển thị.`
+      ? `Mục ${focusLabel} chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối, nên ${input.displayedRows.length} dòng cuối cùng chính là danh sách đang hiển thị.`
       : input.focus === "processing"
-        ? `Focus ${focusLabel} chỉ giữ các hồ sơ đã có mốc xử lý nhưng chưa có kết quả cuối, nên danh sách hiển thị chỉ còn các hồ sơ đang xử lý.`
-        : `Focus ${focusLabel} chỉ giữ các hồ sơ đã có kết quả cuối hợp lệ, nên danh sách hiển thị chỉ còn các hồ sơ đã hoàn thành trong ngày.`;
+        ? `Mục ${focusLabel} chỉ giữ các hồ sơ đã có mốc xử lý nhưng chưa có kết quả cuối, nên danh sách hiển thị chỉ còn các hồ sơ đang xử lý.`
+        : `Mục ${focusLabel} chỉ giữ các hồ sơ đã có kết quả cuối hợp lệ, nên danh sách hiển thị chỉ còn các hồ sơ đã hoàn thành trong ngày.`;
 
   return {
     ...buildSourceInfoBase("queue", "Hàng chờ xét nghiệm", "his", input.generatedAt, input.asOfDate, input.error),
     calculationNotes: [
       "Nguồn HIS: hồ sơ xét nghiệm gốc trong ngày đang xem.",
       input.focus === "waiting"
-        ? "waiting = chưa có order_date hợp lệ và chưa có data_date kết quả hợp lệ."
+        ? "Mục Chờ lấy mẫu = chưa có mốc xử lý hợp lệ và chưa có mốc trả kết quả hợp lệ."
         : input.focus === "processing"
-          ? "processing = đã có order_date hợp lệ nhưng chưa có data_date kết quả hợp lệ."
-          : "completed = đã có result_at hợp lệ, vẫn bám theo requested_at của ngày dữ liệu.",
+          ? "Mục Đang xử lý = đã có mốc xử lý hợp lệ nhưng chưa có mốc trả kết quả hợp lệ."
+          : "Mục Đã hoàn thành = đã có mốc trả kết quả hợp lệ, vẫn bám theo ngày tiếp nhận của ngày dữ liệu.",
     ],
-    summary: `Danh sách này lấy từ các hồ sơ xét nghiệm gốc của ngày ${input.asOfDate}, sau đó chỉ giữ các hồ sơ phù hợp với focus ${focusLabel.toLowerCase()}.`,
+    summary: `Danh sách này lấy từ các hồ sơ xét nghiệm gốc của ngày ${input.asOfDate}, sau đó chỉ giữ các hồ sơ phù hợp với mục ${focusLabel.toLowerCase()}.`,
     displayedRowCount: input.displayedRows.length,
     datasets: [
       {
@@ -295,7 +295,7 @@ export function buildQueueSourceProvenance(input: QueueSourceProvenanceInput): L
         patientCodeRows.length,
         stageRows.length,
       ),
-      buildPipelineStep(focusKey, `Lọc theo focus ${focusLabel}`, focusRuleSummary, stageRows.length, input.displayedRows.length),
+      buildPipelineStep(focusKey, `Lọc theo mục ${focusLabel}`, focusRuleSummary, stageRows.length, input.displayedRows.length),
     ],
     focusReason,
     metricExplanation: [
@@ -334,7 +334,7 @@ export function buildTatSourceProvenance(input: TatSourceProvenanceInput): LabDa
   return {
     ...buildSourceInfoBase("tat", "TAT xét nghiệm", "his", input.generatedAt, input.asOfDate, input.error),
     calculationNotes: [
-      "Nguồn HIS: dùng cùng tập hồ sơ gốc như summary TAT, chỉ lấy các hồ sơ đã có result_at hợp lệ.",
+        "Nguồn HIS: dùng cùng tập hồ sơ gốc như phần tổng hợp TAT, chỉ lấy các hồ sơ đã có mốc trả kết quả hợp lệ.",
       tatFocus.note,
     ],
     summary: `Danh sách này lấy từ các hồ sơ xét nghiệm đã hoàn thành trong ngày ${input.asOfDate} để đối soát thời gian xử lý và trả kết quả.`,
@@ -385,8 +385,8 @@ export function buildTatSourceProvenance(input: TatSourceProvenanceInput): LabDa
       ),
       buildPipelineStep(
         "metric_ready_rows",
-        "Giữ hồ sơ đủ mốc cho metric đang xem",
-        "Loại các hồ sơ thiếu mốc thời gian cần thiết cho metric hoặc focus hiện tại.",
+        "Giữ hồ sơ đủ mốc cho chỉ số đang xem",
+        "Loại các hồ sơ thiếu mốc thời gian cần thiết cho chỉ số hoặc mục hiện tại.",
         completedRows.length,
         metricReadyRows.length,
       ),
@@ -450,13 +450,13 @@ export function buildAbnormalSourceProvenance(
       buildPipelineStep(
         "focus_all",
         "Giữ toàn bộ kết quả bất thường",
-        "Section bất thường hiện chỉ có focus all nên toàn bộ tập kết quả bất thường được giữ lại.",
+        "Phần bất thường hiện chỉ có mục xem toàn bộ nên toàn bộ tập kết quả bất thường được giữ lại.",
         input.abnormalRows.length,
         input.displayedRows.length,
       ),
     ],
     focusReason:
-      "Focus all của section bất thường giữ toàn bộ kết quả bất thường sau khi đã suy ra mức độ cảnh báo, nên danh sách hiện tại chính là toàn bộ kết quả bất thường trong ngày.",
+      "Mục xem toàn bộ của phần bất thường giữ toàn bộ kết quả bất thường sau khi đã suy ra mức độ cảnh báo, nên danh sách hiện tại chính là toàn bộ kết quả bất thường trong ngày.",
     metricExplanation: [
       {
         label: "Mức độ cảnh báo",
@@ -474,7 +474,7 @@ export function buildReagentSourceProvenance(
       ? "Toàn bộ"
       : input.displayedRows[0]?.reagentName || normalizeLabelFromSlug(input.focus.slice("reagent:".length));
   const focusKey = input.focus === "all" ? "focus_all" : "focus_reagent";
-  const focusLabel = input.focus === "all" ? "Giữ toàn bộ dòng đã claim" : `Lọc theo reagent ${focusName}`;
+  const focusLabel = input.focus === "all" ? "Giữ toàn bộ dòng đã gán" : `Lọc theo nhóm hóa chất ${focusName}`;
   const claimOrderText = input.claimOrder.map((key) => normalizeLabelFromSlug(key)).join(", ");
 
   return {
@@ -487,18 +487,18 @@ export function buildReagentSourceProvenance(
       input.error,
     ),
     calculationNotes: [
-      "Nguồn Supabase: fdc_inventory_snapshots của ngày snapshot mới nhất, chỉ lấy các dòng thuộc kho xét nghiệm.",
-      "Mỗi dòng chỉ được claim cho một reagent config theo thứ tự allowlist hiện tại để số chi tiết khớp với summary.",
+      "Nguồn Supabase: dữ liệu tồn kho của ngày chụp mới nhất, chỉ lấy các dòng thuộc kho xét nghiệm.",
+      "Mỗi dòng chỉ được gán cho một nhóm hóa chất theo thứ tự cấu hình hiện tại để số chi tiết khớp với phần tổng hợp.",
       input.focus === "all"
-        ? "Chế độ này hiển thị toàn bộ các dòng snapshot đang đóng góp vào các KPI reagent."
-        : "Focus reagent chỉ giữ lại các dòng snapshot đã match reagent được chọn.",
+        ? "Chế độ này hiển thị toàn bộ các dòng tồn kho đang đóng góp vào các chỉ số tồn kho hóa chất."
+        : "Mục này chỉ giữ lại các dòng tồn kho đã được gán vào nhóm hóa chất được chọn.",
     ],
-    summary: `Danh sách này lấy từ snapshot tồn kho ngày ${input.snapshotDate} của khoa xét nghiệm, sau đó claim từng dòng vào đúng reagent theo thứ tự cấu hình hiện tại.`,
+    summary: `Danh sách này lấy từ dữ liệu tồn kho ngày ${input.snapshotDate} của khoa xét nghiệm, sau đó gán từng dòng vào đúng nhóm hóa chất theo thứ tự cấu hình hiện tại.`,
     displayedRowCount: input.displayedRows.length,
     datasets: [
       {
         key: "inventory_snapshot",
-        label: "Snapshot tồn kho mới nhất",
+        label: "Dữ liệu tồn kho mới nhất",
         role: "Cung cấp tập dòng tồn kho đầu vào cho phần tồn kho khoa xét nghiệm.",
       },
       {
@@ -508,36 +508,36 @@ export function buildReagentSourceProvenance(
       },
       {
         key: "reagent_claim_rules",
-        label: "Quy tắc claim reagent",
-        role: "Gán mỗi dòng snapshot vào reagent đầu tiên khớp theo thứ tự cấu hình hiện tại.",
+        label: "Quy tắc gán nhóm hóa chất",
+        role: "Gán mỗi dòng tồn kho vào nhóm hóa chất đầu tiên phù hợp theo thứ tự cấu hình hiện tại.",
       },
     ],
     pipeline: [
       buildPipelineStep(
         "positive_stock_snapshot",
-        "Tập snapshot còn tồn dương",
-        "Giữ các dòng snapshot có tồn kho lớn hơn 0 ở ngày snapshot mới nhất.",
+        "Tập dòng tồn còn dương",
+        "Giữ các dòng tồn kho có số lượng lớn hơn 0 ở ngày chụp mới nhất.",
         input.positiveSnapshotRows.length,
         input.positiveSnapshotRows.length,
       ),
       buildPipelineStep(
         "lab_warehouse_scope",
         "Giữ dòng thuộc kho xét nghiệm",
-        "Chỉ giữ các dòng snapshot thuộc kho của khoa xét nghiệm.",
+        "Chỉ giữ các dòng tồn kho thuộc kho của khoa xét nghiệm.",
         input.positiveSnapshotRows.length,
         input.labScopedRows.length,
       ),
       buildPipelineStep(
         "reagent_keyword_match",
-        "So khớp với bộ từ khóa reagent",
-        "Giữ các dòng snapshot có thể khớp với ít nhất một reagent đang theo dõi.",
+        "So khớp với bộ từ khóa hóa chất",
+        "Giữ các dòng tồn kho có thể phù hợp với ít nhất một nhóm hóa chất đang theo dõi.",
         input.labScopedRows.length,
         input.matchedRows.length,
       ),
       buildPipelineStep(
         "claim_first_match",
-        "Claim theo match đầu tiên",
-        `Mỗi dòng được claim cho reagent đầu tiên khớp theo thứ tự cấu hình hiện tại: ${claimOrderText}.`,
+        "Gán theo thứ tự phù hợp đầu tiên",
+        `Mỗi dòng được gán cho nhóm hóa chất đầu tiên phù hợp theo thứ tự cấu hình hiện tại: ${claimOrderText}.`,
         input.matchedRows.length,
         input.claimedRows.length,
       ),
@@ -545,28 +545,28 @@ export function buildReagentSourceProvenance(
         focusKey,
         focusLabel,
         input.focus === "all"
-          ? "Giữ toàn bộ các dòng snapshot đã được claim vào các reagent đang theo dõi."
-          : `Chỉ giữ các dòng snapshot đã được claim vào reagent ${focusName}.`,
+          ? "Giữ toàn bộ các dòng tồn kho đã được gán vào các nhóm hóa chất đang theo dõi."
+          : `Chỉ giữ các dòng tồn kho đã được gán vào nhóm hóa chất ${focusName}.`,
         input.claimedRows.length,
         input.displayedRows.length,
       ),
     ],
     focusReason:
       input.focus === "all"
-        ? "Focus all giữ toàn bộ các dòng snapshot đã được claim vào các reagent đang theo dõi, nên danh sách hiện tại là toàn bộ các dòng snapshot đã được claim."
-        : `Focus ${focusName} chỉ giữ các dòng snapshot đã được claim vào reagent ${focusName}, nên danh sách hiện tại chỉ còn các dòng đóng góp cho ${focusName}.`,
+        ? "Mục xem toàn bộ giữ toàn bộ các dòng tồn kho đã được gán vào các nhóm hóa chất đang theo dõi, nên danh sách hiện tại là toàn bộ các dòng tồn kho đã được gán."
+        : `Mục ${focusName} chỉ giữ các dòng tồn kho đã được gán vào nhóm hóa chất ${focusName}, nên danh sách hiện tại chỉ còn các dòng đóng góp cho ${focusName}.`,
     metricExplanation: [
       {
-        label: "Thứ tự claim reagent",
+        label: "Thứ tự gán nhóm hóa chất",
         description:
-          "Nếu một dòng snapshot khớp nhiều reagent, dòng khớp trước sẽ được giữ cho reagent đó theo thứ tự cấu hình hiện tại.",
+          "Nếu một dòng tồn kho phù hợp với nhiều nhóm hóa chất, dòng phù hợp trước sẽ được giữ cho nhóm đó theo thứ tự cấu hình hiện tại.",
       },
       {
-        label: "Hiển thị theo focus",
+        label: "Hiển thị theo mục đang xem",
         description:
           input.focus === "all"
-            ? "Focus Toàn bộ giữ tất cả các dòng snapshot đã được claim vào các KPI reagent."
-            : `Focus ${focusName} chỉ giữ các dòng đã được claim vào reagent ${focusName}.`,
+            ? "Mục Toàn bộ giữ tất cả các dòng tồn kho đã được gán vào các chỉ số tồn kho hóa chất."
+            : `Mục ${focusName} chỉ giữ các dòng đã được gán vào nhóm hóa chất ${focusName}.`,
       },
     ],
   };

@@ -175,6 +175,20 @@ export interface LabDashboardTatDetailRow {
   processingToResultMinutes: number | null;
 }
 
+export interface LabDashboardTimelineProvenanceRow {
+  serviceDataId: number;
+  patientCode: string;
+  subgroupKey: string;
+  subgroupName: string;
+  requestedAt: string;
+  processingAt: string | null;
+  resultAt: string | null;
+  totalMinutes: number | null;
+  requestedToProcessingMinutes: number | null;
+  processingToResultMinutes: number | null;
+  stage: LabDashboardOrderStage;
+}
+
 export interface LabDashboardAbnormalDetailRow {
   kind: "abnormal";
   patientCode: string;

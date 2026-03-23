@@ -19,6 +19,7 @@ import {
 function collectStructuredStrings(sourceInfo: {
   summary?: string;
   focusReason?: string;
+  calculationNotes?: string[];
   datasets?: Array<{ label: string; role: string }>;
   pipeline?: Array<{ label: string; ruleSummary: string }>;
   metricExplanation?: Array<{ label: string; description: string }>;
@@ -26,6 +27,7 @@ function collectStructuredStrings(sourceInfo: {
   return [
     sourceInfo.summary,
     sourceInfo.focusReason,
+    ...(sourceInfo.calculationNotes || []),
     ...(sourceInfo.datasets || []).flatMap((dataset) => [dataset.label, dataset.role]),
     ...(sourceInfo.pipeline || []).flatMap((step) => [step.label, step.ruleSummary]),
     ...(sourceInfo.metricExplanation || []).flatMap((item) => [item.label, item.description]),
@@ -378,7 +380,7 @@ describe('lab dashboard source provenance builders', () => {
     ]);
   });
 
-  it('builds reagent provenance for all and reagent focus while preserving first-match claim order semantics', () => {
+  it('builds reagent provenance for all and reagent focus while preserving first-match assignment order semantics', () => {
     const allSourceInfo = buildReagentSourceProvenance({
       generatedAt: '2026-03-23T03:10:00.000Z',
       snapshotDate: '2026-03-23',
@@ -418,7 +420,7 @@ describe('lab dashboard source provenance builders', () => {
         ruleSummary: expect.stringContaining('theo thứ tự cấu hình hiện tại'),
       }),
     );
-    expect(allSourceInfo.focusReason).toContain('toàn bộ các dòng snapshot đã được claim');
+    expect(allSourceInfo.focusReason).toContain('toàn bộ các dòng tồn kho đã được gán');
     expect(glucoseSourceInfo.pipeline?.at(-1)).toEqual(
       expect.objectContaining({
         key: 'focus_reagent',
@@ -430,14 +432,14 @@ describe('lab dashboard source provenance builders', () => {
     expect(glucoseSourceInfo.metricExplanation).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: 'Thứ tự claim reagent',
-          description: expect.stringContaining('dòng khớp trước sẽ được giữ cho reagent đó'),
+          label: 'Thứ tự gán nhóm hóa chất',
+          description: expect.stringContaining('dòng phù hợp trước sẽ được giữ cho nhóm đó'),
         }),
       ]),
     );
   });
 
-  it('never exposes unsupported patientName in structured provenance strings', () => {
+  it('never exposes unsupported patientName or English implementation jargon in operator-facing provenance strings', () => {
     const outputs = [
       buildQueueSourceProvenance({
         asOfDate: '2026-03-23',
@@ -474,7 +476,14 @@ describe('lab dashboard source provenance builders', () => {
     ];
 
     for (const output of outputs) {
-      expect(collectStructuredStrings(output).join(' ')).not.toContain('Nguyen Van A');
+      const text = collectStructuredStrings(output).join(' ');
+      expect(text).not.toContain('Nguyen Van A');
+      expect(text).not.toMatch(/\bfocus\b/i);
+      expect(text).not.toMatch(/\bmetric\b/i);
+      expect(text).not.toMatch(/\breagent\b/i);
+      expect(text).not.toMatch(/\bclaim\b/i);
+      expect(text).not.toMatch(/\bmatch\b/i);
+      expect(text).not.toMatch(/\bsnapshot\b/i);
     }
   });
 });
