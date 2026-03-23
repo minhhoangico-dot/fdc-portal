@@ -26,21 +26,22 @@ interface BaseSourceInfoInput {
   error?: string;
 }
 
-interface QueueSourceProvenanceInput extends BaseSourceInfoInput {
+export interface QueueSourceProvenanceInput extends BaseSourceInfoInput {
   asOfDate: string;
   focus: LabDashboardQueueFocus;
   timelineRows: LabDashboardTimelineProvenanceRow[];
   displayedRows: LabDashboardQueueDetailRow[];
 }
 
-interface TatSourceProvenanceInput extends BaseSourceInfoInput {
+export interface TatSourceProvenanceInput extends BaseSourceInfoInput {
   asOfDate: string;
   focus: LabDashboardTatFocus;
   timelineRows: LabDashboardTimelineProvenanceRow[];
   displayedRows: LabDashboardTatDetailRow[];
+  focusDisplayLabel?: string;
 }
 
-interface AbnormalSourceProvenanceInput extends BaseSourceInfoInput {
+export interface AbnormalSourceProvenanceInput extends BaseSourceInfoInput {
   asOfDate: string;
   focus: LabDashboardAbnormalFocus;
   abnormalRows: LabDashboardAbnormalDetailRow[];
@@ -55,7 +56,7 @@ export interface LabDashboardReagentSnapshotSourceRow {
   snapshotDate: string;
 }
 
-interface ReagentSourceProvenanceInput extends BaseSourceInfoInput {
+export interface ReagentSourceProvenanceInput extends BaseSourceInfoInput {
   snapshotDate: string;
   focus: LabDashboardReagentFocus;
   positiveSnapshotRows: LabDashboardReagentSnapshotSourceRow[];
@@ -64,6 +65,8 @@ interface ReagentSourceProvenanceInput extends BaseSourceInfoInput {
   claimedRows: LabDashboardReagentDetailRow[];
   displayedRows: LabDashboardReagentDetailRow[];
   claimOrder: string[];
+  focusDisplayLabel?: string;
+  claimOrderDisplayLabels?: string[];
 }
 
 function buildPipelineStep(
@@ -118,10 +121,43 @@ function normalizeLabelFromSlug(value: string): string {
     .join(" ");
 }
 
+function resolveTatDisplayLabel(
+  focus: LabDashboardTatFocus,
+  displayedRows: LabDashboardTatDetailRow[],
+  focusDisplayLabel?: string,
+): string {
+  if (!focus.startsWith("type:")) {
+    return focusDisplayLabel || "";
+  }
+
+  return displayedRows[0]?.subgroupName || focusDisplayLabel || normalizeLabelFromSlug(focus.slice("type:".length));
+}
+
+function resolveReagentDisplayLabel(
+  focus: LabDashboardReagentFocus,
+  displayedRows: LabDashboardReagentDetailRow[],
+  focusDisplayLabel?: string,
+): string {
+  if (focus === "all") {
+    return focusDisplayLabel || "Toàn bộ";
+  }
+
+  return displayedRows[0]?.reagentName || focusDisplayLabel || normalizeLabelFromSlug(focus.slice("reagent:".length));
+}
+
+function resolveClaimOrderLabels(claimOrder: string[], claimOrderDisplayLabels?: string[]): string[] {
+  if (claimOrderDisplayLabels && claimOrderDisplayLabels.length === claimOrder.length) {
+    return claimOrderDisplayLabels;
+  }
+
+  return claimOrder.map((key) => normalizeLabelFromSlug(key));
+}
+
 function getTatFocusStep(
   focus: LabDashboardTatFocus,
   displayedRows: LabDashboardTatDetailRow[],
   metricReadyRows: LabDashboardTimelineProvenanceRow[],
+  focusDisplayLabel?: string,
 ): {
   step: LabDashboardDetailPipelineStep;
   focusReason: string;
@@ -171,7 +207,7 @@ function getTatFocusStep(
   }
 
   if (focus.startsWith("type:")) {
-    const subgroupName = displayedRows[0]?.subgroupName || normalizeLabelFromSlug(focus.slice("type:".length));
+    const subgroupName = resolveTatDisplayLabel(focus, displayedRows, focusDisplayLabel);
     return {
       step: buildPipelineStep(
         "focus_type",
@@ -215,7 +251,7 @@ function getTatFocusStep(
 
 export function buildQueueSourceProvenance(input: QueueSourceProvenanceInput): LabDashboardDetailSourceInfo {
   const validRequestedRows = input.timelineRows.filter((row) => Boolean(row.requestedAt));
-  const patientCodeRows = validRequestedRows.filter((row) => Boolean(row.patientCode));
+  const patientCodeRows = validRequestedRows;
   const stageRows = patientCodeRows;
   const focusKey = `focus_${input.focus}`;
   const focusLabel = formatFocusLabel(input.focus);
@@ -284,7 +320,7 @@ export function buildQueueSourceProvenance(input: QueueSourceProvenanceInput): L
       buildPipelineStep(
         "attach_patient_codes",
         "Bổ sung mã bệnh nhân để hiển thị",
-        "Giữ các hồ sơ còn đủ mã bệnh nhân để hiển thị ở danh sách chi tiết.",
+        "Chuẩn hóa mã bệnh nhân để hiển thị; hồ sơ thiếu mã sẽ được thay bằng mã Ẩn danh thay vì bị loại khỏi danh sách.",
         validRequestedRows.length,
         patientCodeRows.length,
       ),
@@ -329,7 +365,7 @@ export function buildTatSourceProvenance(input: TatSourceProvenanceInput): LabDa
     }
     return true;
   });
-  const tatFocus = getTatFocusStep(input.focus, input.displayedRows, metricReadyRows);
+  const tatFocus = getTatFocusStep(input.focus, input.displayedRows, metricReadyRows, input.focusDisplayLabel);
 
   return {
     ...buildSourceInfoBase("tat", "TAT xét nghiệm", "his", input.generatedAt, input.asOfDate, input.error),
@@ -469,13 +505,10 @@ export function buildAbnormalSourceProvenance(
 export function buildReagentSourceProvenance(
   input: ReagentSourceProvenanceInput,
 ): LabDashboardDetailSourceInfo {
-  const focusName =
-    input.focus === "all"
-      ? "Toàn bộ"
-      : input.displayedRows[0]?.reagentName || normalizeLabelFromSlug(input.focus.slice("reagent:".length));
+  const focusName = resolveReagentDisplayLabel(input.focus, input.displayedRows, input.focusDisplayLabel);
   const focusKey = input.focus === "all" ? "focus_all" : "focus_reagent";
   const focusLabel = input.focus === "all" ? "Giữ toàn bộ dòng đã gán" : `Lọc theo nhóm hóa chất ${focusName}`;
-  const claimOrderText = input.claimOrder.map((key) => normalizeLabelFromSlug(key)).join(", ");
+  const claimOrderText = resolveClaimOrderLabels(input.claimOrder, input.claimOrderDisplayLabels).join(", ");
 
   return {
     ...buildSourceInfoBase(

@@ -8,12 +8,17 @@ import {
   buildQueueSourceProvenance,
   buildReagentSourceProvenance,
   buildTatSourceProvenance,
+  LabDashboardReagentSnapshotSourceRow,
+  QueueSourceProvenanceInput,
+  ReagentSourceProvenanceInput,
+  TatSourceProvenanceInput,
 } from '../../src/labDashboard/sourceProvenance';
 import {
   LabDashboardAbnormalDetailRow,
   LabDashboardQueueDetailRow,
   LabDashboardReagentDetailRow,
   LabDashboardTatDetailRow,
+  LabDashboardTimelineProvenanceRow,
 } from '../../src/labDashboard/types';
 
 function collectStructuredStrings(sourceInfo: {
@@ -35,7 +40,7 @@ function collectStructuredStrings(sourceInfo: {
 }
 
 describe('lab dashboard source provenance builders', () => {
-  const timelineRows = [
+  const timelineRows: Array<LabDashboardTimelineProvenanceRow & { patientName: string }> = [
     {
       serviceDataId: 100,
       patientCode: 'BN100',
@@ -106,7 +111,23 @@ describe('lab dashboard source provenance builders', () => {
       processingToResultMinutes: 25,
       stage: 'completed' as const,
     },
-  ] as const;
+  ];
+
+  const timelineRowsWithMissingCode: LabDashboardTimelineProvenanceRow[] = [
+    {
+      serviceDataId: 105,
+      patientCode: '',
+      subgroupKey: 'hoa-sinh',
+      subgroupName: 'Hóa sinh',
+      requestedAt: '2026-03-23T08:00:00.000Z',
+      processingAt: null,
+      resultAt: null,
+      totalMinutes: null,
+      requestedToProcessingMinutes: null,
+      processingToResultMinutes: null,
+      stage: 'waiting',
+    },
+  ];
 
   const waitingRows: LabDashboardQueueDetailRow[] = [
     {
@@ -194,7 +215,7 @@ describe('lab dashboard source provenance builders', () => {
     },
   ];
 
-  const positiveSnapshotRows = [
+  const positiveSnapshotRows: Array<LabDashboardReagentSnapshotSourceRow & { patientName?: string }> = [
     {
       sourceName: 'Combo Glucose đầu ngày',
       medicineCode: 'GLU-CRE-COMBO',
@@ -224,7 +245,7 @@ describe('lab dashboard source provenance builders', () => {
       currentStock: 4,
       snapshotDate: '2026-03-23',
     },
-  ] as const;
+  ];
 
   const labScopedSnapshotRows = positiveSnapshotRows.filter((row) => row.warehouse === 'Khoa Xét nghiệm');
   const matchedSnapshotRows = labScopedSnapshotRows;
@@ -266,17 +287,19 @@ describe('lab dashboard source provenance builders', () => {
   ];
 
   const pipelineKeys = (pipeline?: Array<{ key: string }>) => pipeline?.map((step: { key: string }) => step.key);
-  const findPipelineStep = (pipeline: Array<{ key: string }> | undefined, key: string) =>
-    pipeline?.find((step: { key: string }) => step.key === key);
+  const findPipelineStep = (
+    pipeline: Array<{ key: string; ruleSummary?: string; inputCount?: number; outputCount?: number }> | undefined,
+    key: string,
+  ) => pipeline?.find((step) => step.key === key);
 
   it('builds queue waiting provenance with summary, datasets, funnel, and focus reason', () => {
     const sourceInfo = buildQueueSourceProvenance({
       asOfDate: '2026-03-23',
       generatedAt: '2026-03-23T03:10:00.000Z',
       focus: 'waiting',
-      timelineRows: timelineRows as never,
+      timelineRows,
       displayedRows: waitingRows,
-    });
+    } satisfies QueueSourceProvenanceInput);
 
     expect(sourceInfo.summary).toContain('hồ sơ xét nghiệm gốc');
     expect(sourceInfo.displayedRowCount).toBe(waitingRows.length);
@@ -293,6 +316,13 @@ describe('lab dashboard source provenance builders', () => {
       'derive_stage',
       'focus_waiting',
     ]);
+    expect(findPipelineStep(sourceInfo.pipeline, 'attach_patient_codes')).toEqual(
+      expect.objectContaining({
+        inputCount: timelineRows.length,
+        outputCount: timelineRows.length,
+      }),
+    );
+    expect(findPipelineStep(sourceInfo.pipeline, 'attach_patient_codes')?.ruleSummary).toContain('Ẩn danh');
     expect(sourceInfo.pipeline?.at(-1)).toEqual(
       expect.objectContaining({
         key: 'focus_waiting',
@@ -309,9 +339,9 @@ describe('lab dashboard source provenance builders', () => {
       asOfDate: '2026-03-23',
       generatedAt: '2026-03-23T03:10:00.000Z',
       focus: 'processing_to_result',
-      timelineRows: timelineRows as never,
+      timelineRows,
       displayedRows: tatProcessingRows,
-    });
+    } satisfies TatSourceProvenanceInput);
 
     expect(sourceInfo.displayedRowCount).toBe(tatProcessingRows.length);
     expect(sourceInfo.pipeline?.at(-1)).toEqual(
@@ -335,9 +365,9 @@ describe('lab dashboard source provenance builders', () => {
       asOfDate: '2026-03-23',
       generatedAt: '2026-03-23T03:10:00.000Z',
       focus: 'type:hoa-sinh',
-      timelineRows: timelineRows as never,
+      timelineRows,
       displayedRows: tatHoaSinhRows,
-    });
+    } satisfies TatSourceProvenanceInput);
 
     expect(sourceInfo.pipeline?.at(-1)).toEqual(
       expect.objectContaining({
@@ -351,6 +381,26 @@ describe('lab dashboard source provenance builders', () => {
         expect.objectContaining({
           label: 'Lọc theo nhóm xét nghiệm',
           description: expect.stringContaining('Hóa sinh'),
+        }),
+      ]),
+    );
+  });
+
+  it('uses the canonical type label when the rendered tat rows are empty', () => {
+    const sourceInfo = buildTatSourceProvenance({
+      asOfDate: '2026-03-23',
+      generatedAt: '2026-03-23T03:10:00.000Z',
+      focus: 'type:hoa-sinh',
+      focusDisplayLabel: 'Hóa sinh máu',
+      timelineRows,
+      displayedRows: [],
+    } satisfies TatSourceProvenanceInput);
+
+    expect(sourceInfo.focusReason).toContain('Hóa sinh máu');
+    expect(sourceInfo.metricExplanation).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          description: expect.stringContaining('Hóa sinh máu'),
         }),
       ]),
     );
@@ -385,26 +435,28 @@ describe('lab dashboard source provenance builders', () => {
       generatedAt: '2026-03-23T03:10:00.000Z',
       snapshotDate: '2026-03-23',
       focus: 'all',
-      positiveSnapshotRows: positiveSnapshotRows as never,
-      labScopedRows: labScopedSnapshotRows as never,
-      matchedRows: matchedSnapshotRows as never,
+      positiveSnapshotRows,
+      labScopedRows: labScopedSnapshotRows,
+      matchedRows: matchedSnapshotRows,
       claimedRows: claimedReagentRows,
       displayedRows: claimedReagentRows,
       claimOrder: ['glucose', 'creatinine', 'urine'],
-    });
+      claimOrderDisplayLabels: ['Glucose ưu tiên', 'Creatinine', 'Nước tiểu'],
+    } satisfies ReagentSourceProvenanceInput);
 
     const glucoseRows = claimedReagentRows.filter((row) => row.reagentKey === 'glucose');
     const glucoseSourceInfo = buildReagentSourceProvenance({
       generatedAt: '2026-03-23T03:10:00.000Z',
       snapshotDate: '2026-03-23',
       focus: 'reagent:glucose',
-      positiveSnapshotRows: positiveSnapshotRows as never,
-      labScopedRows: labScopedSnapshotRows as never,
-      matchedRows: matchedSnapshotRows as never,
+      positiveSnapshotRows,
+      labScopedRows: labScopedSnapshotRows,
+      matchedRows: matchedSnapshotRows,
       claimedRows: claimedReagentRows,
       displayedRows: glucoseRows,
       claimOrder: ['glucose', 'creatinine', 'urine'],
-    });
+      claimOrderDisplayLabels: ['Glucose ưu tiên', 'Creatinine', 'Nước tiểu'],
+    } satisfies ReagentSourceProvenanceInput);
 
     expect(pipelineKeys(allSourceInfo.pipeline)).toEqual([
       'positive_stock_snapshot',
@@ -417,7 +469,7 @@ describe('lab dashboard source provenance builders', () => {
       expect.objectContaining({
         inputCount: matchedSnapshotRows.length,
         outputCount: claimedReagentRows.length,
-        ruleSummary: expect.stringContaining('theo thứ tự cấu hình hiện tại'),
+        ruleSummary: expect.stringContaining('Glucose ưu tiên, Creatinine, Nước tiểu'),
       }),
     );
     expect(allSourceInfo.focusReason).toContain('toàn bộ các dòng tồn kho đã được gán');
@@ -439,22 +491,45 @@ describe('lab dashboard source provenance builders', () => {
     );
   });
 
+  it('uses canonical reagent labels when the rendered rows are empty', () => {
+    const sourceInfo = buildReagentSourceProvenance({
+      generatedAt: '2026-03-23T03:10:00.000Z',
+      snapshotDate: '2026-03-23',
+      focus: 'reagent:glucose',
+      focusDisplayLabel: 'Glucose máu',
+      positiveSnapshotRows,
+      labScopedRows: labScopedSnapshotRows,
+      matchedRows: matchedSnapshotRows,
+      claimedRows: claimedReagentRows,
+      displayedRows: [],
+      claimOrder: ['glucose', 'creatinine'],
+      claimOrderDisplayLabels: ['Glucose máu', 'Creatinine máu'],
+    } satisfies ReagentSourceProvenanceInput);
+
+    expect(sourceInfo.focusReason).toContain('Glucose máu');
+    expect(findPipelineStep(sourceInfo.pipeline, 'claim_first_match')).toEqual(
+      expect.objectContaining({
+        ruleSummary: expect.stringContaining('Glucose máu, Creatinine máu'),
+      }),
+    );
+  });
+
   it('never exposes unsupported patientName or English implementation jargon in operator-facing provenance strings', () => {
     const outputs = [
       buildQueueSourceProvenance({
         asOfDate: '2026-03-23',
         generatedAt: '2026-03-23T03:10:00.000Z',
         focus: 'waiting',
-        timelineRows: timelineRows as never,
+        timelineRows: [...timelineRows, ...timelineRowsWithMissingCode],
         displayedRows: waitingRows,
-      }),
+      } satisfies QueueSourceProvenanceInput),
       buildTatSourceProvenance({
         asOfDate: '2026-03-23',
         generatedAt: '2026-03-23T03:10:00.000Z',
         focus: 'type:hoa-sinh',
-        timelineRows: timelineRows as never,
+        timelineRows,
         displayedRows: tatHoaSinhRows,
-      }),
+      } satisfies TatSourceProvenanceInput),
       buildAbnormalSourceProvenance({
         asOfDate: '2026-03-23',
         generatedAt: '2026-03-23T03:10:00.000Z',
@@ -466,13 +541,14 @@ describe('lab dashboard source provenance builders', () => {
         generatedAt: '2026-03-23T03:10:00.000Z',
         snapshotDate: '2026-03-23',
         focus: 'all',
-        positiveSnapshotRows: positiveSnapshotRows as never,
-        labScopedRows: labScopedSnapshotRows as never,
-        matchedRows: matchedSnapshotRows as never,
+        positiveSnapshotRows,
+        labScopedRows: labScopedSnapshotRows,
+        matchedRows: matchedSnapshotRows,
         claimedRows: claimedReagentRows,
         displayedRows: claimedReagentRows,
         claimOrder: ['glucose', 'creatinine', 'urine'],
-      }),
+        claimOrderDisplayLabels: ['Glucose ưu tiên', 'Creatinine', 'Nước tiểu'],
+      } satisfies ReagentSourceProvenanceInput),
     ];
 
     for (const output of outputs) {
