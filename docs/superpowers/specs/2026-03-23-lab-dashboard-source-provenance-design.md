@@ -109,6 +109,76 @@ Notes:
 - `datasets`, `pipeline`, `focusReason`, and `metricExplanation` are primary fields for the new UI.
 - All strings should be operator-friendly Vietnamese labels first.
 
+### Example Structured Payload
+
+Concrete example for `queue/waiting`:
+
+```json
+{
+  "key": "queue",
+  "label": "Hàng chờ xét nghiệm",
+  "source": "his",
+  "generatedAt": "2026-03-23T03:10:00.000Z",
+  "dataDate": "2026-03-23",
+  "error": null,
+  "calculationNotes": [
+    "Nguồn HIS cho hàng chờ xét nghiệm.",
+    "Chỉ giữ hồ sơ chưa có mốc xử lý và chưa có kết quả cuối."
+  ],
+  "summary": "Danh sách này lấy từ các hồ sơ xét nghiệm gốc của ngày đang xem, sau đó chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối.",
+  "displayedRowCount": 19,
+  "datasets": [
+    {
+      "key": "lab_root_orders",
+      "label": "Hồ sơ xét nghiệm gốc",
+      "role": "Làm tập hồ sơ đầu vào cho danh sách hàng chờ."
+    },
+    {
+      "key": "patient_codes",
+      "label": "Mã bệnh nhân",
+      "role": "Bổ sung mã bệnh nhân để hiển thị trong danh sách chi tiết."
+    }
+  ],
+  "pipeline": [
+    {
+      "key": "raw_day_orders",
+      "label": "Tập hồ sơ gốc trong ngày",
+      "ruleSummary": "Lấy các hồ sơ xét nghiệm gốc có ngày tiếp nhận thuộc ngày đang xem.",
+      "inputCount": 128,
+      "outputCount": 128
+    },
+    {
+      "key": "valid_requested_at",
+      "label": "Giữ hồ sơ có thời điểm tiếp nhận hợp lệ",
+      "ruleSummary": "Loại các hồ sơ thiếu hoặc có thời điểm tiếp nhận không hợp lệ.",
+      "inputCount": 128,
+      "outputCount": 121
+    },
+    {
+      "key": "derive_stage",
+      "label": "Suy ra trạng thái hồ sơ",
+      "ruleSummary": "Xác định hồ sơ chờ lấy mẫu, đang xử lý hoặc đã hoàn thành từ các mốc thời gian.",
+      "inputCount": 121,
+      "outputCount": 121
+    },
+    {
+      "key": "focus_waiting",
+      "label": "Lọc theo focus Chờ lấy mẫu",
+      "ruleSummary": "Chỉ giữ hồ sơ chưa có mốc xử lý và chưa có kết quả cuối.",
+      "inputCount": 121,
+      "outputCount": 19
+    }
+  ],
+  "focusReason": "Focus Chờ lấy mẫu chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối, nên 19 dòng cuối cùng chính là danh sách đang hiển thị.",
+  "metricExplanation": [
+    {
+      "label": "Điều kiện vào focus",
+      "description": "Hồ sơ phải chưa có mốc xử lý và chưa có kết quả cuối."
+    }
+  ]
+}
+```
+
 ## Provenance Semantics
 
 ### 1. `summary`
@@ -302,6 +372,11 @@ Examples:
 - For `all`: final rows are every claimed snapshot line contributing to the reagent summary
 - For `reagent:*`: final rows are only the lines claimed into the selected reagent bucket
 
+Claim-order note:
+
+- If one snapshot row can match multiple reagent keyword sets, the bridge must keep the current first-match claim order from the reagent configuration list.
+- Provenance and displayed rows must use the same claim order so `pipeline` counts, `focusReason`, and final rows do not drift.
+
 ## Bridge Implementation Notes
 
 The bridge should compute provenance from the same arrays and filters already used to derive the detail rows.
@@ -433,7 +508,7 @@ Add tests for the source-tab renderer so that:
   - verify funnel counts render
   - verify focus reason matches the opened focus
   - verify labels are operator-friendly
-  - compare summary layout against `to be intergrate/lab-dashboard.html`
+  - compare summary layout against `C:\Users\Minh\Desktop\ERP_v1\to be intergrate\lab-dashboard.html`
 
 ## Risks
 
