@@ -64,10 +64,10 @@
 
 ## Implementation Plan
 
-- [ ] Refresh the workflow files for the provenance follow-up.
-- [ ] Add additive bridge contract/types and provenance builder coverage.
-- [ ] Add the portal helper/types and source-tab rendering.
-- [ ] Run verification and record evidence.
+- [x] Refresh the workflow files for the provenance follow-up.
+- [x] Add additive bridge contract/types and provenance builder coverage.
+- [x] Add the portal helper/types and source-tab rendering.
+- [x] Run verification and record evidence.
 
 ## Verification Plan
 
@@ -79,18 +79,28 @@
 - Command or check 6: `cmd /c npm run build` at repo root
 - Command or check 7: Manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details` source tabs for queue, TAT, abnormal, and reagents
 
+## Verification Evidence
+
+- `cmd /c npx jest test/unit/labDashboardSourceProvenance.test.ts` in `fdc-lan-bridge`: passed, 8/8 tests covering queue, TAT, abnormal, reagent, canonical-label fallback, and no-`patientName` provenance strings.
+- `cmd /c npx jest test/integration/server.test.ts --runInBand` in `fdc-lan-bridge`: passed, 23/23 tests including the real `/lab-dashboard/details` route assertion and the fallback-path check that preserves fetched provenance when the TAT provenance builder throws.
+- `cmd /c npm test` in `fdc-lan-bridge`: passed, 12/12 suites and 49/49 tests.
+- `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+- `cmd /c npx tsx --test test\unit\labDashboardSourceDetails.test.ts`: passed, 3/3 tests for structured block ordering, legacy fallback, and error-preserving behavior.
+- `cmd /c npm run build` at repo root: passed, Vite production build completed successfully; the existing large-chunk warning remains.
+- Manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details`: not run in this session because no browser-driven verification step was available.
+
 ## Review Notes
 
 - Findings:
-  - None yet; this task only refreshes workflow tracking.
+  - Spec review initially found that the bridge route test still mocked the whole lab dashboard service and that detail-loader fallback paths discarded already-fetched provenance inputs. Both were fixed before closeout by keeping `getLabDashboardDetails` real in `server.test.ts` and reusing fetched rows in the error paths inside `service.ts`.
 - Residual risks:
-  - The provenance contract must stay additive until all portal consumers are updated.
+  - The provenance contract must stay additive until every portal consumer is on the new source-tab renderer.
   - Manual browser smoke is still required because source-tab UI changes can regress readability even when tests pass.
+  - The portal build still emits the pre-existing large-chunk warning for the main bundle; this change did not alter chunking strategy.
 
 ## Closeout
 
-- Final status: workflow setup pending implementation.
+- Final status: implementation complete and locally verified; manual browser smoke remains pending.
 - Follow-up tasks:
-  - Implement the bridge provenance contract and builder.
-  - Implement the portal helper and source-tab UI.
-  - Capture verification evidence in `tasks/todo.md` and this spec.
+  - Run manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details` for queue `waiting`, TAT `processing_to_result`, TAT `type:hoa-sinh`, abnormal `all`, reagents `all`, and reagents `reagent:glucose`.
+  - If the manual smoke exposes readability issues, adjust the new source-panel CSS rather than falling back to inline notes.

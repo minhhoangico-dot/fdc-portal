@@ -4,7 +4,7 @@
 
 - Task ID: `lab-dashboard-source-provenance`
 - Owner: `planner`
-- Status: `in_progress`
+- Status: `completed`
 - Spec: `tasks/active/2026-03-23-lab-dashboard-source-provenance.md`
 
 ## Operating Checklist
@@ -13,32 +13,39 @@
 - [x] Record assumptions, constraints, and affected areas
 - [x] Split work by role with non-overlapping write scopes
 - [x] Define the verification plan before implementation starts
-- [ ] Mark items complete as work lands
-- [ ] Record verification evidence before marking done
-- [ ] Add review notes or residual risks
-- [ ] Append a lesson after any user correction or preventable miss
+- [x] Mark items complete as work lands
+- [x] Record verification evidence before marking done
+- [x] Add review notes or residual risks
+- [x] Append a lesson after any user correction or preventable miss
 
 ## Work Breakdown
 
 - [x] Intake and scope
 - [x] Design or architecture decision
-- [ ] Implementation
-- [ ] Verification
-- [ ] Review
-- [ ] Lessons and closeout
+- [x] Implementation
+- [x] Verification
+- [x] Review
+- [x] Lessons and closeout
 
 ## 2026-03-23 Lab Dashboard Source Provenance
 
 - Scope: add structured, operator-friendly provenance to the lab dashboard source tab on both the bridge detail API and the portal UI.
 - Checklist:
   - [x] Refresh the workflow files for the provenance follow-up
-  - [ ] Bridge contract/types
-  - [ ] Bridge provenance builder
-  - [ ] Portal type/helper
-  - [ ] Source-tab UI
-  - [ ] Verification evidence
+  - [x] Bridge contract/types
+  - [x] Bridge provenance builder
+  - [x] Portal type/helper
+  - [x] Source-tab UI
+  - [x] Verification evidence
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardSourceProvenance.test.ts` in `fdc-lan-bridge`: passed, 8/8 tests covering queue, TAT, abnormal, reagent, canonical-label fallback, and no-`patientName` provenance strings.
+  - `cmd /c npx jest test/integration/server.test.ts --runInBand` in `fdc-lan-bridge`: passed, 23/23 tests including the real `/lab-dashboard/details` route assertion and the fallback-path check that preserves fetched provenance when the TAT provenance builder throws.
+  - `cmd /c npm test` in `fdc-lan-bridge`: passed, 12/12 suites and 49/49 tests.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npx tsx --test test\unit\labDashboardSourceDetails.test.ts`: passed, 3/3 tests for structured block ordering, legacy fallback, and error-preserving behavior.
+  - `cmd /c npm run build` at repo root: passed, Vite production build completed successfully; the existing large-chunk warning remains.
 - Residual risk:
-  - Manual browser smoke is required because provenance readability is UI-sensitive and the contract must remain additive during rollout.
+  - Manual browser smoke is still required because provenance readability is UI-sensitive and this session did not include a browser-driven check for `/lab-dashboard/tv` or `/lab-dashboard/details`.
 
 ## 2026-03-23 Lab Dashboard Detail Scroll Export
 
