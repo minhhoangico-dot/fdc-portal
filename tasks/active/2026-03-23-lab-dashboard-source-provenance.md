@@ -57,7 +57,8 @@
 
 - planner: Own `tasks/todo.md` and this spec; keep the workflow state current and maintain the acceptance criteria.
 - bridge-worker: Own `fdc-lan-bridge/src/labDashboard/**` and `fdc-lan-bridge/test/**`; add the additive bridge contract, provenance builder, and bridge tests.
-- portal-worker: Own `src/types/labDashboard.ts`, `src/lib/labDashboardSourceDetails.ts`, `src/components/lab-dashboard/LabDashboardSourcePanel.tsx`, `src/components/lab-dashboard/LabDashboardDetailScreen.tsx`, and `src/app/lab-dashboard/lab-dashboard.css`; add the portal helper and source-tab UI.
+- data-worker: Own `src/types/labDashboard.ts`; keep the shared detail contract aligned with the bridge types.
+- portal-worker: Own `src/lib/labDashboardSourceDetails.ts`, `src/components/lab-dashboard/LabDashboardSourcePanel.tsx`, `src/components/lab-dashboard/LabDashboardDetailScreen.tsx`, and `src/app/lab-dashboard/lab-dashboard.css`; add the portal helper and source-tab UI.
 - verifier: Own `tasks/handoffs/**`; record verification evidence and any blockers without changing feature code.
 - reviewer: Own `tasks/lessons.md`; capture any correction-driven lesson without changing feature code.
 
