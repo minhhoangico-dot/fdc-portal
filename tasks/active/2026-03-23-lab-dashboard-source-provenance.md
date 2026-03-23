@@ -71,8 +71,9 @@
 
 - Command or check 1: `cmd /c npm test` in `fdc-lan-bridge`
 - Command or check 2: `cmd /c npm run build` in `fdc-lan-bridge`
-- Command or check 3: `cmd /c npm run build` at repo root
-- Command or check 4: Manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details` source tabs for queue, TAT, abnormal, and reagents
+- Command or check 3: `cmd /c npx tsx --test test\unit\labDashboardSourceDetails.test.ts`
+- Command or check 4: `cmd /c npm run build` at repo root
+- Command or check 5: Manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details` source tabs for queue, TAT, abnormal, and reagents
 
 ## Review Notes
 

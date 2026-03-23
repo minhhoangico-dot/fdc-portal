@@ -31,12 +31,12 @@
 
 - Scope: add structured, operator-friendly provenance to the lab dashboard source tab on both the bridge detail API and the portal UI.
 - Checklist:
-  - [ ] Refresh the workflow files for the provenance follow-up
-  - [ ] Add bridge contract/types and provenance builder coverage
-  - [ ] Add portal helper/types and source-tab UI
-  - [ ] Run bridge, portal, and manual-smoke verification
-- Verification evidence:
-  - Pending.
+  - [x] Refresh the workflow files for the provenance follow-up
+  - [ ] Bridge contract/types
+  - [ ] Bridge provenance builder
+  - [ ] Portal type/helper
+  - [ ] Source-tab UI
+  - [ ] Verification evidence
 - Residual risk:
   - Manual browser smoke is required because provenance readability is UI-sensitive and the contract must remain additive during rollout.
 
