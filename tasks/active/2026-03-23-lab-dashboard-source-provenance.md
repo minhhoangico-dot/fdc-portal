@@ -55,10 +55,11 @@
 
 ## Role Split
 
-- Planner: Keep scope additive, preserve backward compatibility, and document verification expectations.
-- Implementer: Add bridge provenance builders, portal source helper/types, and source-tab rendering.
-- Verifier: Run bridge tests/build, portal tests/build, and manual smoke on `/lab-dashboard/tv`.
-- Reviewer: Check that provenance is truthful, operator-friendly, and free of `patientName`.
+- planner: Own `tasks/todo.md` and this spec; keep the workflow state current and maintain the acceptance criteria.
+- bridge-worker: Own `fdc-lan-bridge/src/labDashboard/**` and `fdc-lan-bridge/test/**`; add the additive bridge contract, provenance builder, and bridge tests.
+- portal-worker: Own `src/types/labDashboard.ts`, `src/lib/labDashboardSourceDetails.ts`, `src/components/lab-dashboard/LabDashboardSourcePanel.tsx`, `src/components/lab-dashboard/LabDashboardDetailScreen.tsx`, and `src/app/lab-dashboard/lab-dashboard.css`; add the portal helper and source-tab UI.
+- verifier: Own `tasks/handoffs/**`; record verification evidence and any blockers without changing feature code.
+- reviewer: Own `tasks/lessons.md`; capture any correction-driven lesson without changing feature code.
 
 ## Implementation Plan
 
@@ -69,11 +70,13 @@
 
 ## Verification Plan
 
-- Command or check 1: `cmd /c npm test` in `fdc-lan-bridge`
-- Command or check 2: `cmd /c npm run build` in `fdc-lan-bridge`
-- Command or check 3: `cmd /c npx tsx --test test\unit\labDashboardSourceDetails.test.ts`
-- Command or check 4: `cmd /c npm run build` at repo root
-- Command or check 5: Manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details` source tabs for queue, TAT, abnormal, and reagents
+- Command or check 1: `cmd /c npx jest test/unit/labDashboardSourceProvenance.test.ts`
+- Command or check 2: `cmd /c npx jest test/integration/server.test.ts`
+- Command or check 3: `cmd /c npm test` in `fdc-lan-bridge`
+- Command or check 4: `cmd /c npm run build` in `fdc-lan-bridge`
+- Command or check 5: `cmd /c npx tsx --test test\unit\labDashboardSourceDetails.test.ts`
+- Command or check 6: `cmd /c npm run build` at repo root
+- Command or check 7: Manual smoke on `/lab-dashboard/tv` and `/lab-dashboard/details` source tabs for queue, TAT, abnormal, and reagents
 
 ## Review Notes
 

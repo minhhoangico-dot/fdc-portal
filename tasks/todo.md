@@ -3,7 +3,7 @@
 ## Current Task
 
 - Task ID: `lab-dashboard-source-provenance`
-- Owner: `implementer`
+- Owner: `planner`
 - Status: `in_progress`
 - Spec: `tasks/active/2026-03-23-lab-dashboard-source-provenance.md`
 
@@ -13,18 +13,18 @@
 - [x] Record assumptions, constraints, and affected areas
 - [x] Split work by role with non-overlapping write scopes
 - [x] Define the verification plan before implementation starts
-- [x] Mark items complete as work lands
-- [x] Record verification evidence before marking done
-- [x] Add review notes or residual risks
-- [x] Append a lesson after any user correction or preventable miss
+- [ ] Mark items complete as work lands
+- [ ] Record verification evidence before marking done
+- [ ] Add review notes or residual risks
+- [ ] Append a lesson after any user correction or preventable miss
 
 ## Work Breakdown
 
 - [x] Intake and scope
 - [x] Design or architecture decision
-- [x] Implementation
-- [x] Verification
-- [x] Review
+- [ ] Implementation
+- [ ] Verification
+- [ ] Review
 - [ ] Lessons and closeout
 
 ## 2026-03-23 Lab Dashboard Source Provenance
