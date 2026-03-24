@@ -9,3 +9,4 @@ coverage/
 
 # Orphaned checkout — do not commit
 fdc-portal/
+.worktrees/
