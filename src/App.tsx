@@ -14,7 +14,9 @@ import LabDashboardTvPage from '@/app/lab-dashboard/tv/page';
 import LoginPage from '@/app/login/page';
 import PharmacyPage from '@/app/pharmacy/page';
 import PortalPage from '@/app/portal/page';
+import RoomManagementMaintenancePage from '@/app/room-management/maintenance/page';
 import RoomManagementPage from '@/app/room-management/page';
+import RoomManagementMaterialsPrintPage from '@/app/room-management/print/materials/page';
 import RequestDetailPage from '@/app/requests/[id]/page';
 import CreateRequestPage from '@/app/requests/create/page';
 import RequestsPage from '@/app/requests/page';
@@ -31,6 +33,7 @@ import { RequireAuth } from '@/components/auth/RequireAuth';
 import { TvAccessGate } from '@/components/auth/TvAccessGate';
 import { AppShell } from '@/components/layout/AppShell';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { RoomManagementProvider } from '@/contexts/RoomManagementContext';
 import { RoleCatalogProvider } from '@/contexts/RoleCatalogContext';
 
 export default function App() {
@@ -166,13 +169,22 @@ export default function App() {
                 }
               />
               <Route
-                path="/room-management"
                 element={
                   <RequireAuth moduleKey="room_management">
-                    <RoomManagementPage />
+                    <RoomManagementProvider />
                   </RequireAuth>
                 }
-              />
+              >
+                <Route path="/room-management" element={<RoomManagementPage />} />
+                <Route
+                  path="/room-management/maintenance"
+                  element={<RoomManagementMaintenancePage />}
+                />
+                <Route
+                  path="/room-management/print/materials"
+                  element={<RoomManagementMaterialsPrintPage />}
+                />
+              </Route>
               <Route
                 path="/weekly-report"
                 element={<WeeklyReportPage />}

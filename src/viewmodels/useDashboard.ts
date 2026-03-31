@@ -1,20 +1,31 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import { Calendar, CheckCircle, Clock, FileText, MapPinned, Package, RefreshCw, Settings, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRequests } from '@/viewmodels/useRequests';
-import { useApprovals } from '@/viewmodels/useApprovals';
-import { useInventory } from '@/viewmodels/useInventory';
-import { useAttendance } from '@/viewmodels/useAttendance';
-import { useAdmin } from '@/viewmodels/useAdmin';
-import { APPROVER_ROLES, INVENTORY_ACCESS_ROLES } from '@/lib/role-access';
+import { can, canAccessModule } from '@/lib/permissions/access';
 import { formatDate } from '@/lib/utils';
-import { RequestType } from '@/types/request';
-import { FileText, Calendar, Clock, CheckCircle, Package, Settings, RefreshCw, Users } from 'lucide-react';
+import { useAdmin } from '@/viewmodels/useAdmin';
+import { useApprovals } from '@/viewmodels/useApprovals';
+import { useAttendance } from '@/viewmodels/useAttendance';
+import { useInventory } from '@/viewmodels/useInventory';
+import { useRequests } from '@/viewmodels/useRequests';
+import type { RequestType } from '@/types/request';
 
 export function useDashboard() {
   const { user } = useAuth();
   const { requests: visibleRequests } = useRequests();
-  const approvalEnabled = Boolean(user && APPROVER_ROLES.includes(user.role));
-  const inventoryEnabled = Boolean(user && INVENTORY_ACCESS_ROLES.includes(user.role));
-  const adminEnabled = user?.role === 'super_admin' || user?.role === 'director' || user?.role === 'chairman';
+
+  const approvalEnabled = Boolean(
+    user &&
+      (can(user.role, 'approvals.review_assigned') ||
+        can(user.role, 'approvals.receive_handoff') ||
+        can(user.role, 'room_management.review_group_queue')),
+  );
+  const inventoryEnabled = Boolean(user && canAccessModule(user.role, 'inventory'));
+  const adminEnabled = Boolean(user && canAccessModule(user.role, 'admin'));
   const adminPreload: Array<'users' | 'approval' | 'misa' | 'sync' | 'audit'> =
     user?.role === 'super_admin'
       ? ['sync']
@@ -65,42 +76,80 @@ export function useDashboard() {
         )
       : 0;
 
-  let quickActions = [
-    { label: 'Tạo đề nghị', icon: FileText, path: '/requests', color: 'bg-blue-100 text-blue-700' },
-    { label: 'Xin nghỉ phép', icon: Calendar, path: '/requests', color: 'bg-emerald-100 text-emerald-700' },
-    { label: 'Chấm công tháng', icon: Clock, path: '/portal', color: 'bg-purple-100 text-purple-700' },
-  ];
+  const quickActions = [
+    {
+      label: 'Tao de nghi',
+      icon: FileText,
+      path: '/requests',
+      color: 'bg-blue-100 text-blue-700',
+      visible: can(user.role, 'requests.create'),
+    },
+    {
+      label: 'Xin nghi phep',
+      icon: Calendar,
+      path: '/requests',
+      color: 'bg-emerald-100 text-emerald-700',
+      visible: can(user.role, 'requests.create'),
+    },
+    {
+      label: 'Cham cong thang',
+      icon: Clock,
+      path: '/portal',
+      color: 'bg-purple-100 text-purple-700',
+      visible: canAccessModule(user.role, 'portal'),
+    },
+    {
+      label: 'Cong viec duyet',
+      icon: CheckCircle,
+      path: '/approvals',
+      color: 'bg-amber-100 text-amber-700',
+      visible: approvalEnabled,
+    },
+    {
+      label: 'Room Management',
+      icon: MapPinned,
+      path: '/room-management',
+      color: 'bg-cyan-100 text-cyan-700',
+      visible: canAccessModule(user.role, 'room_management'),
+    },
+    {
+      label: 'Quan ly kho',
+      icon: Package,
+      path: '/inventory',
+      color: 'bg-indigo-100 text-indigo-700',
+      visible: inventoryEnabled,
+    },
+    {
+      label: 'Cau hinh',
+      icon: Settings,
+      path: '/admin',
+      color: 'bg-slate-100 text-slate-700',
+      visible: adminEnabled,
+    },
+    {
+      label: 'Dong bo thu cong',
+      icon: RefreshCw,
+      path: '/admin',
+      color: 'bg-cyan-100 text-cyan-700',
+      visible: user.role === 'super_admin',
+    },
+    {
+      label: 'Tong quan nhan su',
+      icon: Users,
+      path: '/portal',
+      color: 'bg-rose-100 text-rose-700',
+      visible: user.role === 'director' || user.role === 'chairman',
+    },
+  ].filter((action) => action.visible);
 
-  if (user.role === 'dept_head') {
-    quickActions.push(
-      { label: 'Duyệt đề nghị', icon: CheckCircle, path: '/approvals', color: 'bg-amber-100 text-amber-700' },
-      { label: 'Xuất vật tư', icon: Package, path: '/inventory', color: 'bg-indigo-100 text-indigo-700' }
-    );
-  } else if (user.role === 'head_nurse') {
-    quickActions.push(
-      { label: 'Duyệt đề nghị', icon: CheckCircle, path: '/approvals', color: 'bg-amber-100 text-amber-700' },
-      { label: 'Quản lý kho', icon: Package, path: '/inventory', color: 'bg-indigo-100 text-indigo-700' }
-    );
-  } else if (user.role === 'super_admin' || user.role === 'accountant') {
-    quickActions.push(
-      { label: 'Duyệt đề nghị', icon: CheckCircle, path: '/approvals', color: 'bg-amber-100 text-amber-700' },
-      { label: 'Quản lý kho', icon: Package, path: '/inventory', color: 'bg-indigo-100 text-indigo-700' },
-      { label: 'Cấu hình', icon: Settings, path: '/admin', color: 'bg-slate-100 text-slate-700' },
-      { label: 'Đồng bộ thủ công', icon: RefreshCw, path: '/admin', color: 'bg-cyan-100 text-cyan-700' }
-    );
-  } else if (user.role === 'director' || user.role === 'chairman') {
-    quickActions.push(
-      { label: 'Duyệt đề nghị', icon: CheckCircle, path: '/approvals', color: 'bg-amber-100 text-amber-700' },
-      { label: 'Tổng quan nhân sự', icon: Users, path: '/portal', color: 'bg-rose-100 text-rose-700' }
-    );
-  }
-
-  const recentActivity = [...myRequests].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5);
+  const recentActivity = [...myRequests]
+    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .slice(0, 5);
 
   const myRequestsSummary = {
-    pending: myRequests.filter(r => r.status === 'pending' || r.status === 'escalated').length,
-    approved: myRequests.filter(r => r.status === 'approved' || r.status === 'completed').length,
-    rejected: myRequests.filter(r => r.status === 'rejected' || r.status === 'cancelled').length,
+    pending: myRequests.filter((request) => request.status === 'pending' || request.status === 'escalated').length,
+    approved: myRequests.filter((request) => request.status === 'approved' || request.status === 'completed').length,
+    rejected: myRequests.filter((request) => request.status === 'rejected' || request.status === 'cancelled').length,
   };
 
   const data: any = {
@@ -113,18 +162,17 @@ export function useDashboard() {
   };
 
   if (user.role === 'dept_head') {
-    data.deptPendingApprovals = pendingApprovals.filter(r => r.department === user.department);
+    data.deptPendingApprovals = pendingApprovals.filter((request) => request.department === user.department);
   }
 
   if (user.role === 'super_admin' || user.role === 'head_nurse') {
-    const systemPendingByType = pendingApprovals.reduce((acc, req) => {
-      acc[req.type] = (acc[req.type] || 0) + 1;
+    const systemPendingByType = pendingApprovals.reduce((acc, request) => {
+      acc[request.type] = (acc[request.type] || 0) + 1;
       return acc;
     }, {} as Record<RequestType, number>);
 
     data.systemPendingByType = systemPendingByType;
-    data.anomalyCount = anomalies.filter(a => !a.acknowledged).length;
-
+    data.anomalyCount = anomalies.filter((item) => !item.acknowledged).length;
     data.stats = {
       totalRequests: systemRequestsThisMonth.length,
       approvalRate:
@@ -139,7 +187,11 @@ export function useDashboard() {
 
       const misaSyncRuns = syncHistory
         .filter((sync) => sync.type === 'scanMisaPhieuchi' && sync.status === 'success')
-        .sort((a, b) => new Date(b.completedAt || b.startedAt).getTime() - new Date(a.completedAt || a.startedAt).getTime());
+        .sort(
+          (left, right) =>
+            new Date(right.completedAt || right.startedAt).getTime() -
+            new Date(left.completedAt || left.startedAt).getTime(),
+        );
       const lastMisaSync = misaSyncRuns[0];
       data.misaSyncStatus = {
         lastSync: lastMisaSync?.completedAt || null,
@@ -151,9 +203,9 @@ export function useDashboard() {
   if (user.role === 'director' || user.role === 'chairman') {
     data.directorPendingRequests = pendingApprovals;
 
-    const deptStaffCounts = users.reduce((acc, u) => {
-      if (u.department) {
-        acc[u.department] = (acc[u.department] || 0) + 1;
+    const deptStaffCounts = users.reduce((acc, currentUser) => {
+      if (currentUser.department) {
+        acc[currentUser.department] = (acc[currentUser.department] || 0) + 1;
       }
       return acc;
     }, {} as Record<string, number>);

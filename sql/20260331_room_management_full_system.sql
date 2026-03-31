@@ -219,7 +219,10 @@ CREATE TABLE IF NOT EXISTS public.fdc_room_catalog (
 
 CREATE TABLE IF NOT EXISTS public.fdc_room_intakes (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  room_id UUID NOT NULL REFERENCES public.fdc_room_catalog(id) ON DELETE RESTRICT,
+  room_key TEXT NOT NULL,
+  room_code TEXT NOT NULL,
+  room_name TEXT NOT NULL,
+  floor INTEGER NOT NULL CHECK (floor IN (1, 2, 3)),
   requester_id UUID NOT NULL REFERENCES public.fdc_user_mapping(id) ON DELETE RESTRICT,
   intake_type TEXT NOT NULL CHECK (intake_type IN ('material', 'maintenance')),
   title TEXT NOT NULL,

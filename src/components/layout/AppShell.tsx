@@ -1,18 +1,23 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { can } from '@/lib/permissions/access';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
-import { APPROVER_ROLES } from '@/lib/role-access';
 import { useApprovals } from '@/viewmodels/useApprovals';
 
 export function AppShell() {
   const { user } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const approvalEnabled = Boolean(user && APPROVER_ROLES.includes(user.role));
-  const { pendingApprovals } = useApprovals({ enabled: approvalEnabled });
-  const pendingCount = pendingApprovals.length;
+  const approvalEnabled = Boolean(
+    user &&
+      (can(user.role, 'approvals.review_assigned') ||
+        can(user.role, 'approvals.receive_handoff') ||
+        can(user.role, 'room_management.review_group_queue')),
+  );
+  const { approvalWorkQueue } = useApprovals({ enabled: approvalEnabled });
+  const pendingCount = approvalWorkQueue.totalCount;
   const shellStyle = { ['--sidebar-width' as any]: '16rem' } as React.CSSProperties;
 
   if (!user) {

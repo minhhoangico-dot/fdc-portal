@@ -64,27 +64,29 @@
 - [x] Explore the existing room-management, requests, approvals, and role infrastructure.
 - [x] Confirm the user-approved workflow and permission constraints.
 - [x] Write the full-system design spec.
-- [ ] Review and refine the written spec with the user.
-- [ ] Create the detailed implementation plan after spec approval.
-- [ ] Implement the permission matrix, role expansion, room workflow backend, and workflow-integrated UI.
+- [x] Review and refine the written spec with the user.
+- [x] Create the detailed implementation plan after spec approval.
+- [x] Implement the permission matrix, role expansion, room workflow backend, and workflow-integrated UI.
 - [ ] Verify and roll out the completed module safely.
 
 ## Verification Plan
 
-- Command or check 1: design walkthrough against `src/lib/navigation.ts`, `src/lib/role-access.ts`, `src/viewmodels/useRequests.ts`, `src/viewmodels/useApprovals.ts`, and the current Room Management routes to ensure the spec matches the actual architecture.
-- Command or check 2: manual review of the written spec for coverage of roles, permissions, workflow semantics, SQL/RLS, migration, and verification scope.
-- Command or check 3: user review of the spec before implementation planning begins.
+- Command or check 1: `cmd /c npm run build`
+- Command or check 2: `cmd /c npx tsx --test test\unit\permissionMatrix.test.ts test\unit\navigation.test.ts test\unit\approvalsQueue.test.ts test\unit\roomWorkflowRouting.test.ts test\unit\roomWorkflowHelpers.test.ts test\unit\roomWorkflowState.test.ts test\unit\roomCatalog.test.ts test\unit\roomSummary.test.ts test\unit\roomMaintenance.test.ts test\unit\roomPrint.test.ts test\unit\roomState.test.ts`
+- Command or check 3: `cmd /c npm run lint` for repo-wide typecheck awareness, expecting unrelated legacy failures outside the room-workflow slice.
 
 ## Review Notes
 
 - Findings:
-  - Completing Room Management now requires a portal-wide authorization redesign, not just backend persistence for one module.
-  - The room workflow must distinguish between approval decisions and downstream handoff work; forcing both into approval steps would produce the wrong behavior.
+  - Room Management now persists raw intakes in `fdc_room_intakes`, routes reviewer work by room review group, and uses `/requests` plus `/approvals` as the formal workflow surfaces.
+  - Material consolidation now creates approved purchase requests with automatic downstream handoffs, while maintenance promotion creates a real `chief_accountant` approval gate with manual forward choice in request detail.
 - Residual risks:
-  - Many modules still use inline role checks, so the implementation plan must include systematic replacement rather than selective patching.
+  - SQL migration and Supabase RLS are written but not applied or smoke-tested against production users in this session.
+  - `npm run lint` still fails on unrelated legacy areas in `fdc-lan-bridge`, `supabase/functions`, `to be intergrate/`, and existing tests; the focused room-workflow/build checks pass.
 
 ## Closeout
 
-- Final status: spec written, awaiting user review before implementation planning
+- Final status: implementation complete locally and verified with build + focused tests; rollout and production smoke are still pending
 - Follow-up tasks:
-  - Convert the approved design into an execution plan with rollout phases and verification gates.
+  - Apply `sql/20260331_room_management_full_system.sql` to Supabase and verify the new roles, room tables, and RLS policies.
+  - Deploy the updated portal build and run end-to-end browser smoke for reviewer, chief accountant, internal accountant, and hr records flows.

@@ -1,4 +1,11 @@
-import { Request, RequestAttachment, RequestLineItem, RequestMetadata, RequestType } from '@/types/request';
+import {
+  Request,
+  RequestAttachment,
+  RequestHandoff,
+  RequestLineItem,
+  RequestMetadata,
+  RequestType,
+} from '@/types/request';
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
 const ISO_DATE_PATTERN = /\d{4}-\d{2}-\d{2}/g;
@@ -127,6 +134,21 @@ export const mapRequestAttachment = (attachment: any): RequestAttachment => ({
   uploadedAt: attachment.uploaded_at || attachment.created_at,
 });
 
+export const mapRequestHandoff = (handoff: any): RequestHandoff => ({
+  id: handoff.id,
+  requestId: handoff.request_id,
+  sourceStepId: handoff.source_step_id || undefined,
+  assigneeId: handoff.assignee_id,
+  assigneeRole: handoff.assignee_role,
+  assigneeName: handoff.assignee?.full_name || null,
+  assignedById: handoff.assigned_by || undefined,
+  assignedByName: handoff.assignedBy?.full_name || null,
+  status: handoff.status,
+  note: handoff.note || undefined,
+  createdAt: handoff.created_at,
+  updatedAt: handoff.updated_at || handoff.created_at,
+});
+
 export const mapRequestRecord = (dbReq: any): Request => ({
   id: dbReq.id,
   requestNumber: dbReq.request_number,
@@ -157,4 +179,5 @@ export const mapRequestRecord = (dbReq: any): Request => ({
     approverAvatar: step.approver?.avatar_url || null,
   })),
   attachments: (dbReq.attachments || []).map(mapRequestAttachment),
+  handoffs: (dbReq.handoffs || []).map(mapRequestHandoff),
 });

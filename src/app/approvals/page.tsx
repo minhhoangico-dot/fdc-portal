@@ -1,83 +1,151 @@
-import React, { useState } from 'react';
-import { useApprovals } from '@/viewmodels/useApprovals';
-import { useAuth } from '@/contexts/AuthContext';
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Check,
-  Clock,
   AlertTriangle,
+  Check,
+  ChevronRight,
+  Clock,
   FileText,
-  Package,
-  DollarSign,
-  CreditCard,
-  Calendar,
-  RefreshCw,
   Filter,
   Layers,
   List as ListIcon,
-  ChevronRight,
-  User
+  Package,
+  RefreshCw,
+  User,
+  Wrench,
 } from 'lucide-react';
-import { formatVND, cn } from '@/lib/utils';
-import { PriorityBadge } from '@/components/shared/Badges';
-import { EmptyState } from '@/components/shared/EmptyState';
+import { useApprovals } from '@/viewmodels/useApprovals';
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog';
-import { RequestType, Request } from '@/types/request';
+import { EmptyState } from '@/components/shared/EmptyState';
+import { PriorityBadge } from '@/components/shared/Badges';
 import { REQUEST_TYPES } from '@/lib/constants';
+import { requiresManualForwardChoice } from '@/lib/approvals/workqueue';
+import { formatVND, cn } from '@/lib/utils';
+import type { Request, RequestType } from '@/types/request';
 
 const TYPE_ICONS: Record<RequestType, any> = {
   material_release: Package,
-  purchase: DollarSign,
-  payment: CreditCard,
-  advance: DollarSign,
-  leave: Calendar,
-  other: FileText,
+  purchase: Package,
+  payment: FileText,
+  advance: FileText,
+  leave: FileText,
+  other: Wrench,
 };
 
+const HANDOFF_STATUS_LABELS = {
+  pending: 'Cho tiep nhan',
+  received: 'Dang xu ly',
+  completed: 'Hoan thanh',
+  cancelled: 'Da huy',
+} as const;
+
 export default function ApprovalsPage() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const {
     regularApprovals,
     kttEscalationCandidates,
+    reviewerQueue,
+    assignedHandoffs,
     countsByType,
     countsByUrgency,
     isLoading,
     isRefreshing,
     refresh,
     approveRequest,
-    batchApprove
+    batchApprove,
+    consolidateMaterialIntakes,
+    promoteMaintenanceIntake,
+    updateHandoffStatus,
   } = useApprovals();
 
   const [viewMode, setViewMode] = useState<'list' | 'grouped'>('list');
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectedApprovalIds, setSelectedApprovalIds] = useState<Set<string>>(new Set());
+  const [selectedReviewIds, setSelectedReviewIds] = useState<Set<string>>(new Set());
   const [confirmDialog, setConfirmDialog] = useState<{ isOpen: boolean; type: 'single' | 'batch'; id?: string } | null>(null);
+  const [reviewActionError, setReviewActionError] = useState('');
+  const [isSubmittingReviewAction, setIsSubmittingReviewAction] = useState(false);
 
-  const totalPending = regularApprovals.length + kttEscalationCandidates.length;
+  const approvalQueue = [...kttEscalationCandidates, ...regularApprovals];
+  const quickApproveEligible = approvalQueue.filter((request) => !requiresManualForwardChoice(request));
+  const reviewerMaterialSelection = reviewerQueue.filter((intake) => selectedReviewIds.has(intake.id));
+  const materialSelectionIsCompatible = useMemo(() => {
+    if (reviewerMaterialSelection.length === 0) return false;
+    const firstGroup = reviewerMaterialSelection[0].reviewGroup;
+    return reviewerMaterialSelection.every(
+      (intake) => intake.intakeType === 'material' && intake.reviewGroup === firstGroup,
+    );
+  }, [reviewerMaterialSelection]);
 
-  const handleToggleSelect = (id: string) => {
-    const newSet = new Set(selectedIds);
-    if (newSet.has(id)) newSet.delete(id);
-    else newSet.add(id);
-    setSelectedIds(newSet);
+  const totalPending =
+    approvalQueue.length + reviewerQueue.length + assignedHandoffs.length;
+
+  const handleToggleApprovalSelect = (id: string) => {
+    const next = new Set(selectedApprovalIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedApprovalIds(next);
   };
 
-  const handleSelectAll = (requests: Request[]) => {
-    if (selectedIds.size === requests.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(requests.map(r => r.id)));
+  const handleToggleReviewSelect = (id: string) => {
+    const next = new Set(selectedReviewIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedReviewIds(next);
+  };
+
+  const handleSelectAllApprovals = () => {
+    if (selectedApprovalIds.size === quickApproveEligible.length) {
+      setSelectedApprovalIds(new Set());
+      return;
     }
+
+    setSelectedApprovalIds(new Set(quickApproveEligible.map((request) => request.id)));
   };
 
   const confirmApprove = async () => {
     if (confirmDialog?.type === 'single' && confirmDialog.id) {
       await approveRequest(confirmDialog.id);
     } else if (confirmDialog?.type === 'batch') {
-      await batchApprove(Array.from(selectedIds));
-      setSelectedIds(new Set());
+      await batchApprove(Array.from(selectedApprovalIds));
+      setSelectedApprovalIds(new Set());
     }
+
     setConfirmDialog(null);
+  };
+
+  const handleConsolidateMaterials = async () => {
+    if (!materialSelectionIsCompatible) {
+      setReviewActionError('Can chon cac intake vat tu cung mot nhom review de tong hop.');
+      return;
+    }
+
+    setReviewActionError('');
+    setIsSubmittingReviewAction(true);
+    try {
+      await consolidateMaterialIntakes(Array.from(selectedReviewIds));
+      setSelectedReviewIds(new Set());
+    } catch (error) {
+      setReviewActionError(error instanceof Error ? error.message : 'Khong the tong hop vat tu.');
+    } finally {
+      setIsSubmittingReviewAction(false);
+    }
+  };
+
+  const handlePromoteMaintenance = async (intakeId: string) => {
+    setReviewActionError('');
+    setIsSubmittingReviewAction(true);
+    try {
+      await promoteMaintenanceIntake(intakeId);
+    } catch (error) {
+      setReviewActionError(error instanceof Error ? error.message : 'Khong the tao de nghi bao tri.');
+    } finally {
+      setIsSubmittingReviewAction(false);
+    }
   };
 
   const getUrgencyInfo = (createdAt: string) => {
@@ -86,96 +154,112 @@ export default function ApprovalsPage() {
     const hoursWaiting = (now - createdTime) / (1000 * 60 * 60);
 
     if (hoursWaiting > 48) {
-      return { level: 'critical', text: `Chờ ${Math.floor(hoursWaiting / 24)} ngày`, color: 'text-red-600 bg-red-50 border-red-200' };
+      return {
+        text: `Cho ${Math.floor(hoursWaiting / 24)} ngay`,
+        color: 'text-red-600 bg-red-50 border-red-200',
+      };
     }
     if (hoursWaiting > 24) {
-      return { level: 'warning', text: `Chờ ${Math.floor(hoursWaiting / 24)} ngày`, color: 'text-orange-600 bg-orange-50 border-orange-200' };
+      return {
+        text: `Cho ${Math.floor(hoursWaiting / 24)} ngay`,
+        color: 'text-orange-600 bg-orange-50 border-orange-200',
+      };
     }
-    return { level: 'normal', text: `Chờ ${Math.floor(hoursWaiting)} giờ`, color: 'text-gray-600 bg-gray-50 border-gray-200' };
+
+    return {
+      text: `Cho ${Math.floor(hoursWaiting)} gio`,
+      color: 'text-gray-600 bg-gray-50 border-gray-200',
+    };
   };
 
-  const renderRequestCard = (req: Request, isEscalation = false) => {
-    const Icon = TYPE_ICONS[req.type] || FileText;
-    const urgency = getUrgencyInfo(req.createdAt);
-    const isSelected = selectedIds.has(req.id);
+  const renderApprovalCard = (request: Request, isEscalation = false) => {
+    const Icon = TYPE_ICONS[request.type] || FileText;
+    const urgency = getUrgencyInfo(request.createdAt);
+    const isSelected = selectedApprovalIds.has(request.id);
+    const needsDetail = requiresManualForwardChoice(request);
 
     return (
       <div
-        key={req.id}
+        key={request.id}
         className={cn(
-          "bg-white rounded-xl border p-4 transition-all flex flex-col sm:flex-row gap-4 sm:items-center relative",
-          isSelected ? "border-indigo-500 ring-1 ring-indigo-500" : "border-gray-200 hover:border-indigo-300",
-          isEscalation ? "bg-orange-50/30 border-orange-200" : ""
+          'bg-white rounded-xl border p-4 transition-all flex flex-col sm:flex-row gap-4 sm:items-center relative',
+          isSelected ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-indigo-300',
+          isEscalation ? 'bg-orange-50/40 border-orange-200' : '',
         )}
       >
-        {/* Checkbox for batch select */}
-        <div className="absolute top-4 left-4 sm:static sm:flex-shrink-0">
-          <input
-            type="checkbox"
-            checked={isSelected}
-            onChange={() => handleToggleSelect(req.id)}
-            className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
-          />
-        </div>
+        {!needsDetail ? (
+          <div className="absolute top-4 left-4 sm:static sm:flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => handleToggleApprovalSelect(request.id)}
+              className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+            />
+          </div>
+        ) : null}
 
         <div
-          className="flex items-start gap-4 flex-1 cursor-pointer pl-8 sm:pl-0"
-          onClick={() => navigate(`/requests/${req.id}`)}
+          className={cn('flex items-start gap-4 flex-1 cursor-pointer', needsDetail ? '' : 'pl-8 sm:pl-0')}
+          onClick={() => navigate(`/requests/${request.id}`)}
         >
           <div className="p-3 bg-gray-50 rounded-lg shrink-0 hidden sm:block">
             <Icon className="w-6 h-6 text-gray-500" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <span className="text-xs font-medium text-gray-500">{req.requestNumber}</span>
+              <span className="text-xs font-medium text-gray-500">{request.requestNumber}</span>
               <span className="text-xs text-gray-400">•</span>
-              <span className="text-xs text-gray-500">{REQUEST_TYPES[req.type]}</span>
-              <span className={cn("text-xs px-2 py-0.5 rounded-full border", urgency.color)}>
+              <span className="text-xs text-gray-500">{REQUEST_TYPES[request.type]}</span>
+              <span className={cn('text-xs px-2 py-0.5 rounded-full border', urgency.color)}>
                 <Clock className="w-3 h-3 inline mr-1 -mt-0.5" />
                 {urgency.text}
               </span>
             </div>
-            <h3 className="text-base font-semibold text-gray-900 truncate mb-2">{req.title}</h3>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2">
-                {req.requesterAvatar ? (
-                  <img src={req.requesterAvatar} alt="" className="w-6 h-6 rounded-full" />
-                ) : (
-                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center">
-                    <User fill="currentColor" size={12} className="text-gray-400" />
-                  </div>
-                )}
-                <span className="text-sm text-gray-700">{req.requesterName}</span>
-                {req.requesterDept && (
-                  <span className="text-xs text-gray-500 hidden sm:inline">({req.requesterDept})</span>
-                )}
-              </div>
-              <PriorityBadge priority={req.priority} />
+            <h3 className="text-base font-semibold text-gray-900 truncate mb-2">{request.title}</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm text-gray-700">{request.requesterName}</span>
+              {request.requesterDept ? (
+                <span className="text-xs text-gray-500">({request.requesterDept})</span>
+              ) : null}
+              <PriorityBadge priority={request.priority} />
+              {request.metadata?.originModule === 'room_management' && request.metadata.roomCode ? (
+                <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2 py-0.5 text-xs font-medium text-indigo-700">
+                  {request.metadata.roomCode}
+                </span>
+              ) : null}
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between sm:flex-col sm:items-end sm:justify-center pt-3 sm:pt-0 border-t sm:border-t-0 border-gray-100 mt-3 sm:mt-0 gap-3">
-          {req.totalAmount && (
+          {request.totalAmount ? (
             <div className="text-left sm:text-right">
-              <div className="text-sm font-semibold text-gray-900">{formatVND(req.totalAmount)}</div>
-              <div className="text-xs text-gray-500 mt-1">Tổng tiền</div>
+              <div className="text-sm font-semibold text-gray-900">{formatVND(request.totalAmount)}</div>
+              <div className="text-xs text-gray-500 mt-1">Tong tien</div>
             </div>
-          )}
+          ) : null}
           <div className="flex items-center gap-2">
+            {needsDetail ? (
+              <button
+                onClick={() => navigate(`/requests/${request.id}`)}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors"
+              >
+                Xem va chuyen xu ly
+              </button>
+            ) : (
+              <button
+                onClick={(event) => {
+                  event.stopPropagation();
+                  setConfirmDialog({ isOpen: true, type: 'single', id: request.id });
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors"
+              >
+                <Check className="w-4 h-4" />
+                Duyet
+              </button>
+            )}
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setConfirmDialog({ isOpen: true, type: 'single', id: req.id });
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-sm font-medium transition-colors"
-            >
-              <Check className="w-4 h-4" />
-              Duyệt
-            </button>
-            <button
-              onClick={() => navigate(`/requests/${req.id}`)}
+              onClick={() => navigate(`/requests/${request.id}`)}
               className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors sm:hidden"
             >
               <ChevronRight className="w-5 h-5" />
@@ -186,53 +270,120 @@ export default function ApprovalsPage() {
     );
   };
 
+  const renderReviewerCard = (intake: (typeof reviewerQueue)[number]) => {
+    const isSelected = selectedReviewIds.has(intake.id);
+    const urgency = getUrgencyInfo(intake.createdAt);
+    const isMaterial = intake.intakeType === 'material';
+
+    return (
+      <div
+        key={intake.id}
+        className={cn(
+          'bg-white rounded-xl border p-4 transition-all flex flex-col sm:flex-row gap-4 sm:items-center relative',
+          isSelected ? 'border-indigo-500 ring-1 ring-indigo-500' : 'border-gray-200 hover:border-indigo-300',
+        )}
+      >
+        {isMaterial ? (
+          <div className="absolute top-4 left-4 sm:static sm:flex-shrink-0">
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => handleToggleReviewSelect(intake.id)}
+              className="w-5 h-5 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500 cursor-pointer"
+            />
+          </div>
+        ) : null}
+
+        <div className={cn('flex items-start gap-4 flex-1', isMaterial ? 'pl-8 sm:pl-0' : '')}>
+          <div className="p-3 bg-gray-50 rounded-lg shrink-0 hidden sm:block">
+            {isMaterial ? <Package className="w-6 h-6 text-gray-500" /> : <Wrench className="w-6 h-6 text-gray-500" />}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xs font-medium text-gray-500">{intake.roomCode}</span>
+              <span className="text-xs text-gray-400">•</span>
+              <span className="text-xs text-gray-500">
+                {isMaterial ? 'Room material intake' : 'Room maintenance intake'}
+              </span>
+              <span className={cn('text-xs px-2 py-0.5 rounded-full border', urgency.color)}>
+                <Clock className="w-3 h-3 inline mr-1 -mt-0.5" />
+                {urgency.text}
+              </span>
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 truncate mb-2">{intake.title}</h3>
+            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-600">
+              <span>{intake.roomName}</span>
+              <span>•</span>
+              <span>{intake.requesterName}</span>
+              <PriorityBadge priority={intake.priority} />
+            </div>
+            {isMaterial && intake.items.length > 0 ? (
+              <div className="mt-2 text-xs text-gray-500">
+                {intake.items.length} dong vat tu
+              </div>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end">
+          {!isMaterial ? (
+            <button
+              onClick={() => void handlePromoteMaintenance(intake.id)}
+              disabled={isSubmittingReviewAction}
+              className="px-3 py-1.5 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-100 text-sm font-medium transition-colors disabled:opacity-50"
+            >
+              Tao de nghi bao tri
+            </button>
+          ) : null}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6 relative pb-24 md:pb-0">
-      {/* Header & Pull to refresh */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Cần phê duyệt</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Cong viec can xu ly</h1>
         <button
           onClick={refresh}
           disabled={isRefreshing}
           className="p-2 text-gray-500 hover:bg-gray-100 rounded-full transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={cn("w-5 h-5", isRefreshing && "animate-spin")} />
+          <RefreshCw className={cn('w-5 h-5', isRefreshing && 'animate-spin')} />
         </button>
       </div>
 
-      {/* Summary Bar */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500 mb-1">Tổng chờ duyệt</div>
+          <div className="text-sm text-gray-500 mb-1">Tong cong viec</div>
           <div className="text-2xl font-bold text-gray-900">{totalPending}</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500 mb-1">Quá hạn (&gt;48h)</div>
-          <div className="text-2xl font-bold text-red-600">{countsByUrgency.critical}</div>
+          <div className="text-sm text-gray-500 mb-1">Cho phe duyet</div>
+          <div className="text-2xl font-bold text-indigo-600">{approvalQueue.length}</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500 mb-1">Cảnh báo (&gt;24h)</div>
-          <div className="text-2xl font-bold text-orange-600">{countsByUrgency.warning}</div>
+          <div className="text-sm text-gray-500 mb-1">Reviewer queue</div>
+          <div className="text-2xl font-bold text-sky-600">{reviewerQueue.length}</div>
         </div>
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-          <div className="text-sm text-gray-500 mb-1">Bình thường</div>
-          <div className="text-2xl font-bold text-green-600">{countsByUrgency.normal}</div>
+          <div className="text-sm text-gray-500 mb-1">Handoff dang mo</div>
+          <div className="text-2xl font-bold text-emerald-600">{assignedHandoffs.length}</div>
         </div>
       </div>
 
-      {/* Toolbar */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 rounded-xl border border-gray-200">
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleSelectAll([...kttEscalationCandidates, ...regularApprovals])}
+            onClick={handleSelectAllApprovals}
             className="text-sm text-indigo-600 font-medium hover:text-indigo-700 px-2 py-1"
           >
-            {selectedIds.size === totalPending ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+            {selectedApprovalIds.size === quickApproveEligible.length ? 'Bo chon tat ca' : 'Chon tat ca'}
           </button>
           <span className="text-gray-300">|</span>
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <Filter className="w-4 h-4" />
-            <span>Lọc: Tất cả</span>
+            <span>Lop cong viec hop nhat</span>
           </div>
         </div>
 
@@ -240,8 +391,8 @@ export default function ApprovalsPage() {
           <button
             onClick={() => setViewMode('list')}
             className={cn(
-              "p-1.5 rounded-md transition-colors",
-              viewMode === 'list' ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+              'p-1.5 rounded-md transition-colors',
+              viewMode === 'list' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
             )}
           >
             <ListIcon className="w-4 h-4" />
@@ -249,8 +400,8 @@ export default function ApprovalsPage() {
           <button
             onClick={() => setViewMode('grouped')}
             className={cn(
-              "p-1.5 rounded-md transition-colors",
-              viewMode === 'grouped' ? "bg-white shadow-sm text-gray-900" : "text-gray-500 hover:text-gray-700"
+              'p-1.5 rounded-md transition-colors',
+              viewMode === 'grouped' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700',
             )}
           >
             <Layers className="w-4 h-4" />
@@ -258,7 +409,6 @@ export default function ApprovalsPage() {
         </div>
       </div>
 
-      {/* Main Content */}
       {isLoading ? (
         <div className="bg-white rounded-xl border border-gray-200 p-6 space-y-4">
           <div className="h-5 w-48 bg-gray-100 rounded animate-pulse" />
@@ -270,90 +420,171 @@ export default function ApprovalsPage() {
         </div>
       ) : totalPending === 0 ? (
         <EmptyState
-          title="Không có đề nghị cần duyệt"
-          description="Bạn đã xử lý xong tất cả các đề nghị hiện tại. Tuyệt vời!"
+          title="Khong co cong viec can xu ly"
+          description="Tat ca de nghi, reviewer queue, va handoff hien tai deu da duoc xu ly."
         />
       ) : (
         <div className="space-y-8">
-          {/* KTT Escalation Section */}
-          {kttEscalationCandidates.length > 0 && (
-            <div className="space-y-4">
+          {kttEscalationCandidates.length > 0 ? (
+            <section className="space-y-4">
               <div className="flex items-center gap-2 pb-2 border-b border-orange-200">
                 <AlertTriangle className="w-5 h-5 text-orange-500" />
-                <h2 className="text-lg font-semibold text-gray-900">Cần xem xét chuyển cấp (CT HĐQT)</h2>
+                <h2 className="text-lg font-semibold text-gray-900">Can xem xet chuyen cap (CT HDQT)</h2>
                 <span className="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
                   {kttEscalationCandidates.length}
                 </span>
               </div>
               <div className="space-y-3">
-                {kttEscalationCandidates.map(req => renderRequestCard(req, true))}
+                {kttEscalationCandidates.map((request) => renderApprovalCard(request, true))}
               </div>
-            </div>
-          )}
+            </section>
+          ) : null}
 
-          {/* Regular Queue */}
-          {regularApprovals.length > 0 && (
-            <div className="space-y-4">
-              {kttEscalationCandidates.length > 0 && (
-                <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
-                  <h2 className="text-lg font-semibold text-gray-900">Danh sách chờ duyệt</h2>
-                  <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-0.5 rounded-full">
-                    {regularApprovals.length}
-                  </span>
-                </div>
-              )}
+          {approvalQueue.length > 0 ? (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-gray-200">
+                <h2 className="text-lg font-semibold text-gray-900">Hang cho phe duyet</h2>
+                <span className="bg-gray-100 text-gray-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {approvalQueue.length}
+                </span>
+              </div>
 
               {viewMode === 'list' ? (
                 <div className="space-y-3">
-                  {regularApprovals.map(req => renderRequestCard(req))}
+                  {regularApprovals.map((request) => renderApprovalCard(request))}
                 </div>
               ) : (
                 <div className="space-y-6">
                   {Object.entries(countsByType).map(([type, count]) => {
-                    const typeRequests = regularApprovals.filter(r => r.type === type);
-                    if (typeRequests.length === 0) return null;
+                    const requests = regularApprovals.filter((request) => request.type === type);
+                    if (requests.length === 0) return null;
 
                     return (
                       <div key={type} className="space-y-3">
                         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider">
                           {REQUEST_TYPES[type as RequestType]} ({count})
                         </h3>
-                        {typeRequests.map(req => renderRequestCard(req))}
+                        {requests.map((request) => renderApprovalCard(request))}
                       </div>
                     );
                   })}
                 </div>
               )}
-            </div>
-          )}
+            </section>
+          ) : null}
+
+          {reviewerQueue.length > 0 ? (
+            <section className="space-y-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between pb-2 border-b border-sky-200">
+                <div className="flex items-center gap-2">
+                  <Package className="w-5 h-5 text-sky-500" />
+                  <h2 className="text-lg font-semibold text-gray-900">Reviewer queue</h2>
+                  <span className="bg-sky-100 text-sky-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                    {reviewerQueue.length}
+                  </span>
+                </div>
+                <button
+                  onClick={() => void handleConsolidateMaterials()}
+                  disabled={!materialSelectionIsCompatible || isSubmittingReviewAction}
+                  className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 text-sm font-medium transition-colors disabled:opacity-50"
+                >
+                  Tong hop vat tu da chon
+                </button>
+              </div>
+              {reviewActionError ? (
+                <p className="text-sm text-rose-600">{reviewActionError}</p>
+              ) : null}
+              <div className="space-y-3">
+                {reviewerQueue.map((intake) => renderReviewerCard(intake))}
+              </div>
+            </section>
+          ) : null}
+
+          {assignedHandoffs.length > 0 ? (
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-emerald-200">
+                <User className="w-5 h-5 text-emerald-500" />
+                <h2 className="text-lg font-semibold text-gray-900">Cong viec duoc chuyen xu ly</h2>
+                <span className="bg-emerald-100 text-emerald-700 text-xs font-bold px-2 py-0.5 rounded-full">
+                  {assignedHandoffs.length}
+                </span>
+              </div>
+              <div className="space-y-3">
+                {assignedHandoffs.map((handoff) => (
+                  <div key={handoff.id} className="bg-white rounded-xl border border-gray-200 p-4">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <span className="text-sm font-semibold text-gray-900">
+                            {handoff.assigneeName || 'Nguoi xu ly'}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {HANDOFF_STATUS_LABELS[handoff.status]}
+                          </span>
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          De nghi lien ket: {handoff.requestId}
+                        </div>
+                        {handoff.note ? (
+                          <div className="text-sm text-gray-500 mt-1">{handoff.note}</div>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {handoff.status === 'pending' ? (
+                          <button
+                            onClick={() => void updateHandoffStatus(handoff.id, 'received')}
+                            className="px-3 py-1.5 rounded-lg bg-sky-50 text-sky-700 hover:bg-sky-100 text-sm font-medium transition-colors"
+                          >
+                            Tiep nhan
+                          </button>
+                        ) : null}
+                        {handoff.status === 'received' ? (
+                          <button
+                            onClick={() => void updateHandoffStatus(handoff.id, 'completed')}
+                            className="px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 text-sm font-medium transition-colors"
+                          >
+                            Hoan thanh
+                          </button>
+                        ) : null}
+                        <button
+                          onClick={() => navigate(`/requests/${handoff.requestId}`)}
+                          className="px-3 py-1.5 rounded-lg bg-gray-50 text-gray-700 hover:bg-gray-100 text-sm font-medium transition-colors"
+                        >
+                          Mo de nghi
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ) : null}
         </div>
       )}
 
-      {/* Batch Action FAB */}
-      {selectedIds.size > 0 && (
+      {selectedApprovalIds.size > 0 ? (
         <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 bg-gray-900 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-4 z-40 animate-in slide-in-from-bottom-10">
-          <span className="font-medium">Đã chọn {selectedIds.size}</span>
+          <span className="font-medium">Da chon {selectedApprovalIds.size}</span>
           <div className="w-px h-4 bg-gray-700" />
           <button
             onClick={() => setConfirmDialog({ isOpen: true, type: 'batch' })}
             className="flex items-center gap-2 text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
           >
             <Check className="w-5 h-5" />
-            Duyệt hàng loạt
+            Duyet hang loat
           </button>
         </div>
-      )}
+      ) : null}
 
-      {/* Confirm Dialog */}
       <ConfirmDialog
         isOpen={confirmDialog?.isOpen || false}
-        title={confirmDialog?.type === 'batch' ? 'Duyệt hàng loạt' : 'Xác nhận phê duyệt'}
+        title={confirmDialog?.type === 'batch' ? 'Duyet hang loat' : 'Xac nhan phe duyet'}
         message={
           confirmDialog?.type === 'batch'
-            ? `Bạn có chắc chắn muốn duyệt ${selectedIds.size} đề nghị đã chọn?`
-            : 'Bạn có chắc chắn muốn phê duyệt đề nghị này?'
+            ? `Ban co chac chan muon duyet ${selectedApprovalIds.size} de nghi da chon?`
+            : 'Ban co chac chan muon phe duyet de nghi nay?'
         }
-        confirmText="Đồng ý duyệt"
+        confirmText="Dong y duyet"
         onConfirm={confirmApprove}
         onCancel={() => setConfirmDialog(null)}
       />

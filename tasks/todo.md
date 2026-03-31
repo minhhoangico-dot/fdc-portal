@@ -4,7 +4,7 @@
 
 - Task ID: `room-management-full-system`
 - Owner: `implementer`
-- Status: `spec-written`
+- Status: `implementation-verified`
 - Spec: `tasks/active/2026-03-31-room-management-full-system.md`
 
 ## Operating Checklist
@@ -22,8 +22,8 @@
 
 - [x] Intake and scope
 - [x] Design or architecture decision
-- [ ] Implementation
-- [ ] Verification
+- [x] Implementation
+- [x] Verification
 - [ ] Review
 - [ ] Lessons and closeout
 
@@ -34,14 +34,18 @@
   - [x] Explore the current room-management, requests, approvals, role, and navigation architecture
   - [x] Confirm the approved workflow, role, and permission rules with the user
   - [x] Save the full-system design spec
-  - [ ] Get user review on the written spec
-  - [ ] Write the implementation plan
-  - [ ] Implement schema, permission, and workflow changes
-  - [ ] Run verification and record evidence
+  - [x] Get user review on the written spec
+  - [x] Write the implementation plan
+  - [x] Implement schema, permission, and workflow changes
+  - [x] Run verification and record evidence
 - Verification evidence:
   - Design review against current portal architecture completed on `2026-03-31` using `src/lib/navigation.ts`, `src/lib/role-access.ts`, `src/types/roleCatalog.ts`, `src/viewmodels/useRequests.ts`, `src/viewmodels/useApprovals.ts`, `src/App.tsx`, and the related SQL migrations.
+  - Implementation plan saved to `docs/superpowers/plans/2026-03-31-room-management-full-system.md`.
+  - `cmd /c npx tsx --test test\unit\permissionMatrix.test.ts test\unit\navigation.test.ts test\unit\approvalsQueue.test.ts test\unit\roomWorkflowRouting.test.ts test\unit\roomWorkflowHelpers.test.ts test\unit\roomWorkflowState.test.ts test\unit\roomCatalog.test.ts test\unit\roomSummary.test.ts test\unit\roomMaintenance.test.ts test\unit\roomPrint.test.ts test\unit\roomState.test.ts`: passed, 17/17.
+  - `cmd /c npm run build`: passed, Vite production build completed successfully after integrating requests, approvals, reviewer queues, and handoffs.
+  - `cmd /c npm run lint`: still fails for pre-existing repository-wide TypeScript issues in `fdc-lan-bridge`, `supabase/functions`, `to be intergrate/`, legacy admin tests, and one unrelated inventory component; the room-workflow slice builds and its focused tests pass.
 - Residual risk:
-  - Implementation has not started yet; the current portal still uses the frontend-first Room Management mock flow and legacy hardcoded permission checks.
+  - SQL migration deployment, Supabase RLS smoke, and browser-based end-to-end verification are still pending.
 
 ## 2026-03-31 Room Management Frontend-First
 

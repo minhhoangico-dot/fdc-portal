@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Request, RequestStatus } from '@/types/request';
-import { REQUEST_READ_ALL_ROLES } from '@/lib/role-access';
+import { can } from '@/lib/permissions/access';
 import { supabase } from '@/lib/supabase';
 import { mapRequestRecord } from '@/lib/request-helpers';
 import { resolveEffectiveApproverId } from '@/lib/delegations';
@@ -29,11 +29,16 @@ export function useRequests() {
             *,
             approver:fdc_user_mapping!approver_id(id, full_name, role, avatar_url)
           ),
-          attachments:fdc_request_attachments(*)
+          attachments:fdc_request_attachments(*),
+          handoffs:fdc_request_handoffs(
+            *,
+            assignee:fdc_user_mapping!assignee_id(id, full_name, role, department_name, avatar_url),
+            assignedBy:fdc_user_mapping!assigned_by(id, full_name, role)
+          )
         `)
         .order('created_at', { ascending: false });
 
-      if (!REQUEST_READ_ALL_ROLES.includes(user.role)) {
+      if (!can(user.role, 'requests.view_all') && !can(user.role, 'requests.view_assigned')) {
         query = query.eq('requester_id', user.id);
       }
 

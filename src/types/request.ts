@@ -1,8 +1,10 @@
 import { ApprovalStep } from './approval';
+import type { Role } from './user';
 
 export type RequestType = 'material_release' | 'purchase' | 'payment' | 'advance' | 'leave' | 'other';
 export type RequestStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'escalated' | 'completed' | 'cancelled';
 export type Priority = 'low' | 'normal' | 'high' | 'urgent';
+export type RequestHandoffStatus = 'pending' | 'received' | 'completed' | 'cancelled';
 
 export interface RequestLineItem {
   name: string;
@@ -41,6 +43,21 @@ export interface RequestAttachment {
   uploadedAt: string;
 }
 
+export interface RequestHandoff {
+  id: string;
+  requestId: string;
+  sourceStepId?: string;
+  assigneeId: string;
+  assigneeRole: Extract<Role, 'internal_accountant' | 'hr_records'>;
+  assigneeName?: string | null;
+  assignedById?: string;
+  assignedByName?: string | null;
+  status: RequestHandoffStatus;
+  note?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Request {
   id: string;
   requestNumber: string;
@@ -58,6 +75,7 @@ export interface Request {
   updatedAt: string;
   approvalSteps: ApprovalStep[];
   attachments?: RequestAttachment[];
+  handoffs?: RequestHandoff[];
   requesterName?: string;
   requesterDept?: string;
   requesterAvatar?: string | null;
