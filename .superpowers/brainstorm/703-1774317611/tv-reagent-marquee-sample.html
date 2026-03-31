@@ -1,0 +1,485 @@
+<style>
+  .tv-card {
+    border-radius: 22px;
+    background: radial-gradient(circle at top left, rgba(51, 41, 86, 0.85), rgba(13, 16, 27, 0.98) 58%);
+    border: 1px solid rgba(255,255,255,0.08);
+    box-shadow: 0 24px 80px rgba(0, 0, 0, 0.35);
+    overflow: hidden;
+  }
+  .tv-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 22px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .tv-card__title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #f7f2ff;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+  .tv-card__dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #ffd86f, #ff9d32);
+    box-shadow: 0 0 18px rgba(255, 191, 83, 0.5);
+  }
+  .tv-card__meta {
+    color: #9da3c7;
+    font-size: 12px;
+  }
+  .tv-card__body {
+    padding: 18px 20px 20px;
+  }
+  .tv-marquee-shell {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+  .tv-lane {
+    position: relative;
+    height: 300px;
+    overflow: hidden;
+    border-radius: 18px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .tv-lane::before,
+  .tv-lane::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 34px;
+    z-index: 3;
+    pointer-events: none;
+  }
+  .tv-lane::before {
+    top: 0;
+    background: linear-gradient(180deg, rgba(13,16,27,0.98), rgba(13,16,27,0));
+  }
+  .tv-lane::after {
+    bottom: 0;
+    background: linear-gradient(0deg, rgba(13,16,27,0.98), rgba(13,16,27,0));
+  }
+  .tv-track {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    animation: lane-scroll 17s linear infinite;
+  }
+  .tv-track--slow { animation-duration: 21s; }
+  .tv-track--fast { animation-duration: 14s; }
+  @keyframes lane-scroll {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(-50%); }
+  }
+  .tv-chip {
+    border-radius: 16px;
+    padding: 11px 12px 12px;
+    background: linear-gradient(180deg, rgba(39, 42, 66, 0.92), rgba(25, 28, 44, 0.96));
+    border: 1px solid rgba(255,255,255,0.06);
+    display: grid;
+    gap: 6px;
+    min-height: 78px;
+  }
+  .tv-chip__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .tv-chip__name {
+    color: #f4f5ff;
+    font-size: 13px;
+    line-height: 1.25;
+    font-weight: 700;
+  }
+  .tv-chip__code {
+    color: #8f97bb;
+    font-size: 11px;
+  }
+  .tv-chip__stock {
+    white-space: nowrap;
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .tv-chip__stock--danger { color: #ff7777; }
+  .tv-chip__stock--warn { color: #ffd066; }
+  .tv-chip__stock--ok { color: #34dd9a; }
+  .tv-chip__flag {
+    width: fit-content;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+  .tv-chip__flag--danger {
+    background: rgba(255, 102, 102, 0.14);
+    color: #ff8b8b;
+  }
+  .tv-chip__flag--warn {
+    background: rgba(255, 208, 102, 0.14);
+    color: #ffd97e;
+  }
+  .tv-chip__flag--ok {
+    background: rgba(52, 221, 154, 0.14);
+    color: #63ebb3;
+  }
+  .tv-legend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 14px;
+    color: #a9aed1;
+    font-size: 12px;
+  }
+  .tv-legend__item {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 5px 10px;
+    background: rgba(255,255,255,0.04);
+  }
+  .tv-legend__swatch {
+    width: 8px;
+    height: 8px;
+    border-radius: 999px;
+  }
+  .tv-note {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: rgba(255,255,255,0.04);
+    color: #c1c5e2;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+</style>
+
+<h2>Sample UI: Chip Vật Tư Thật Trượt Lên Trên</h2>
+<p class="subtitle">
+  Mẫu này giữ cảm giác chip của màn TV hiện tại, nhưng mỗi chip là một dòng vật tư thật lấy trực tiếp từ
+  <code>fdc_inventory_snapshots</code>. Chip được ưu tiên theo tồn thấp trước, rồi chạy vòng lặp trượt dọc lên trên.
+</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: TV inventory marquee</div>
+  <div class="mockup-body">
+    <div class="tv-card">
+      <div class="tv-card__header">
+        <div class="tv-card__title">
+          <span class="tv-card__dot"></span>
+          <span>Tồn kho thuốc cho khoa xét nghiệm</span>
+        </div>
+        <div class="tv-card__meta">Snapshot ngày 24/03/2026 • 17 vật tư thật</div>
+      </div>
+
+      <div class="tv-card__body">
+        <div class="tv-marquee-shell">
+          <div class="tv-lane">
+            <div class="tv-track">
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm LDL-Cholesterol</div>
+                    <div class="tv-chip__code">XN0216</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">0,75 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất điện giải ISE Buffer</div>
+                    <div class="tv-chip__code">XN0016</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm ALT</div>
+                    <div class="tv-chip__code">XN0026</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm HBA1C</div>
+                    <div class="tv-chip__code">XN0033</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm LDL-Cholesterol</div>
+                    <div class="tv-chip__code">XN0216</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">0,75 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất điện giải ISE Buffer</div>
+                    <div class="tv-chip__code">XN0016</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm ALT</div>
+                    <div class="tv-chip__code">XN0026</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm HBA1C</div>
+                    <div class="tv-chip__code">XN0033</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tv-lane">
+            <div class="tv-track tv-track--slow">
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm AST</div>
+                    <div class="tv-chip__code">XN0027</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm CRE</div>
+                    <div class="tv-chip__code">XN0030</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm Glucose</div>
+                    <div class="tv-chip__code">XN0032</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Test nước tiểu Multistick</div>
+                    <div class="tv-chip__code">XN0084</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">2 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm AST</div>
+                    <div class="tv-chip__code">XN0027</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--danger">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--danger">Sắp hết</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm CRE</div>
+                    <div class="tv-chip__code">XN0030</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm Glucose</div>
+                    <div class="tv-chip__code">XN0032</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Test nước tiểu Multistick</div>
+                    <div class="tv-chip__code">XN0084</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--warn">2 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tv-lane">
+            <div class="tv-track tv-track--fast">
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Test Maglumi FT4</div>
+                    <div class="tv-chip__code">XN0061</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">34 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--ok">Ổn định</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Test Maglumi TSH</div>
+                    <div class="tv-chip__code">XN0062</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">92 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--ok">Ổn định</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm HDL Cholesterol</div>
+                    <div class="tv-chip__code">XN0037</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">2 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm Triglyceride</div>
+                    <div class="tv-chip__code">XN0035</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Test Maglumi FT4</div>
+                    <div class="tv-chip__code">XN0061</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">34 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--ok">Ổn định</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Test Maglumi TSH</div>
+                    <div class="tv-chip__code">XN0062</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">92 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--ok">Ổn định</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm HDL Cholesterol</div>
+                    <div class="tv-chip__code">XN0037</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">2 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+              <div class="tv-chip">
+                <div class="tv-chip__top">
+                  <div>
+                    <div class="tv-chip__name">Hóa chất xét nghiệm Triglyceride</div>
+                    <div class="tv-chip__code">XN0035</div>
+                  </div>
+                  <div class="tv-chip__stock tv-chip__stock--ok">1 Cái</div>
+                </div>
+                <div class="tv-chip__flag tv-chip__flag--warn">Cần theo dõi</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tv-legend">
+          <div class="tv-legend__item"><span class="tv-legend__swatch" style="background:#ff7777"></span>Sắp hết</div>
+          <div class="tv-legend__item"><span class="tv-legend__swatch" style="background:#ffd066"></span>Cần theo dõi</div>
+          <div class="tv-legend__item"><span class="tv-legend__swatch" style="background:#34dd9a"></span>Ổn định</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="ok-density" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Mật độ này ổn</h3>
+      <p>Giữ cỡ chip, số lane và nhịp trượt gần như mẫu.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="bigger-chip" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cần chip to hơn</h3>
+      <p>Ít chip hơn mỗi lượt nhưng đọc từ xa dễ hơn.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="faster-more" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Cần nhiều chip hơn</h3>
+      <p>Tăng mật độ hoặc tốc độ để thấy được nhiều vật tư hơn trên TV.</p>
+    </div>
+  </div>
+</div>
+
+<div class="tv-note">
+  Đây là sample UI để chốt ngôn ngữ hiển thị, chưa phải code thật. Hãy mở browser, xem chuyển động và trả lời trong terminal:
+  <strong>A</strong> nếu mật độ/nhịp này ổn, <strong>B</strong> nếu cần chip to hơn, hoặc <strong>C</strong> nếu cần thấy nhiều chip hơn mỗi lượt.
+</div>

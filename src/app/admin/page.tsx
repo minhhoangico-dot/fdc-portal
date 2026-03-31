@@ -1,17 +1,34 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React from "react";
-import { Users, Settings, Key, Activity, Shield } from "lucide-react";
+import {
+  Activity,
+  Key,
+  Settings,
+  Shield,
+  UserCog,
+  Users,
+} from "lucide-react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { useAdmin, AdminTab } from "@/viewmodels/useAdmin";
-import { UsersTab } from "./UsersTab";
+import { AdminTab, useAdmin } from "@/viewmodels/useAdmin";
+import { ADMIN_TABS, getAdminLegacyTabRedirect, isAdminTab } from "./admin-navigation";
+import { AddUserModal } from "./AddUserModal";
 import { ApprovalTab } from "./ApprovalTab";
-import { MisaTab } from "./MisaTab";
-import { HealthTab } from "./HealthTab";
 import { AuditTab } from "./AuditTab";
 import { DelegationModal } from "./DelegationModal";
-import { AddUserModal } from "./AddUserModal";
+import { HealthTab } from "./HealthTab";
+import { MisaTab } from "./MisaTab";
+import { RolesTab } from "./RolesTab";
+import { UsersTab } from "./UsersTab";
 
 export default function AdminPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const {
     activeTab,
     setActiveTab,
@@ -56,59 +73,69 @@ export default function AdminPage() {
     validateHikvisionEmployeeId,
   } = useAdmin();
 
+  React.useEffect(() => {
+    const requestedTab = searchParams.get("tab");
+    const redirectTarget = getAdminLegacyTabRedirect(requestedTab);
+
+    if (redirectTarget) {
+      navigate(redirectTarget, { replace: true });
+      return;
+    }
+
+    if (isAdminTab(requestedTab)) {
+      setActiveTab(requestedTab as AdminTab);
+    }
+  }, [navigate, searchParams, setActiveTab]);
+
   if (!user || user.role !== "super_admin") {
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-gray-500 text-lg">Bạn không có quyền truy cập trang này.</p>
+      <div className="flex h-96 items-center justify-center">
+        <p className="text-lg text-gray-500">Bạn không có quyền truy cập trang này.</p>
       </div>
     );
   }
 
-  const tabs: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-    { id: "users", label: "Người dùng", icon: <Users className="w-4 h-4" /> },
-    {
-      id: "approval",
-      label: "Cấu hình phê duyệt",
-      icon: <Settings className="w-4 h-4" />,
-    },
-    { id: "misa", label: "Từ khóa MISA", icon: <Key className="w-4 h-4" /> },
-    { id: "health", label: "Hệ thống", icon: <Activity className="w-4 h-4" /> },
-    { id: "audit", label: "Nhật ký", icon: <Shield className="w-4 h-4" /> },
-  ];
+  const iconsByTab: Record<AdminTab, React.ReactNode> = {
+    users: <Users className="h-4 w-4" />,
+    approval: <Settings className="h-4 w-4" />,
+    misa: <Key className="h-4 w-4" />,
+    health: <Activity className="h-4 w-4" />,
+    audit: <Shield className="h-4 w-4" />,
+    roles: <UserCog className="h-4 w-4" />,
+  };
 
   return (
-    <div className="max-w-7xl mx-auto pb-24 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="mx-auto max-w-7xl space-y-6 pb-24">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <h1 className="text-2xl font-bold text-gray-900">Quản trị hệ thống</h1>
       </div>
 
-      {/* Tabs */}
-      <div className="bg-white rounded-xl border border-gray-200 p-1 flex overflow-x-auto hide-scrollbar">
-        {tabs.map((tab) => (
+      <div className="hide-scrollbar flex overflow-x-auto rounded-xl border border-gray-200 bg-white p-1">
+        {ADMIN_TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg whitespace-nowrap transition-colors ${activeTab === tab.id
-              ? "bg-indigo-50 text-indigo-700"
-              : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
-              }`}
+            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
+              activeTab === tab.id
+                ? "bg-indigo-50 text-indigo-700"
+                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+            }`}
           >
-            {tab.icon}
+            {iconsByTab[tab.id]}
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Tab Content */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm min-h-[600px]">
+      <div className="min-h-[600px] rounded-xl border border-gray-200 bg-white shadow-sm">
         {activeTab === "users" && (
           <UsersTab
             users={users}
             onRoleChange={(id, role) => handleRoleChange(id, role as any)}
             onResetPassword={handleResetPassword}
             onOpenAddUser={() => setIsAddUserModalOpen(true)}
-            onOpenDelegation={(user) => {
-              setSelectedUser(user);
+            onOpenDelegation={(nextUser) => {
+              setSelectedUser(nextUser);
               setIsDelegationModalOpen(true);
             }}
             search={userSearch}
@@ -161,6 +188,8 @@ export default function AdminPage() {
             onExportCsv={handleExportAuditCsv}
           />
         )}
+
+        {activeTab === "roles" && <RolesTab />}
       </div>
 
       <DelegationModal

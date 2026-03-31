@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Phòng Xét Nghiệm — Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0e14;--bg2:#111820;--bg3:#182030;--bg4:#1e2a3a;
+  --text:#e8edf4;--text2:#8899b0;--text3:#556677;
+  --accent:#00d4aa;--accent2:#00b894;--accent-glow:rgba(0,212,170,.15);
+  --warn:#ffb347;--warn-glow:rgba(255,179,71,.12);
+  --danger:#ff6b6b;--danger-glow:rgba(255,107,107,.12);
+  --blue:#4facfe;--blue-glow:rgba(79,172,254,.12);
+  --purple:#a29bfe;
+  --radius:12px;--radius-sm:8px;
+  --font:'Be Vietnam Pro',sans-serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--font)}
+
+/* Background grid effect */
+body::before{
+  content:'';position:fixed;inset:0;
+  background:
+    linear-gradient(rgba(0,212,170,.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,170,.03) 1px,transparent 1px);
+  background-size:60px 60px;
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';position:fixed;inset:0;
+  background:radial-gradient(ellipse at 20% 50%,rgba(0,212,170,.06) 0%,transparent 60%),
+             radial-gradient(ellipse at 80% 20%,rgba(79,172,254,.04) 0%,transparent 50%);
+  pointer-events:none;z-index:0;
+}
+
+.app{position:relative;z-index:1;height:100vh;display:grid;grid-template-rows:auto 1fr;padding:20px 28px 20px;gap:16px}
+
+/* HEADER */
+.header{display:flex;justify-content:space-between;align-items:center}
+.header-left{display:flex;align-items:center;gap:16px}
+.logo-mark{
+  width:40px;height:40px;border-radius:10px;
+  background:linear-gradient(135deg,var(--accent),var(--blue));
+  display:flex;align-items:center;justify-content:center;
+  font-size:18px;font-weight:700;color:var(--bg);
+}
+.clinic-name{font-size:13px;color:var(--text2);font-weight:400;letter-spacing:.5px;text-transform:uppercase}
+.page-title{font-size:22px;font-weight:600;letter-spacing:-.3px}
+.page-title span{color:var(--accent)}
+.header-right{display:flex;align-items:center;gap:24px}
+.clock{font-family:var(--mono);font-size:28px;font-weight:500;letter-spacing:1px;color:var(--text)}
+.clock-date{font-size:12px;color:var(--text2);text-align:right;margin-top:2px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse-dot 2s ease-in-out infinite}
+@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.85)}}
+
+/* MAIN GRID */
+.main{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:auto 1fr auto;gap:14px;min-height:0}
+
+/* CARDS */
+.card{
+  background:var(--bg2);border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--radius);padding:18px 20px;
+  position:relative;overflow:hidden;
+  display:flex;flex-direction:column;
+}
+.card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+}
+.card-label{
+  font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:1.2px;
+  color:var(--text2);margin-bottom:12px;display:flex;align-items:center;gap:8px;
+}
+.card-label .dot{width:6px;height:6px;border-radius:50%}
+
+/* STATUS ROW - spans full width */
+.status-row{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.status-card{
+  background:var(--bg2);border:1px solid rgba(255,255,255,.06);
+  border-radius:var(--radius);padding:20px 24px;
+  position:relative;overflow:hidden;
+}
+.status-card::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.08),transparent);
+}
+.status-card::after{
+  content:'';position:absolute;bottom:0;left:20px;right:20px;height:3px;
+  border-radius:3px 3px 0 0;
+}
+.status-card.waiting::after{background:var(--warn)}
+.status-card.processing::after{background:var(--blue)}
+.status-card.done::after{background:var(--accent)}
+.status-icon{
+  width:36px;height:36px;border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;margin-bottom:12px;
+}
+.status-card.waiting .status-icon{background:var(--warn-glow);color:var(--warn)}
+.status-card.processing .status-icon{background:var(--blue-glow);color:var(--blue)}
+.status-card.done .status-icon{background:var(--accent-glow);color:var(--accent)}
+.status-label{font-size:12px;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;font-weight:500;margin-bottom:6px}
+.status-number{font-family:var(--mono);font-size:42px;font-weight:700;line-height:1;letter-spacing:-1px}
+.status-card.waiting .status-number{color:var(--warn)}
+.status-card.processing .status-number{color:var(--blue)}
+.status-card.done .status-number{color:var(--accent)}
+.status-sub{font-size:12px;color:var(--text3);margin-top:6px;font-family:var(--mono)}
+
+/* TAT SECTION */
+.tat-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1}
+.tat-item{
+  background:var(--bg3);border-radius:var(--radius-sm);padding:14px 16px;
+  display:flex;flex-direction:column;justify-content:center;
+}
+.tat-label{font-size:11px;color:var(--text2);margin-bottom:6px;line-height:1.3}
+.tat-value{font-family:var(--mono);font-size:26px;font-weight:600;line-height:1;display:flex;align-items:baseline;gap:4px}
+.tat-value .unit{font-size:13px;font-weight:400;color:var(--text2)}
+.tat-value.good{color:var(--accent)}
+.tat-value.warn{color:var(--warn)}
+.tat-value.bad{color:var(--danger)}
+.tat-bar{height:3px;border-radius:2px;background:var(--bg);margin-top:8px;overflow:hidden;position:relative}
+.tat-bar-fill{height:100%;border-radius:2px;transition:width .8s ease}
+
+/* TAT BY TYPE - bar chart */
+.tat-type-list{flex:1;display:flex;flex-direction:column;gap:8px;justify-content:center}
+.tat-type-row{display:grid;grid-template-columns:90px 1fr 60px;align-items:center;gap:10px}
+.tat-type-name{font-size:12px;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tat-type-bar{height:22px;background:var(--bg);border-radius:4px;overflow:hidden;position:relative}
+.tat-type-bar-fill{height:100%;border-radius:4px;transition:width 1s ease;position:relative}
+.tat-type-val{font-family:var(--mono);font-size:13px;font-weight:500;text-align:right}
+
+/* ABNORMAL RESULTS */
+.abnormal-content{flex:1;display:flex;flex-direction:column}
+.abnormal-header{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.abnormal-stat{background:var(--bg3);border-radius:var(--radius-sm);padding:12px 14px}
+.abnormal-stat-label{font-size:11px;color:var(--text2);margin-bottom:4px}
+.abnormal-stat-val{font-family:var(--mono);font-size:24px;font-weight:600;color:var(--danger)}
+.abnormal-stat-val.total{color:var(--text)}
+.abnormal-list{flex:1;overflow:hidden}
+.abnormal-table{width:100%;border-collapse:collapse}
+.abnormal-table th{
+  font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--text3);
+  text-align:left;padding:6px 8px;border-bottom:1px solid rgba(255,255,255,.06);font-weight:500;
+}
+.abnormal-table td{font-size:12px;padding:5px 8px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--text2)}
+.abnormal-table td:first-child{color:var(--text);font-weight:500}
+.badge{
+  display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:600;
+  font-family:var(--mono);letter-spacing:.3px;
+}
+.badge.high{background:var(--danger-glow);color:var(--danger)}
+.badge.low{background:var(--blue-glow);color:var(--blue)}
+.badge.critical{background:rgba(255,107,107,.25);color:#ff4757;animation:pulse-badge 1.5s ease-in-out infinite}
+@keyframes pulse-badge{0%,100%{opacity:1}50%{opacity:.7}}
+
+/* REAGENT / CHEMICAL STOCK — compact chip layout */
+.reagent-compact{display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start}
+.reagent-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--bg3);border-radius:6px;padding:6px 12px;
+  border:1px solid rgba(255,255,255,.04);
+}
+.reagent-chip-bar{width:40px;height:6px;background:var(--bg);border-radius:3px;overflow:hidden}
+.reagent-chip-bar-fill{height:100%;border-radius:3px}
+.reagent-chip-bar-fill.ok{background:var(--accent)}
+.reagent-chip-bar-fill.low{background:var(--warn)}
+.reagent-chip-bar-fill.critical{background:var(--danger);animation:pulse-bar 1.5s ease-in-out infinite}
+@keyframes pulse-bar{0%,100%{opacity:1}50%{opacity:.5}}
+.reagent-chip-name{font-size:12px;color:var(--text2);white-space:nowrap}
+.reagent-chip-qty{font-family:var(--mono);font-size:12px;font-weight:500;white-space:nowrap}
+.reagent-chip-qty.ok{color:var(--accent)}
+.reagent-chip-qty.low{color:var(--warn)}
+.reagent-chip-qty.critical{color:var(--danger)}
+
+/* REFRESH INDICATOR */
+.refresh-bar{
+  position:fixed;bottom:0;left:0;right:0;height:2px;z-index:10;
+  background:linear-gradient(90deg,var(--accent),var(--blue),var(--accent));
+  background-size:200% 100%;
+  animation:shimmer 2s linear infinite;
+  opacity:.4;
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* SCROLLING ANIMATION for abnormal table */
+@keyframes scroll-up{
+  0%{transform:translateY(0)}
+  100%{transform:translateY(-50%)}
+}
+.scroll-container{overflow:hidden;flex:1;position:relative}
+.scroll-content{animation:scroll-up 30s linear infinite}
+.scroll-content:hover{animation-play-state:paused}
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- HEADER -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo-mark">XN</div>
+      <div>
+        <div class="clinic-name">Phòng khám Gia Đình — Phòng Xét nghiệm</div>
+        <div class="page-title">Dashboard <span>Xét nghiệm</span></div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div class="status-dot"></div>
+        <span style="font-size:12px;color:var(--accent);font-weight:500">TRỰC TIẾP</span>
+      </div>
+      <div>
+        <div class="clock" id="clock">--:--:--</div>
+        <div class="clock-date" id="clock-date"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div class="main">
+    <!-- ROW 1: Status cards -->
+    <div class="status-row">
+      <div class="status-card waiting">
+        <div class="status-icon">⏳</div>
+        <div class="status-label">Chờ lấy mẫu</div>
+        <div class="status-number" id="waiting-count">--</div>
+        <div class="status-sub" id="waiting-sub"></div>
+      </div>
+      <div class="status-card processing">
+        <div class="status-icon">🧪</div>
+        <div class="status-label">Đã lấy mẫu</div>
+        <div class="status-number" id="processing-count">--</div>
+        <div class="status-sub" id="processing-sub"></div>
+      </div>
+      <div class="status-card done">
+        <div class="status-icon">✓</div>
+        <div class="status-label">Hoàn thành</div>
+        <div class="status-number" id="done-count">--</div>
+        <div class="status-sub" id="done-sub"></div>
+      </div>
+    </div>
+
+    <!-- ROW 2: TAT Overview + TAT by Type + Abnormal -->
+    <div class="card">
+      <div class="card-label"><div class="dot" style="background:var(--blue)"></div>Thời gian trả kết quả (TAT)</div>
+      <div class="tat-grid">
+        <div class="tat-item">
+          <div class="tat-label">Chỉ định → Trả KQ</div>
+          <div class="tat-value" id="tat-total">--<span class="unit">phút</span></div>
+          <div class="tat-bar"><div class="tat-bar-fill" id="tat-total-bar" style="width:0"></div></div>
+        </div>
+        <div class="tat-item">
+          <div class="tat-label">Lấy mẫu → Phân tích</div>
+          <div class="tat-value" id="tat-analysis">--<span class="unit">phút</span></div>
+          <div class="tat-bar"><div class="tat-bar-fill" id="tat-analysis-bar" style="width:0"></div></div>
+        </div>
+        <div class="tat-item">
+          <div class="tat-label">Chỉ định → Lấy mẫu</div>
+          <div class="tat-value" id="tat-sample">--<span class="unit">phút</span></div>
+          <div class="tat-bar"><div class="tat-bar-fill" id="tat-sample-bar" style="width:0"></div></div>
+        </div>
+        <div class="tat-item">
+          <div class="tat-label">Phân tích → Trả KQ</div>
+          <div class="tat-value" id="tat-result">--<span class="unit">phút</span></div>
+          <div class="tat-bar"><div class="tat-bar-fill" id="tat-result-bar" style="width:0"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label"><div class="dot" style="background:var(--purple)"></div>TAT theo loại xét nghiệm</div>
+      <div class="tat-type-list" id="tat-type-list"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label"><div class="dot" style="background:var(--danger)"></div>Kết quả ngoài khoảng tham chiếu</div>
+      <div class="abnormal-content">
+        <div class="abnormal-header">
+          <div class="abnormal-stat">
+            <div class="abnormal-stat-label">Bất thường</div>
+            <div class="abnormal-stat-val" id="abnormal-count">--</div>
+          </div>
+          <div class="abnormal-stat">
+            <div class="abnormal-stat-label">Tổng KQ hôm nay</div>
+            <div class="abnormal-stat-val total" id="total-results">--</div>
+          </div>
+        </div>
+        <div class="scroll-container">
+          <div class="scroll-content" id="abnormal-table-wrap">
+            <table class="abnormal-table">
+              <thead><tr><th>Bệnh nhân</th><th>Mã XN</th><th>Xét nghiệm</th><th>Giá trị</th><th>Mức</th></tr></thead>
+              <tbody id="abnormal-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ROW 3: Reagent stock - compact -->
+    <div class="card" style="grid-column:1/-1">
+      <div class="card-label"><div class="dot" style="background:var(--warn)"></div>Hóa chất trong kho (đơn vị: hộp)</div>
+      <div class="reagent-compact" id="reagent-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div class="refresh-bar"></div>
+
+<script>
+// === CLOCK ===
+function updateClock(){
+  const now=new Date();
+  const h=String(now.getHours()).padStart(2,'0');
+  const m=String(now.getMinutes()).padStart(2,'0');
+  const s=String(now.getSeconds()).padStart(2,'0');
+  document.getElementById('clock').textContent=`${h}:${m}:${s}`;
+  const days=['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+  const d=now.getDate(),mo=now.getMonth()+1,y=now.getFullYear();
+  document.getElementById('clock-date').textContent=`${days[now.getDay()]}, ${String(d).padStart(2,'0')}/${String(mo).padStart(2,'0')}/${y}`;
+}
+setInterval(updateClock,1000);updateClock();
+
+// === SIMULATED DATA (replace with real API calls to LAN Bridge) ===
+function randInt(a,b){return Math.floor(Math.random()*(b-a+1))+a}
+
+function updateStatus(){
+  const w=randInt(8,25),p=randInt(15,40),d=randInt(80,160);
+  animateNumber('waiting-count',w);
+  animateNumber('processing-count',p);
+  animateNumber('done-count',d);
+  document.getElementById('waiting-sub').textContent=`+${randInt(1,5)} trong 15 phút qua`;
+  document.getElementById('processing-sub').textContent=`${randInt(2,6)} chờ phân tích`;
+  document.getElementById('done-sub').textContent=`${Math.round(d/(d+w+p)*100)}% tổng mẫu`;
+}
+
+function animateNumber(id,target){
+  const el=document.getElementById(id);
+  const current=parseInt(el.textContent)||0;
+  const diff=target-current;
+  const steps=20;
+  let step=0;
+  const timer=setInterval(()=>{
+    step++;
+    el.textContent=Math.round(current+diff*(step/steps));
+    if(step>=steps)clearInterval(timer);
+  },30);
+}
+
+function updateTAT(){
+  const tatTotal=randInt(42,85);
+  const tatSample=randInt(8,18);
+  const tatAnalysis=randInt(12,30);
+  const tatResult=randInt(10,25);
+  const maxTAT=120;
+
+  setTAT('tat-total',tatTotal,'phút',maxTAT);
+  setTAT('tat-sample',tatSample,'phút',30);
+  setTAT('tat-analysis',tatAnalysis,'phút',45);
+  setTAT('tat-result',tatResult,'phút',35);
+}
+
+function setTAT(id,val,unit,max){
+  const el=document.getElementById(id);
+  const cls=val<max*.5?'good':val<max*.75?'warn':'bad';
+  el.className='tat-value '+cls;
+  el.innerHTML=`${val}<span class="unit">${unit}</span>`;
+  const bar=document.getElementById(id+'-bar');
+  if(bar){
+    const pct=Math.min(val/max*100,100);
+    bar.style.width=pct+'%';
+    bar.style.background=cls==='good'?'var(--accent)':cls==='warn'?'var(--warn)':'var(--danger)';
+  }
+}
+
+function updateTATByType(){
+  const types=[
+    {name:'Huyết học',min:25,max:45,color:'var(--blue)'},
+    {name:'Sinh hóa',min:35,max:65,color:'var(--accent)'},
+    {name:'Miễn dịch',min:50,max:90,color:'var(--purple)'},
+    {name:'Vi sinh',min:120,max:480,color:'var(--warn)'},
+    {name:'Nước tiểu',min:20,max:40,color:'var(--blue)'},
+    {name:'Đông máu',min:30,max:55,color:'var(--accent)'},
+  ];
+  const container=document.getElementById('tat-type-list');
+  container.innerHTML='';
+  const globalMax=480;
+  types.forEach(t=>{
+    const val=randInt(t.min,t.max);
+    const pct=Math.min(val/globalMax*100,100);
+    const unit=val>=60?`${Math.floor(val/60)}h${val%60>0?String(val%60).padStart(2,'0'):'00'}`:`${val}p`;
+    const cls=val<60?'ok':val<120?'warn':'bad';
+    const textColor=cls==='ok'?'var(--accent)':cls==='warn'?'var(--warn)':'var(--danger)';
+    container.innerHTML+=`
+      <div class="tat-type-row">
+        <div class="tat-type-name">${t.name}</div>
+        <div class="tat-type-bar"><div class="tat-type-bar-fill" style="width:${pct}%;background:${t.color}"></div></div>
+        <div class="tat-type-val" style="color:${textColor}">${unit}</div>
+      </div>`;
+  });
+}
+
+function updateAbnormal(){
+  const abnormals=[
+    {patient:'Nguyễn Văn An',code:'XN-2603-041',name:'Glucose',val:'18.5 mmol/L',level:'critical'},
+    {patient:'Trần Thị Bình',code:'XN-2603-058',name:'Creatinine',val:'285 µmol/L',level:'high'},
+    {patient:'Lê Hoàng Dũng',code:'XN-2603-062',name:'WBC',val:'1.8 G/L',level:'low'},
+    {patient:'Phạm Minh Châu',code:'XN-2603-075',name:'Hemoglobin',val:'68 g/L',level:'low'},
+    {patient:'Vũ Thị Hoa',code:'XN-2603-083',name:'ALT (SGPT)',val:'245 U/L',level:'high'},
+    {patient:'Đỗ Quang Huy',code:'XN-2603-091',name:'Potassium',val:'6.2 mmol/L',level:'critical'},
+    {patient:'Hoàng Lan Anh',code:'XN-2603-097',name:'TSH',val:'0.05 mIU/L',level:'low'},
+    {patient:'Ngô Đức Thịnh',code:'XN-2603-104',name:'Troponin I',val:'2.8 ng/mL',level:'critical'},
+    {patient:'Bùi Thanh Mai',code:'XN-2603-112',name:'CRP',val:'120 mg/L',level:'high'},
+    {patient:'Đinh Văn Lâm',code:'XN-2603-118',name:'Sodium',val:'118 mmol/L',level:'low'},
+    {patient:'Trương Thị Ngọc',code:'XN-2603-125',name:'PLT',val:'42 G/L',level:'low'},
+    {patient:'Lý Hải Nam',code:'XN-2603-130',name:'Bilirubin TP',val:'85 µmol/L',level:'high'},
+  ];
+  const abnCount=randInt(8,18);
+  const totalRes=randInt(180,320);
+  document.getElementById('abnormal-count').textContent=abnCount;
+  document.getElementById('total-results').textContent=totalRes;
+
+  const tbody=document.getElementById('abnormal-tbody');
+  const list=[...abnormals,...abnormals];
+  tbody.innerHTML=list.map(a=>`
+    <tr>
+      <td>${a.patient}</td>
+      <td style="font-family:var(--mono);font-size:10px;color:var(--text3)">${a.code}</td>
+      <td>${a.name}</td>
+      <td style="font-family:var(--mono);font-size:11px">${a.val}</td>
+      <td><span class="badge ${a.level}">${a.level==='critical'?'NGUY HIỂM':a.level==='high'?'CAO':'THẤP'}</span></td>
+    </tr>`).join('');
+}
+
+function updateReagents(){
+  const reagents=[
+    {name:'Huyết học CBC',stock:randInt(8,24),max:24},
+    {name:'Glucose',stock:randInt(4,18),max:20},
+    {name:'Creatinine',stock:randInt(3,15),max:16},
+    {name:'ALT/AST',stock:randInt(5,20),max:20},
+    {name:'CRP',stock:randInt(2,12),max:14},
+    {name:'HbA1c',stock:randInt(3,10),max:12},
+    {name:'PT/INR',stock:randInt(4,14),max:16},
+    {name:'Nước tiểu Strip',stock:randInt(6,20),max:20},
+    {name:'Cấy máu',stock:randInt(1,8),max:10},
+    {name:'Điện giải',stock:randInt(5,16),max:18},
+    {name:'Lipid panel',stock:randInt(4,14),max:16},
+    {name:'TSH/FT4',stock:randInt(2,10),max:12},
+  ];
+  const grid=document.getElementById('reagent-grid');
+  grid.innerHTML=reagents.map(r=>{
+    const pct=Math.round(r.stock/r.max*100);
+    const cls=pct>50?'ok':pct>25?'low':'critical';
+    return `<div class="reagent-chip">
+      <div class="reagent-chip-name">${r.name}</div>
+      <div class="reagent-chip-bar"><div class="reagent-chip-bar-fill ${cls}" style="width:${pct}%"></div></div>
+      <div class="reagent-chip-qty ${cls}">${r.stock}/${r.max} hộp</div>
+    </div>`;
+  }).join('');
+}
+
+// Initial load
+updateStatus();updateTAT();updateTATByType();updateAbnormal();updateReagents();
+
+// Auto refresh every 30 seconds
+setInterval(()=>{updateStatus();updateTAT();updateTATByType();updateReagents()},30000);
+setInterval(updateAbnormal,60000);
+</script>
+</body>
+</html>

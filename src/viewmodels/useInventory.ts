@@ -22,6 +22,12 @@ const formatLocalDate = (date: Date): string => {
   return `${year}-${month}-${day}`;
 };
 
+const getOneYearCutoffDate = (): string => {
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+  return formatLocalDate(oneYearAgo);
+};
+
 const getWeekBucketKey = (dateString: string): string => {
   const parsed = parseISO(dateString);
   if (Number.isNaN(parsed.getTime())) {
@@ -97,6 +103,8 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const [anomalies, setAnomalies] = useState<InventoryAnomaly[]>([]);
   const [rawSnapshotHistory, setRawSnapshotHistory] = useState<SnapshotHistory[]>([]);
   const [filteredSnapshotHistory, setFilteredSnapshotHistory] = useState<SnapshotHistory[]>([]);
+  const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [itemSnapshots, setItemSnapshots] = useState<ItemSnapshot[]>([]);
   const [isLoadingItemSnapshots, setIsLoadingItemSnapshots] = useState(false);
   const [isLoadingSnapshotHistory, setIsLoadingSnapshotHistory] = useState(false);
@@ -126,6 +134,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const fetchInventory = useCallback(async () => {
     if (!enabled) return;
 
+    setError(null);
     const todayDate = formatLocalDate(new Date());
 
     const loadForDate = async (snapshotDate: string) => {
@@ -148,6 +157,9 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
         const { data, error } = await query;
         if (error) {
           console.error('[DEBUG] fetchInventory error:', error);
+          setError("Không thể tải dữ liệu tồn kho");
+          hasMore = false;
+          continue;
         }
         if (data && data.length > 0) {
           allData = [...allData, ...data];
@@ -178,6 +190,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
 
       if (latestError) {
         console.error('[DEBUG] fetchInventory latest snapshot_date error:', latestError);
+        setError("Không thể tải dữ liệu tồn kho");
       } else if (latest && latest.length > 0) {
         const latestDate = latest[0].snapshot_date as string;
         if (latestDate && latestDate !== todayDate) {
@@ -187,7 +200,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
     }
 
     if (allData.length > 0) {
-      setInventory(allData.map((item: any) => ({
+      const mapped = allData.map((item: any) => ({
         id: item.id,
         name: item.name,
         sku: item.his_medicineid?.toString() || item.id,
@@ -198,12 +211,25 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
         status: item.status as any,
         batchNumber: item.batch_number,
         expiryDate: item.expiry_date,
-        lastUpdated: item.snapshot_date || item.created_at,
+        lastUpdated: item.snapshot_date,
         unitPrice: item.unit_price || 0,
         medicineCode: item.medicine_code
-      })));
+      }));
+      setInventory(mapped);
+
+      const syncType = moduleType === "inventory" ? "syncMisaSupplies" : "syncInventory";
+      const { data: syncLog } = await supabase
+        .from("fdc_sync_logs")
+        .select("completed_at")
+        .eq("sync_type", syncType)
+        .eq("status", "completed")
+        .order("completed_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      setLastSyncDate(syncLog?.completed_at ?? allData[0]?.snapshot_date ?? null);
     } else {
       setInventory([]);
+      setLastSyncDate(null);
     }
   }, [enabled, moduleType]);
 
@@ -211,6 +237,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const fetchAnomalies = useCallback(async () => {
     if (!enabled) return;
 
+    setError(null);
     const { data, error } = await supabase
       .from('fdc_analytics_anomalies')
       .select('*')
@@ -218,6 +245,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
 
     if (error) {
       console.error('[useInventory] fetchAnomalies error:', error);
+      setError("Không thể tải cảnh báo bất thường");
     }
 
     if (data) {
@@ -237,11 +265,10 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const fetchSnapshotHistory = useCallback(async () => {
     if (!enabled) return;
 
+    setError(null);
     if (!hasLoadedSnapshotHistory.current) setIsLoadingSnapshotHistory(true);
     try {
-      const oneYearAgo = new Date();
-      oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-      const cutoffDate = formatLocalDate(oneYearAgo);
+      const cutoffDate = getOneYearCutoffDate();
 
       const { data, error } = await supabase
         .from('fdc_inventory_daily_value')
@@ -252,6 +279,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
 
       if (error) {
         console.error('[DEBUG] fetchSnapshotHistory error:', error);
+        setError("Không thể tải lịch sử tồn kho");
       }
 
       if (data && data.length > 0) {
@@ -273,6 +301,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
   const fetchFilteredSnapshotHistory = useCallback(async () => {
     if (!enabled) return;
 
+    setError(null);
     const hasFilters =
       moduleType === "inventory"
         ? filterCategory !== "all" || Boolean(searchQuery?.trim())
@@ -299,6 +328,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
 
         if (error) {
           console.error("[DEBUG] fetchFilteredSnapshotHistory error:", error);
+          setError("Không thể tải lịch sử tồn kho");
           setFilteredSnapshotHistory([]);
           return;
         }
@@ -311,19 +341,63 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
         setFilteredSnapshotHistory(result);
         hasLoadedFilteredSnapshotHistory.current = true;
       } else if (moduleType === "inventory") {
-        const oneYearAgo = new Date();
-        oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
-        const cutoff = formatLocalDate(oneYearAgo);
         if (inventoryHistoryTargetIds.length === 0) {
           setFilteredSnapshotHistory([]);
           return;
         }
 
+        const cutoff = getOneYearCutoffDate();
+        const trimmedSearch = searchQuery?.trim() || null;
+        const normalizedSearch = trimmedSearch?.toLowerCase() || "";
+        const hasSkuOnlyMatches = Boolean(normalizedSearch) && inventory.some((item) => {
+          if (filterCategory !== "all" && item.category !== filterCategory) {
+            return false;
+          }
+
+          const nameMatches = item.name.toLowerCase().includes(normalizedSearch);
+          const skuMatches = item.sku.toLowerCase().includes(normalizedSearch);
+          return skuMatches && !nameMatches;
+        });
+
+        if (!hasSkuOnlyMatches) {
+          const { data: aggregatedHistory, error: aggregatedHistoryError } = await supabase.rpc(
+            "get_inventory_filtered_history",
+            {
+              p_category: filterCategory !== "all" ? filterCategory : null,
+              p_search: trimmedSearch,
+            },
+          );
+
+          if (!aggregatedHistoryError) {
+            const result = compactSnapshotHistoryByWeek(
+              (aggregatedHistory || [])
+                .map((row: any) => ({
+                  date: row.snapshot_date,
+                  totalStock: Number(row.total_stock) || 0,
+                  totalValue: Number(row.total_value) || 0,
+                }))
+                .filter((row) => row.date >= cutoff),
+            );
+
+            setFilteredSnapshotHistory(result);
+            hasLoadedFilteredSnapshotHistory.current = true;
+            return;
+          }
+
+          console.error(
+            "[DEBUG] fetchFilteredSnapshotHistory inventory rpc error, falling back to snapshot scan:",
+            aggregatedHistoryError,
+          );
+        }
+
         const byDate = new Map<string, { totalStock: number; totalValue: number }>();
         const PAGE_SIZE = 1000;
         const ID_BATCH_SIZE = 100;
+        const MAX_FALLBACK_ROWS = 50_000;
+        let totalRows = 0;
 
         for (let batchStart = 0; batchStart < inventoryHistoryTargetIds.length; batchStart += ID_BATCH_SIZE) {
+          if (totalRows >= MAX_FALLBACK_ROWS) break;
           const idBatch = inventoryHistoryTargetIds.slice(batchStart, batchStart + ID_BATCH_SIZE);
           let from = 0;
           let hasMore = true;
@@ -343,6 +417,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
                 "[DEBUG] fetchFilteredSnapshotHistory inventory query error:",
                 error,
               );
+              setError("Không thể tải lịch sử tồn kho");
               setFilteredSnapshotHistory([]);
               return;
             }
@@ -358,8 +433,9 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
               byDate.set(date, current);
             }
 
+            totalRows += batch.length;
             from += PAGE_SIZE;
-            hasMore = batch.length === PAGE_SIZE;
+            hasMore = batch.length === PAGE_SIZE && totalRows < MAX_FALLBACK_ROWS;
           }
         }
 
@@ -379,7 +455,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
     }
-  }, [enabled, inventoryHistoryTargetIds, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
+  }, [enabled, inventory, inventoryHistoryTargetIds, moduleType, filterWarehouse, filterCategory, filterStatus, searchQuery]);
 
   // Fetch per-item snapshot history (when selecting an item)
   const fetchItemSnapshots = useCallback(async (itemName: string, warehouse: string) => {
@@ -420,6 +496,7 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
       setRawSnapshotHistory([]);
       setFilteredSnapshotHistory([]);
       setItemSnapshots([]);
+      setError(null);
       setIsLoadingItemSnapshots(false);
       setIsLoadingSnapshotHistory(false);
       setIsLoadingFilteredSnapshotHistory(false);
@@ -680,6 +757,8 @@ export function useInventory(moduleType: InventoryModuleType = 'all', options: U
     isLoadingFilteredSnapshotHistory,
     topMaterials,
     filteredValue,
+    lastSyncDate,
+    error,
     stats: {
       totalItems,
       activeAnomaliesCount,

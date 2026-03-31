@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FDC Phòng Khám - Sơ Đồ Tầng 1</title>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0eb;
+    --wall: #2c2c2c;
+    --room-fill: #ffffff;
+    --accent: #1a6b4e;
+    --accent-light: #e8f5ee;
+    --text: #2c2c2c;
+    --text-muted: #6b6b6b;
+    --reception: #dceef8;
+    --waiting: #fef3e2;
+    --medical: #e8f5ee;
+    --pharmacy: #f0e8f5;
+    --utility: #f5f5f5;
+    --lab: #fde8e8;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Be Vietnam Pro', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px;
+  }
+
+  .header {
+    text-align: center;
+    margin-bottom: 24px;
+    animation: fadeDown 0.6s ease-out;
+  }
+
+  .header h1 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+
+  .header p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    margin-top: 4px;
+    font-weight: 300;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 20px;
+    animation: fadeDown 0.6s ease-out 0.1s both;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 400;
+  }
+
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  .floor-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: var(--shadow);
+    padding: 32px;
+    max-width: 720px;
+    width: 100%;
+    animation: fadeUp 0.7s ease-out 0.2s both;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .floor-container::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--accent), #2a9d6e);
+  }
+
+  .floorplan {
+    width: 100%;
+    aspect-ratio: 0.62;
+    position: relative;
+    border: 2.5px solid var(--wall);
+    border-radius: 4px;
+    background: var(--room-fill);
+  }
+
+  .room {
+    position: absolute;
+    border: 1.5px solid #bbb;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 4px;
+    transition: all 0.25s ease;
+    cursor: default;
+    border-radius: 2px;
+  }
+
+  .room:hover {
+    transform: scale(1.03);
+    z-index: 10;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    border-color: var(--accent);
+  }
+
+  .room-name {
+    font-size: 0.68rem;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--text);
+  }
+
+  .room-id {
+    font-size: 0.58rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .room-icon {
+    font-size: 1.1rem;
+    margin-bottom: 2px;
+  }
+
+  /* Color categories */
+  .cat-reception { background: var(--reception); }
+  .cat-waiting { background: var(--waiting); }
+  .cat-medical { background: var(--medical); }
+  .cat-pharmacy { background: var(--pharmacy); }
+  .cat-utility { background: var(--utility); }
+  .cat-lab { background: var(--lab); }
+
+  /* Entrance marker */
+  .entrance {
+    position: absolute;
+    top: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--accent);
+    color: white;
+    padding: 4px 16px;
+    border-radius: 12px 12px 0 0;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+
+  .entrance::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border-left: 6px solid transparent;
+    border-right: 6px solid transparent;
+    border-top: 6px solid var(--accent);
+  }
+
+  /* Corridor / hallway */
+  .corridor {
+    position: absolute;
+    background: repeating-linear-gradient(
+      90deg,
+      #f9f9f9 0px,
+      #f9f9f9 8px,
+      #f0f0f0 8px,
+      #f0f0f0 10px
+    );
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    color: var(--text-muted);
+    font-weight: 400;
+    letter-spacing: 0.5px;
+  }
+
+  .stairs {
+    position: absolute;
+    background: repeating-linear-gradient(
+      0deg,
+      #e8e8e8 0px,
+      #e8e8e8 4px,
+      #d0d0d0 4px,
+      #d0d0d0 5px
+    );
+    border: 1.5px solid #aaa;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.6rem;
+    font-weight: 500;
+    color: var(--text-muted);
+    border-radius: 2px;
+  }
+
+  .footer-note {
+    text-align: center;
+    margin-top: 16px;
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    font-weight: 300;
+    animation: fadeUp 0.7s ease-out 0.4s both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Tooltip */
+  .room[data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--wall);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.65rem;
+    font-weight: 400;
+    white-space: nowrap;
+    z-index: 100;
+    pointer-events: none;
+  }
+
+  @media (max-width: 500px) {
+    .floor-container { padding: 16px; }
+    .room-name { font-size: 0.55rem; }
+    .room-id { font-size: 0.48rem; }
+    .room-icon { font-size: 0.85rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏥 FDC Phòng Khám Gia Đình</h1>
+  <p>Sơ đồ mặt bằng Tầng 1</p>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--reception)"></div>Tiếp đón</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--waiting)"></div>Chờ khám</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--medical)"></div>Phòng khám</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--pharmacy)"></div>Nhà thuốc</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--lab)"></div>Xét nghiệm</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--utility)"></div>Phụ trợ</div>
+</div>
+
+<div class="floor-container">
+  <div class="floorplan">
+
+    <!-- ENTRANCE -->
+    <div class="entrance">↓ LỐI VÀO ↓</div>
+
+    <!-- ============ LEFT WING ============ -->
+
+    <!-- Khu Tiếp đón -->
+    <div class="room cat-reception" style="left:1%; top:1%; width:42%; height:14%;" data-tip="Khu vực tiếp đón bệnh nhân">
+      <div class="room-icon">🏢</div>
+      <div class="room-name">Khu Tiếp Đón</div>
+    </div>
+
+    <!-- Phòng chờ -->
+    <div class="room cat-waiting" style="left:1%; top:16%; width:42%; height:14%;" data-tip="Phòng chờ khám bệnh">
+      <div class="room-icon">🪑</div>
+      <div class="room-name">Phòng Chờ</div>
+    </div>
+
+    <!-- Quầy thu ngân -->
+    <div class="room cat-reception" style="left:1%; top:31%; width:42%; height:8%;" data-tip="Thanh toán viện phí">
+      <div class="room-icon">💳</div>
+      <div class="room-name">Quầy Thu Ngân</div>
+    </div>
+
+    <!-- P110 -->
+    <div class="room cat-medical" style="left:1%; top:40%; width:20%; height:10%;" data-tip="Phòng khám P110">
+      <div class="room-icon">🩺</div>
+      <div class="room-name">Phòng Khám</div>
+      <div class="room-id">P110</div>
+    </div>
+
+    <!-- Kho T1 -->
+    <div class="room cat-utility" style="left:1%; top:51%; width:10%; height:6%;" data-tip="Kho tầng 1">
+      <div class="room-icon">📦</div>
+      <div class="room-name">Kho T1</div>
+    </div>
+
+    <!-- P109 -->
+    <div class="room cat-medical" style="left:1%; top:58%; width:42%; height:10%;" data-tip="Phòng khám P109">
+      <div class="room-icon">🩺</div>
+      <div class="room-name">Phòng Khám</div>
+      <div class="room-id">P109</div>
+    </div>
+
+    <!-- P108 -->
+    <div class="room cat-medical" style="left:1%; top:69%; width:42%; height:10%;" data-tip="Phòng khám P108">
+      <div class="room-icon">🩺</div>
+      <div class="room-name">Phòng Khám</div>
+      <div class="room-id">P108</div>
+    </div>
+
+    <!-- Khu X-quang -->
+    <div class="room cat-lab" style="left:1%; top:80%; width:42%; height:10%;" data-tip="Khu chụp X-quang">
+      <div class="room-icon">📡</div>
+      <div class="room-name">Khu X-Quang</div>
+    </div>
+
+    <!-- Khu Thủ thuật -->
+    <div class="room cat-medical" style="left:1%; top:91%; width:42%; height:8%;" data-tip="Khu thực hiện thủ thuật">
+      <div class="room-icon">⚕️</div>
+      <div class="room-name">Khu Thủ Thuật</div>
+    </div>
+
+    <!-- ============ CENTER - corridor & stairs ============ -->
+
+    <!-- Corridor -->
+    <div class="corridor" style="left:43.5%; top:31%; width:13%; height:68%; border-left: 1px dashed #ccc; border-right: 1px dashed #ccc;">
+      <span style="writing-mode: vertical-rl; transform: rotate(180deg); opacity: 0.5;">HÀNH LANG</span>
+    </div>
+
+    <!-- Cầu thang lên T2 -->
+    <div class="stairs" style="left:22%; top:40%; width:21%; height:10%;" data-tip="Cầu thang lên Tầng 2">
+      🪜 Cầu Thang<br>↑ Lên T2
+    </div>
+
+    <!-- ============ RIGHT WING ============ -->
+
+    <!-- Khu Lấy máu -->
+    <div class="room cat-lab" style="left:57%; top:1%; width:42%; height:14%;" data-tip="Khu lấy mẫu xét nghiệm">
+      <div class="room-icon">🩸</div>
+      <div class="room-name">Khu Lấy Máu</div>
+    </div>
+
+    <!-- Nhà thuốc -->
+    <div class="room cat-pharmacy" style="left:57%; top:16%; width:42%; height:14%;" data-tip="Nhà thuốc phát thuốc">
+      <div class="room-icon">💊</div>
+      <div class="room-name">Nhà Thuốc</div>
+    </div>
+
+    <!-- P111 -->
+    <div class="room cat-medical" style="left:57%; top:31%; width:42%; height:13%;" data-tip="Phòng khám P111">
+      <div class="room-icon">🩺</div>
+      <div class="room-name">Phòng Khám</div>
+      <div class="room-id">P111</div>
+    </div>
+
+    <!-- Phòng Server -->
+    <div class="room cat-utility" style="left:57%; top:45%; width:42%; height:11%;" data-tip="Phòng máy chủ hệ thống">
+      <div class="room-icon">🖥️</div>
+      <div class="room-name">Phòng Server</div>
+    </div>
+
+    <!-- P104 -->
+    <div class="room cat-medical" style="left:57%; top:57%; width:42%; height:11%;" data-tip="Phòng khám P104">
+      <div class="room-icon">🩺</div>
+      <div class="room-name">Phòng Khám</div>
+      <div class="room-id">P104</div>
+    </div>
+
+    <!-- Khu Vệ sinh -->
+    <div class="room cat-utility" style="left:57%; top:69%; width:21%; height:12%;" data-tip="Khu vệ sinh chung">
+      <div class="room-icon">🚿</div>
+      <div class="room-name">Khu Vệ Sinh</div>
+    </div>
+
+    <!-- Khu Khử khuẩn -->
+    <div class="room cat-utility" style="left:78%; top:69%; width:21%; height:12%;" data-tip="Khu khử khuẩn dụng cụ">
+      <div class="room-icon">🧹</div>
+      <div class="room-name">Khu Khử Khuẩn</div>
+    </div>
+
+    <!-- Khu Khí dung -->
+    <div class="room cat-medical" style="left:57%; top:82%; width:42%; height:17%;" data-tip="Khu khí dung điều trị">
+      <div class="room-icon">🌬️</div>
+      <div class="room-name">Khu Khí Dung</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="footer-note">
+  Hover vào phòng để xem chi tiết · FDC Phòng Khám Gia Đình · Tầng 1
+</div>
+
+</body>
+</html>

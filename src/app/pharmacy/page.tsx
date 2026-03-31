@@ -78,6 +78,8 @@ export default function PharmacyPage() {
     isLoadingItemSnapshots,
     filteredValue,
     topMaterials,
+    lastSyncDate,
+    error,
     stats,
   } = useInventory('pharmacy');
 
@@ -207,10 +209,17 @@ export default function PharmacyPage() {
   return (
     <div className="max-w-7xl mx-auto pb-24 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Pill className="w-6 h-6 text-indigo-600" />
-          Quản lý Kho Thuốc
-        </h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+            <Pill className="w-6 h-6 text-indigo-600" />
+            Quản lý Kho Thuốc
+          </h1>
+          {lastSyncDate && (
+            <p className="text-xs text-gray-400 mt-1">
+              Cập nhật: {format(parseISO(lastSyncDate), "dd/MM/yyyy HH:mm")}
+            </p>
+          )}
+        </div>
 
         {/* Tab Toggle */}
         <div className="flex bg-gray-100 p-1 rounded-xl w-full sm:w-auto">
@@ -251,6 +260,12 @@ export default function PharmacyPage() {
           </button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
 
       {/* ========= TAB 1: OVERVIEW ========= */}
       {activeTab === "overview" && (
@@ -455,7 +470,7 @@ export default function PharmacyPage() {
 
       {/* ========= TAB 2: STOCK LIST ========= */}
       {activeTab === "list" && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-220px)] min-h-[500px]">
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-160px)] min-h-[600px]">
           {/* Filters */}
           <div className="p-4 border-b border-gray-100 space-y-3">
             <div className="relative">

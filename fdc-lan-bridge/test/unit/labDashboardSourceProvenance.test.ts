@@ -429,8 +429,7 @@ describe('lab dashboard source provenance builders', () => {
       }),
     ]);
   });
-
-  it('builds reagent provenance for all and reagent focus while preserving first-match assignment order semantics', () => {
+  it('builds reagent provenance for real inventory rows and item-level focus', () => {
     const allSourceInfo = buildReagentSourceProvenance({
       generatedAt: '2026-03-23T03:10:00.000Z',
       snapshotDate: '2026-03-23',
@@ -441,7 +440,7 @@ describe('lab dashboard source provenance builders', () => {
       claimedRows: claimedReagentRows,
       displayedRows: claimedReagentRows,
       claimOrder: ['glucose', 'creatinine', 'urine'],
-      claimOrderDisplayLabels: ['Glucose ưu tiên', 'Creatinine', 'Nước tiểu'],
+      claimOrderDisplayLabels: ['Glucose uu tien', 'Creatinine', 'Nuoc tieu'],
     } satisfies ReagentSourceProvenanceInput);
 
     const glucoseRows = claimedReagentRows.filter((row) => row.reagentKey === 'glucose');
@@ -455,28 +454,27 @@ describe('lab dashboard source provenance builders', () => {
       claimedRows: claimedReagentRows,
       displayedRows: glucoseRows,
       claimOrder: ['glucose', 'creatinine', 'urine'],
-      claimOrderDisplayLabels: ['Glucose ưu tiên', 'Creatinine', 'Nước tiểu'],
+      claimOrderDisplayLabels: ['Glucose uu tien', 'Creatinine', 'Nuoc tieu'],
     } satisfies ReagentSourceProvenanceInput);
 
     expect(pipelineKeys(allSourceInfo.pipeline)).toEqual([
       'positive_stock_snapshot',
       'lab_warehouse_scope',
-      'reagent_keyword_match',
-      'claim_first_match',
+      'sort_inventory_rows',
       'focus_all',
     ]);
-    expect(findPipelineStep(allSourceInfo.pipeline, 'claim_first_match')).toEqual(
+    expect(findPipelineStep(allSourceInfo.pipeline, 'sort_inventory_rows')).toEqual(
       expect.objectContaining({
-        inputCount: matchedSnapshotRows.length,
-        outputCount: claimedReagentRows.length,
-        ruleSummary: expect.stringContaining('Glucose ưu tiên, Creatinine, Nước tiểu'),
+        inputCount: labScopedSnapshotRows.length,
+        outputCount: matchedSnapshotRows.length,
+        ruleSummary: expect.stringContaining('current_stock'),
       }),
     );
-    expect(allSourceInfo.focusReason).toContain('toàn bộ các dòng tồn kho đã được gán');
+    expect(allSourceInfo.focusReason).toContain('vat tu');
     expect(glucoseSourceInfo.pipeline?.at(-1)).toEqual(
       expect.objectContaining({
         key: 'focus_reagent',
-        inputCount: claimedReagentRows.length,
+        inputCount: matchedSnapshotRows.length,
         outputCount: glucoseRows.length,
       }),
     );
@@ -484,34 +482,89 @@ describe('lab dashboard source provenance builders', () => {
     expect(glucoseSourceInfo.metricExplanation).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          label: 'Thứ tự gán nhóm hóa chất',
-          description: expect.stringContaining('dòng phù hợp trước sẽ được giữ cho nhóm đó'),
+          description: expect.stringContaining('current_stock'),
         }),
       ]),
     );
   });
-
   it('uses canonical reagent labels when the rendered rows are empty', () => {
     const sourceInfo = buildReagentSourceProvenance({
       generatedAt: '2026-03-23T03:10:00.000Z',
       snapshotDate: '2026-03-23',
       focus: 'reagent:glucose',
-      focusDisplayLabel: 'Glucose máu',
+      focusDisplayLabel: 'Glucose mau',
       positiveSnapshotRows,
       labScopedRows: labScopedSnapshotRows,
       matchedRows: matchedSnapshotRows,
       claimedRows: claimedReagentRows,
       displayedRows: [],
       claimOrder: ['glucose', 'creatinine'],
-      claimOrderDisplayLabels: ['Glucose máu', 'Creatinine máu'],
+      claimOrderDisplayLabels: ['Glucose mau', 'Creatinine mau'],
     } satisfies ReagentSourceProvenanceInput);
 
-    expect(sourceInfo.focusReason).toContain('Glucose máu');
-    expect(findPipelineStep(sourceInfo.pipeline, 'claim_first_match')).toEqual(
+    expect(sourceInfo.focusReason).toContain('Glucose mau');
+    expect(findPipelineStep(sourceInfo.pipeline, 'focus_reagent')).toEqual(
       expect.objectContaining({
-        ruleSummary: expect.stringContaining('Glucose máu, Creatinine máu'),
+        ruleSummary: expect.stringContaining('Glucose mau'),
       }),
     );
+  });
+  it('mentions concrete source tables in operator-facing provenance text', () => {
+    const queueText = collectStructuredStrings(
+      buildQueueSourceProvenance({
+        asOfDate: '2026-03-23',
+        generatedAt: '2026-03-23T03:10:00.000Z',
+        focus: 'waiting',
+        timelineRows,
+        displayedRows: waitingRows,
+      } satisfies QueueSourceProvenanceInput),
+    ).join(' ');
+    expect(queueText).toContain('tb_servicedata');
+    expect(queueText).toContain('tb_patientrecord');
+    expect(queueText).toContain('tb_patient');
+    expect(queueText).toContain('tb_treatment');
+
+    const tatText = collectStructuredStrings(
+      buildTatSourceProvenance({
+        asOfDate: '2026-03-23',
+        generatedAt: '2026-03-23T03:10:00.000Z',
+        focus: 'processing_to_result',
+        timelineRows,
+        displayedRows: tatProcessingRows,
+      } satisfies TatSourceProvenanceInput),
+    ).join(' ');
+    expect(tatText).toContain('tb_servicedata');
+    expect(tatText).toContain('tb_patientrecord');
+    expect(tatText).toContain('tb_patient');
+
+    const abnormalText = collectStructuredStrings(
+      buildAbnormalSourceProvenance({
+        asOfDate: '2026-03-23',
+        generatedAt: '2026-03-23T03:10:00.000Z',
+        focus: 'all',
+        abnormalRows,
+        displayedRows: abnormalRows,
+      }),
+    ).join(' ');
+    expect(abnormalText).toContain('tb_servicedata');
+    expect(abnormalText).toContain('tb_patientrecord');
+    expect(abnormalText).toContain('tb_patient');
+
+    const reagentText = collectStructuredStrings(
+      buildReagentSourceProvenance({
+        generatedAt: '2026-03-23T03:10:00.000Z',
+        snapshotDate: '2026-03-23',
+        focus: 'all',
+        positiveSnapshotRows,
+        labScopedRows: labScopedSnapshotRows,
+        matchedRows: matchedSnapshotRows,
+        claimedRows: claimedReagentRows,
+        displayedRows: claimedReagentRows,
+        claimOrder: ['glucose', 'creatinine', 'urine'],
+        claimOrderDisplayLabels: ['Glucose ưu tiên', 'Creatinine', 'Nước tiểu'],
+      } satisfies ReagentSourceProvenanceInput),
+    ).join(' ');
+    expect(reagentText).toContain('fdc_inventory_snapshots');
   });
 
   it('never exposes unsupported patientName or English implementation jargon in operator-facing provenance strings', () => {

@@ -1,0 +1,89 @@
+version: 1
+
+defaults:
+  read_first:
+    - AGENTS.md
+    - WORKFLOW.md
+    - tasks/lessons.md
+    - tasks/decisions.md
+    - tasks/todo.md
+  handoff_template: tasks/templates/handoff.template.md
+  task_template: tasks/templates/task-spec.template.md
+
+roles:
+  planner:
+    mission: Turn requests into scoped specs, checklists, and delegation boundaries.
+    owns:
+      - tasks/todo.md
+      - tasks/active/**
+      - tasks/handoffs/**
+    avoids:
+      - src/**
+      - fdc-lan-bridge/src/**
+      - sql/**
+      - supabase/functions/**
+    done_when:
+      - scope is explicit
+      - assumptions are recorded
+      - verification steps are defined
+
+  portal-worker:
+    mission: Implement portal UI, viewmodel, and client-side state changes.
+    owns:
+      - src/**
+      - public/**
+    reads:
+      - sql/**
+      - supabase/functions/**
+    guardrails:
+      - Keep pages thin and put business logic in viewmodels.
+      - Use @/ imports, not long relative paths.
+      - Reuse src/lib/constants.ts for labels, statuses, and role metadata.
+
+  bridge-worker:
+    mission: Implement bridge jobs, schedulers, APIs, and service-side integration logic.
+    owns:
+      - fdc-lan-bridge/src/**
+      - fdc-lan-bridge/test/**
+    reads:
+      - sql/**
+    guardrails:
+      - When adding a sync job, verify scheduler and server registration.
+      - Preserve sync logging and bridge health behavior.
+
+  data-worker:
+    mission: Own schema, SQL, Supabase functions, and integration-facing data contracts.
+    owns:
+      - sql/**
+      - supabase/functions/**
+      - src/types/**
+      - fdc-lan-bridge/src/db/**
+    reads:
+      - src/**
+      - fdc-lan-bridge/src/**
+    guardrails:
+      - Prefer additive schema changes with clear rollback notes.
+      - Keep portal and bridge contracts aligned when table shape changes.
+
+  verifier:
+    mission: Prove correctness with targeted checks and capture any remaining gaps.
+    owns:
+      - tasks/handoffs/**
+      - tasks/active/**
+    avoids:
+      - broad feature edits unless the issue is purely verification-related
+    done_when:
+      - checks were run or blocked with a stated reason
+      - regressions and residual risks are written down
+
+  reviewer:
+    mission: Review for bugs, regressions, missing tests, and scope leaks.
+    owns:
+      - tasks/handoffs/**
+      - tasks/active/**
+      - tasks/lessons.md
+    avoids:
+      - large implementation edits during review
+    done_when:
+      - findings are explicit
+      - no-finding reviews still mention remaining risks or test gaps

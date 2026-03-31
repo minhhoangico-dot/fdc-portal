@@ -100,16 +100,27 @@ The portal's Admin page talks to the bridge via its HTTP endpoints (`/health`, `
 
 **Portal** (`.env.local` based on `.env.example`):
 ```
-VITE_SUPABASE_URL=
+VITE_SUPABASE_URL=https://supabase.fdc-nhanvien.org
 VITE_SUPABASE_ANON_KEY=
+VITE_VAPID_PUBLIC_KEY=
 ```
 
 **Bridge** (`fdc-lan-bridge/.env` based on `.env.example`):
 ```
-SUPABASE_URL=
+SUPABASE_URL=http://192.168.1.9:8000
 SUPABASE_SERVICE_ROLE_KEY=
 HIS_DB_HOST= HIS_DB_PORT= HIS_DB_NAME= HIS_DB_USER= HIS_DB_PASSWORD=
 MISA_DB_SERVER= MISA_DB_PORT= MISA_DB_NAME= MISA_DB_USER= MISA_DB_PASSWORD=
 HIKVISION_HOST= HIKVISION_USERNAME= HIKVISION_PASSWORD=
 PORT=3333
 ```
+
+---
+
+## Workflow Orchestration
+
+- For any non-trivial task, read `WORKFLOW.md` before implementation.
+- Use `tasks/todo.md` as the live checklist, `tasks/active/` for task specs, and `tasks/handoffs/` for continuation notes between agents.
+- Read `tasks/lessons.md` before similar work and append a new lesson after any user correction or avoidable miss.
+- Use `tasks/decisions.md` for durable architecture and process choices.
+- Use `agents/registry.yaml` to split work into non-overlapping write scopes.

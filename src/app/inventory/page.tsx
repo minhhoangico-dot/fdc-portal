@@ -25,15 +25,15 @@ const formatCompact = (value: number) => {
 
 type TabType = "overview" | "list" | "consumption" | "import-export" | "stocktake" | "anomalies";
 
-type ListSortKey = "name" | "stock" | "value";
-type SortDir = "asc" | "desc";
-
 export default function InventoryPage() {
   const {
     searchQuery, setSearchQuery,
     filterCategory, setFilterCategory,
     filterStatus, setFilterStatus,
     filteredInventory,
+    sortKey,
+    sortDir,
+    toggleSort,
     uniqueCategories,
     selectedItem, setSelectedItem,
     anomalies, acknowledgeAnomaly,
@@ -43,13 +43,11 @@ export default function InventoryPage() {
     topMaterials,
     stats,
     isLoadingSnapshotHistory,
+    lastSyncDate,
+    error,
   } = useInventory("inventory");
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
-  const [listSort, setListSort] = useState<{ key: ListSortKey; dir: SortDir }>({
-    key: "value",
-    dir: "desc",
-  });
 
   const filteredTotalValue = React.useMemo(() => {
     return filteredInventory.reduce(
@@ -58,37 +56,9 @@ export default function InventoryPage() {
     );
   }, [filteredInventory]);
 
-  const sortedInventory = React.useMemo(() => {
-    const dirMul = listSort.dir === "asc" ? 1 : -1;
-    const copy = [...filteredInventory];
-    copy.sort((a, b) => {
-      if (listSort.key === "name") {
-        return dirMul * a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
-      }
-      if (listSort.key === "stock") {
-        const av = Number(a.currentStock) || 0;
-        const bv = Number(b.currentStock) || 0;
-        if (av === bv) return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
-        return dirMul * (av - bv);
-      }
-      const av = (Number(a.currentStock) || 0) * (Number(a.unitPrice) || 0);
-      const bv = (Number(b.currentStock) || 0) * (Number(b.unitPrice) || 0);
-      if (av === bv) return a.name.localeCompare(b.name, "vi", { sensitivity: "base" });
-      return dirMul * (av - bv);
-    });
-    return copy;
-  }, [filteredInventory, listSort]);
-
-  const toggleSort = (key: ListSortKey) => {
-    setListSort((prev) => {
-      if (prev.key !== key) return { key, dir: "desc" };
-      return { key, dir: prev.dir === "desc" ? "asc" : "desc" };
-    });
-  };
-
-  const sortIndicator = (key: ListSortKey) => {
-    if (listSort.key !== key) return null;
-    return <span className="ml-1 text-[10px] text-indigo-600">{listSort.dir === "asc" ? "▲" : "▼"}</span>;
+  const sortIndicator = (key: "name" | "stock" | "value") => {
+    if (sortKey !== key) return null;
+    return <span className="ml-1 text-[10px] text-indigo-600">{sortDir === "asc" ? "▲" : "▼"}</span>;
   };
 
   const getStatusBadge = (status: string) => {
@@ -115,9 +85,15 @@ export default function InventoryPage() {
 
   return (
     <div className="max-w-7xl mx-auto pb-24 space-y-6">
-      {/* Header + Tabs */}
       <div className="flex flex-col gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Kho vật tư</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">Kho vật tư</h1>
+          {lastSyncDate && (
+            <span className="text-xs text-gray-400">
+              Cập nhật: {format(parseISO(lastSyncDate), "dd/MM/yyyy HH:mm")}
+            </span>
+          )}
+        </div>
         <div className="flex bg-gray-100 p-1 rounded-xl overflow-x-auto">
           {tabs.map(tab => (
             <button
@@ -135,7 +111,12 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      {/* TAB 1: OVERVIEW */}
+      {error && (
+        <div className="bg-rose-50 border border-rose-200 rounded-xl px-4 py-3 text-sm text-rose-700">
+          {error}
+        </div>
+      )}
+
       {activeTab === "overview" && (
         <OverviewTab
           stats={stats}
@@ -145,172 +126,171 @@ export default function InventoryPage() {
         />
       )}
 
-      {/* TAB 2: LIST */}
       {activeTab === "list" && (() => {
         const hasChartFilters = filterCategory !== "all" || searchQuery.trim() !== "";
         const isFiltered = hasChartFilters && filteredSnapshotHistory.length > 0;
         const chartData = hasChartFilters ? filteredSnapshotHistory : snapshotHistory;
         const chartLoading = hasChartFilters ? isLoadingFilteredSnapshotHistory : isLoadingSnapshotHistory;
         return (
-        <div className="space-y-4">
-        {/* 1-year inventory value chart */}
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-semibold text-gray-700">
-              Giá trị tồn kho 1 năm
-              {isFiltered && (
-                <span className="ml-2 text-xs font-normal text-indigo-500">
-                  (Theo bộ lọc{filterCategory !== "all" ? ` — ${filterCategory}` : ""})
-                </span>
+          <div className="space-y-4">
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-gray-700">
+                  Giá trị tồn kho 1 năm
+                  {isFiltered && (
+                    <span className="ml-2 text-xs font-normal text-indigo-500">
+                      (Theo bộ lọc{filterCategory !== "all" ? ` — ${filterCategory}` : ""})
+                    </span>
+                  )}
+                </h3>
+                {chartLoading && <span className="text-xs text-gray-400 animate-pulse">Đang tải...</span>}
+              </div>
+              {chartLoading && chartData.length === 0 ? (
+                <div className="h-32 bg-gray-50 rounded-xl animate-pulse" />
+              ) : chartData.length === 0 ? (
+                <div className="h-32 flex items-center justify-center text-xs text-gray-400">Chưa có dữ liệu lịch sử</div>
+              ) : (
+                <ResponsiveContainer width="100%" height={140}>
+                  <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
+                    <defs>
+                      <linearGradient id="listValueGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
+                        <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tick={{ fontSize: 10, fill: "#9ca3af" }}
+                      tickLine={false}
+                      axisLine={false}
+                      tickFormatter={(d) => { try { return format(parseISO(d), "MM/yy"); } catch { return d; } }}
+                      interval="preserveStartEnd"
+                    />
+                    <YAxis
+                      tick={{ fontSize: 10, fill: "#9ca3af" }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={52}
+                      tickFormatter={(v) => formatCompact(v)}
+                    />
+                    <Tooltip
+                      formatter={(v: number) => [formatCurrency(v), "Giá trị"]}
+                      labelFormatter={(d) => { try { return format(parseISO(d as string), "dd/MM/yyyy"); } catch { return d as string; } }}
+                      contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="totalValue"
+                      stroke="#6366f1"
+                      strokeWidth={2}
+                      fill="url(#listValueGrad)"
+                      dot={false}
+                      activeDot={{ r: 4 }}
+                      isAnimationActive={false}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
               )}
-            </h3>
-            {chartLoading && <span className="text-xs text-gray-400 animate-pulse">Đang tải...</span>}
-          </div>
-          {chartLoading && chartData.length === 0 ? (
-            <div className="h-32 bg-gray-50 rounded-xl animate-pulse" />
-          ) : chartData.length === 0 ? (
-            <div className="h-32 flex items-center justify-center text-xs text-gray-400">Chưa có dữ liệu lịch sử</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart data={chartData} margin={{ top: 4, right: 4, bottom: 0, left: 0 }}>
-                <defs>
-                  <linearGradient id="listValueGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fontSize: 10, fill: "#9ca3af" }}
-                  tickLine={false}
-                  axisLine={false}
-                  tickFormatter={(d) => { try { return format(parseISO(d), "MM/yy"); } catch { return d; } }}
-                  interval="preserveStartEnd"
-                />
-                <YAxis
-                  tick={{ fontSize: 10, fill: "#9ca3af" }}
-                  tickLine={false}
-                  axisLine={false}
-                  width={52}
-                  tickFormatter={(v) => formatCompact(v)}
-                />
-                <Tooltip
-                  formatter={(v: number) => [formatCurrency(v), "Giá trị"]}
-                  labelFormatter={(d) => { try { return format(parseISO(d as string), "dd/MM/yyyy"); } catch { return d as string; } }}
-                  contentStyle={{ fontSize: 12, borderRadius: 8, border: "1px solid #e5e7eb" }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="totalValue"
-                  stroke="#6366f1"
-                  strokeWidth={2}
-                  fill="url(#listValueGrad)"
-                  dot={false}
-                  activeDot={{ r: 4 }}
-                  isAnimationActive={false}
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          )}
-        </div>
-
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-460px)] min-h-[400px]">
-          <div className="p-4 border-b border-gray-100 space-y-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input type="text" placeholder="Tìm kiếm vật tư..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-transparent rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all" />
             </div>
-            <div className="flex flex-wrap gap-2">
-              <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500">
-                <option value="all">Tất cả loại</option>
-                {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500">
-                <option value="all">Tất cả trạng thái</option>
-                <option value="in_stock">Bình thường</option>
-                <option value="low_stock">Sắp hết</option>
-                <option value="out_of_stock">Hết hàng</option>
-              </select>
-              <div className="ml-auto flex items-center gap-2">
-                <span className="text-xs text-gray-500 whitespace-nowrap">
-                  Tổng giá trị (theo bộ lọc):
-                </span>
-                <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 whitespace-nowrap">
-                  {formatCurrency(filteredTotalValue)}
-                </span>
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden flex flex-col h-[calc(100vh-320px)] min-h-[500px]">
+              <div className="p-4 border-b border-gray-100 space-y-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm vật tư..."
+                    value={searchQuery}
+                    onChange={e => setSearchQuery(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-transparent rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500">
+                    <option value="all">Tất cả loại</option>
+                    {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <select value={filterStatus} onChange={e => setFilterStatus(e.target.value as any)} className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500">
+                    <option value="all">Tất cả trạng thái</option>
+                    <option value="in_stock">Bình thường</option>
+                    <option value="low_stock">Sắp hết</option>
+                    <option value="out_of_stock">Hết hàng</option>
+                  </select>
+                  <div className="ml-auto flex items-center gap-2">
+                    <span className="text-xs text-gray-500 whitespace-nowrap">
+                      Tổng giá trị (theo bộ lọc):
+                    </span>
+                    <span className="inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200 whitespace-nowrap">
+                      {formatCurrency(filteredTotalValue)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    <tr>
+                      <th
+                        className="px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("name")}
+                        title="Sắp xếp theo tên"
+                      >
+                        Tên vật tư{sortIndicator("name")}
+                      </th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Loại</th>
+                      <th
+                        className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("stock")}
+                        title="Sắp xếp theo tồn kho"
+                      >
+                        Tồn kho{sortIndicator("stock")}
+                      </th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden md:table-cell">Đơn giá</th>
+                      <th
+                        className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden lg:table-cell cursor-pointer select-none hover:text-gray-700"
+                        onClick={() => toggleSort("value")}
+                        title="Sắp xếp theo giá trị"
+                      >
+                        Giá trị{sortIndicator("value")}
+                      </th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-center">TT</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {filteredInventory.map(item => (
+                      <tr key={item.id} onClick={() => setSelectedItem(item)} className="hover:bg-indigo-50/50 cursor-pointer transition-colors group">
+                        <td className="px-4 py-3">
+                          <div className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{item.name}</div>
+                          <div className="text-xs text-gray-500">{item.sku}</div>
+                        </td>
+                        <td className="px-4 py-3 hidden sm:table-cell"><span className="text-sm text-gray-600">{item.category}</span></td>
+                        <td className="px-4 py-3 text-right">
+                          <div className="font-medium text-gray-900">{item.currentStock}</div>
+                          <div className="text-xs text-gray-500">{item.unit}</div>
+                        </td>
+                        <td className="px-4 py-3 text-right hidden md:table-cell text-sm text-gray-600">{formatCurrency(item.unitPrice || 0)}</td>
+                        <td className="px-4 py-3 text-right hidden lg:table-cell text-sm font-medium text-gray-900">{formatCompact(item.currentStock * (item.unitPrice || 0))}</td>
+                        <td className="px-4 py-3 text-center">{getStatusBadge(item.status)}</td>
+                      </tr>
+                    ))}
+                    {filteredInventory.length === 0 && (
+                      <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">Không tìm thấy vật tư nào.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           </div>
-          <div className="flex-1 overflow-auto">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-gray-50 sticky top-0 z-10">
-                <tr>
-                  <th
-                    className="px-4 py-3 text-xs font-medium text-gray-500 uppercase cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => toggleSort("name")}
-                    title="Sắp xếp theo tên"
-                  >
-                    Tên vật tư{sortIndicator("name")}
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden sm:table-cell">Loại</th>
-                  <th
-                    className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => toggleSort("stock")}
-                    title="Sắp xếp theo tồn kho"
-                  >
-                    Tồn kho{sortIndicator("stock")}
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden md:table-cell">Đơn giá</th>
-                  <th
-                    className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-right hidden lg:table-cell cursor-pointer select-none hover:text-gray-700"
-                    onClick={() => toggleSort("value")}
-                    title="Sắp xếp theo giá trị"
-                  >
-                    Giá trị{sortIndicator("value")}
-                  </th>
-                  <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-center">TT</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {sortedInventory.map(item => (
-                  <tr key={item.id} onClick={() => setSelectedItem(item)} className="hover:bg-indigo-50/50 cursor-pointer transition-colors group">
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900 group-hover:text-indigo-600 transition-colors">{item.name}</div>
-                      <div className="text-xs text-gray-500">{item.sku}</div>
-                    </td>
-                    <td className="px-4 py-3 hidden sm:table-cell"><span className="text-sm text-gray-600">{item.category}</span></td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="font-medium text-gray-900">{item.currentStock}</div>
-                      <div className="text-xs text-gray-500">{item.unit}</div>
-                    </td>
-                    <td className="px-4 py-3 text-right hidden md:table-cell text-sm text-gray-600">{formatCurrency(item.unitPrice || 0)}</td>
-                    <td className="px-4 py-3 text-right hidden lg:table-cell text-sm font-medium text-gray-900">{formatCompact(item.currentStock * (item.unitPrice || 0))}</td>
-                    <td className="px-4 py-3 text-center">{getStatusBadge(item.status)}</td>
-                  </tr>
-                ))}
-                {filteredInventory.length === 0 && (
-                  <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">Không tìm thấy vật tư nào.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-        </div>
         );
       })()}
 
-      {/* TAB 3: CONSUMPTION */}
       {activeTab === "consumption" && <ConsumptionTab />}
 
-      {/* TAB 4: IMPORT/EXPORT */}
       {activeTab === "import-export" && <ImportExportTab />}
 
-      {/* TAB 5: STOCKTAKE */}
       {activeTab === "stocktake" && <StocktakeTab filteredInventory={filteredInventory} />}
 
-      {/* TAB 6: ANOMALIES */}
       {activeTab === "anomalies" && (
         <div className="space-y-6">
           {anomalies.filter(a => !a.acknowledged).length > 0 ? (
@@ -336,8 +316,10 @@ export default function InventoryPage() {
                     </div>
                   </div>
                   <div className="flex justify-end">
-                    <button onClick={() => acknowledgeAnomaly(anomaly.id)}
-                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors">
+                    <button
+                      onClick={() => acknowledgeAnomaly(anomaly.id)}
+                      className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-colors"
+                    >
                       Xác nhận đã xem
                     </button>
                   </div>
@@ -353,7 +335,6 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* SIDE PANEL */}
       {selectedItem && (
         <>
           <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40" onClick={() => setSelectedItem(null)} />

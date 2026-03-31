@@ -1,0 +1,347 @@
+<style>
+  :root {
+    --lab-bg: #121420;
+    --lab-bg-3: #242840;
+    --lab-text-2: #aab1d6;
+    --lab-accent: #23d49c;
+    --lab-amber: #f6c542;
+    --lab-red: #ff6b7a;
+  }
+  .sample-shell {
+    padding: 6px 4px 0;
+    background: linear-gradient(180deg, #171a29 0%, #131624 100%);
+    border-radius: 22px;
+  }
+  .lab-dashboard-card {
+    padding: 18px 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    border-radius: 18px;
+    background: rgba(12, 15, 26, 0.56);
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .lab-dashboard-card__header {
+    margin-bottom: 14px;
+  }
+  .lab-dashboard-card__label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 0;
+    color: var(--lab-text-2);
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+  }
+  .lab-dashboard-card__dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+  }
+  .lab-dashboard-card__dot--amber {
+    background: var(--lab-amber);
+  }
+  .lab-dashboard-reagents-viewport {
+    position: relative;
+    height: 192px;
+    overflow: hidden;
+    mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+    -webkit-mask-image: linear-gradient(180deg, transparent 0, #000 8%, #000 92%, transparent 100%);
+  }
+  .lab-dashboard-reagents-track {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    animation: reagent-scroll 54s linear infinite;
+  }
+  .lab-dashboard-reagents-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-content: flex-start;
+  }
+  @keyframes reagent-scroll {
+    0% { transform: translateY(0); }
+    100% { transform: translateY(calc(-50% - 4px)); }
+  }
+  .lab-dashboard-reagent {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 8px;
+    background: var(--lab-bg-3);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 5px 10px;
+    min-width: 0;
+    width: auto;
+    flex: 0 0 auto;
+    max-width: 236px;
+  }
+  .lab-dashboard-reagent__name {
+    color: var(--lab-text-2);
+    font-size: 11px;
+    line-height: 1.2;
+    white-space: normal;
+    min-width: 0;
+    max-width: 148px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .lab-dashboard-reagent__bar {
+    width: 34px;
+    height: 5px;
+    border-radius: 999px;
+    background: var(--lab-bg);
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  .lab-dashboard-reagent__bar-fill {
+    height: 100%;
+    border-radius: inherit;
+  }
+  .lab-dashboard-reagent__bar-fill--ok { background: var(--lab-accent); }
+  .lab-dashboard-reagent__bar-fill--low { background: var(--lab-amber); }
+  .lab-dashboard-reagent__bar-fill--critical { background: var(--lab-red); }
+  .lab-dashboard-reagent__value {
+    font-size: 11px;
+    font-weight: 600;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .lab-dashboard-reagent__value--ok { color: var(--lab-accent); }
+  .lab-dashboard-reagent__value--low { color: var(--lab-amber); }
+  .lab-dashboard-reagent__value--critical { color: var(--lab-red); }
+  .sample-note {
+    margin-top: 14px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    color: #c1c6e4;
+    font-size: 13px;
+    line-height: 1.45;
+  }
+</style>
+
+<h2>Sample UI Layout Gốc + Chip Nhỏ + Trượt Chậm Hơn</h2>
+<p class="subtitle">
+  Bản này đưa chip về gần kích thước gốc hơn, để bề ngang co theo tên vật tư thay vì ép bằng nhau.
+  Cụm chip vẫn trượt dọc lên trên, nhưng chậm thêm nữa để phù hợp màn TV.
+</p>
+
+<div class="mockup">
+  <div class="mockup-header">Preview: original reagent card with smaller variable-width chips and slower motion</div>
+  <div class="mockup-body">
+    <div class="sample-shell">
+      <article class="lab-dashboard-card">
+        <div class="lab-dashboard-card__header">
+          <div class="lab-dashboard-card__label">
+            <span class="lab-dashboard-card__dot lab-dashboard-card__dot--amber"></span>
+            Tồn kho thuốc cho khoa xét nghiệm
+          </div>
+        </div>
+
+        <div class="lab-dashboard-reagents-viewport">
+          <div class="lab-dashboard-reagents-track">
+            <div class="lab-dashboard-reagents-group">
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất LDL-Cholesterol</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:18%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">0,75 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất điện giải ISE Buffer</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất điện giải ISE Mid Standard</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất điện giải ISE Reference</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm ALT</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm AST</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm CRE</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm Glucose</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm HBA1C</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm ISE High</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm ISE Low</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Test nước tiểu Multistick</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:50%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">2 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Test Maglumi FT4 (Free T4)</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:86%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">34 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Test Magluni TSH</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:100%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">92 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm Cholesterol</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm Triglyceride</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:50%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">1 Cái</div>
+              </div>
+            </div>
+
+            <div class="lab-dashboard-reagents-group" aria-hidden="true">
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất LDL-Cholesterol</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:18%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">0,75 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất điện giải ISE Buffer</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất điện giải ISE Mid Standard</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất điện giải ISE Reference</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm ALT</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm AST</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--critical" style="width:24%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--critical">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm CRE</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm Glucose</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm HBA1C</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm ISE High</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm ISE Low</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Test nước tiểu Multistick</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:50%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">2 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Test Maglumi FT4 (Free T4)</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:86%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">34 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Test Magluni TSH</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:100%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">92 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm Cholesterol</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--low" style="width:34%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--low">1 Cái</div>
+              </div>
+              <div class="lab-dashboard-reagent">
+                <div class="lab-dashboard-reagent__name">Hóa chất xét nghiệm Triglyceride</div>
+                <div class="lab-dashboard-reagent__bar"><div class="lab-dashboard-reagent__bar-fill lab-dashboard-reagent__bar-fill--ok" style="width:50%"></div></div>
+                <div class="lab-dashboard-reagent__value lab-dashboard-reagent__value--ok">1 Cái</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  </div>
+</div>
+
+<div class="options">
+  <div class="option" data-choice="approved-dense-small" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Đúng hướng</h3>
+      <p>Chip nhỏ kiểu gốc và tốc độ này đã đúng mong muốn.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="slower-dense-small" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Cần chậm hơn nữa</h3>
+      <p>Vẫn muốn giảm tốc độ thêm.</p>
+    </div>
+  </div>
+  <div class="option" data-choice="need-more-names" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Cần thoáng tên hơn</h3>
+      <p>Chip nhỏ ổn nhưng tên vật tư vẫn cần nới thêm chút.</p>
+    </div>
+  </div>
+</div>
+
+<div class="sample-note">
+  Bản này bám sát feedback mới nhất: chip nhỏ lại gần bản gốc, không ép cùng chiều rộng, và tốc độ cuộn đã chậm thêm.
+</div>

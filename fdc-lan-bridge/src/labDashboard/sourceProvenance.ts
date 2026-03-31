@@ -257,77 +257,79 @@ export function buildQueueSourceProvenance(input: QueueSourceProvenanceInput): L
   const focusLabel = formatFocusLabel(input.focus);
   const focusRuleSummary =
     input.focus === "waiting"
-      ? "Chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối."
+      ? "Chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối; tập chờ này chỉ còn các patientrecord đã có tb_treatment.isthutien = 1."
       : input.focus === "processing"
-        ? "Chỉ giữ các hồ sơ đã có mốc xử lý nhưng chưa có kết quả cuối."
-        : "Chỉ giữ các hồ sơ đã có kết quả cuối hợp lệ trong ngày đang xem.";
+        ? "Chỉ giữ các hồ sơ đã có tb_servicedata.order_date hợp lệ nhưng chưa có tb_servicedata.data_date hợp lệ."
+        : "Chỉ giữ các hồ sơ đã có tb_servicedata.data_date hợp lệ trong ngày đang xem.";
   const focusReason =
     input.focus === "waiting"
-      ? `Mục ${focusLabel} chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối, nên ${input.displayedRows.length} dòng cuối cùng chính là danh sách đang hiển thị.`
+      ? `Mục ${focusLabel} chỉ giữ các hồ sơ chưa có mốc xử lý và chưa có kết quả cuối; ở nhánh này queue chỉ giữ patientrecord đã có tb_treatment.isthutien = 1, nên ${input.displayedRows.length} dòng cuối cùng chính là danh sách đang hiển thị.`
       : input.focus === "processing"
-        ? `Mục ${focusLabel} chỉ giữ các hồ sơ đã có mốc xử lý nhưng chưa có kết quả cuối, nên danh sách hiển thị chỉ còn các hồ sơ đang xử lý.`
-        : `Mục ${focusLabel} chỉ giữ các hồ sơ đã có kết quả cuối hợp lệ, nên danh sách hiển thị chỉ còn các hồ sơ đã hoàn thành trong ngày.`;
+        ? `Mục ${focusLabel} chỉ giữ các hồ sơ đã có mốc xử lý nhưng chưa có kết quả cuối, nên danh sách hiển thị chỉ còn các hồ sơ đang xử lý theo các mốc của tb_servicedata.`
+        : `Mục ${focusLabel} chỉ giữ các hồ sơ đã có kết quả cuối hợp lệ, nên danh sách hiển thị chỉ còn các hồ sơ đã hoàn thành trong ngày theo tb_servicedata.data_date.`;
 
   return {
     ...buildSourceInfoBase("queue", "Hàng chờ xét nghiệm", "his", input.generatedAt, input.asOfDate, input.error),
     calculationNotes: [
-      "Nguồn HIS: hồ sơ xét nghiệm gốc trong ngày đang xem.",
       input.focus === "waiting"
-        ? "Mục Chờ lấy mẫu = chưa có mốc xử lý hợp lệ và chưa có mốc trả kết quả hợp lệ."
+        ? "Nguồn HIS: bắt đầu từ tb_servicedata theo ngày tiếp nhận, ghép tb_patientrecord và tb_patient để lấy mã bệnh nhân; riêng mục Chờ lấy mẫu chỉ giữ các patientrecord đã có EXISTS tb_treatment.isthutien = 1."
+        : "Nguồn HIS: bắt đầu từ tb_servicedata theo ngày tiếp nhận, ghép tb_patientrecord và tb_patient để lấy mã bệnh nhân, rồi suy ra trạng thái từ các mốc nằm trên tb_servicedata.",
+      input.focus === "waiting"
+        ? "Mục Chờ lấy mẫu = tb_servicedata.order_date chưa hợp lệ, tb_servicedata.data_date chưa hợp lệ, nhưng cùng patientrecord đã có tb_treatment.isthutien = 1."
         : input.focus === "processing"
-          ? "Mục Đang xử lý = đã có mốc xử lý hợp lệ nhưng chưa có mốc trả kết quả hợp lệ."
-          : "Mục Đã hoàn thành = đã có mốc trả kết quả hợp lệ, vẫn bám theo ngày tiếp nhận của ngày dữ liệu.",
+          ? "Mục Đang xử lý = đã có tb_servicedata.order_date hợp lệ nhưng chưa có tb_servicedata.data_date hợp lệ."
+          : "Mục Đã hoàn thành = đã có tb_servicedata.data_date hợp lệ, vẫn bám theo tb_servicedata.servicedatausedate của ngày dữ liệu.",
     ],
-    summary: `Danh sách này lấy từ các hồ sơ xét nghiệm gốc của ngày ${input.asOfDate}, sau đó chỉ giữ các hồ sơ phù hợp với mục ${focusLabel.toLowerCase()}.`,
+    summary: `Danh sách này đi từ tb_servicedata là tập hồ sơ xét nghiệm gốc của ngày ${input.asOfDate}, ghép tb_patientrecord và tb_patient, sau đó chỉ giữ các hồ sơ phù hợp với mục ${focusLabel.toLowerCase()}.`,
     displayedRowCount: input.displayedRows.length,
     datasets: [
       {
         key: "lab_root_orders",
         label: "Hồ sơ xét nghiệm gốc",
-        role: "Làm tập hồ sơ đầu vào cho danh sách hàng chờ xét nghiệm.",
+        role: "tb_servicedata là tập hồ sơ đầu vào cho danh sách hàng chờ xét nghiệm.",
       },
       {
         key: "patient_codes",
         label: "Mã bệnh nhân",
-        role: "Bổ sung mã bệnh nhân để hiển thị trong danh sách chi tiết.",
+        role: "Mã bệnh nhân được bổ sung qua tb_patientrecord và tb_patient để hiển thị trong danh sách chi tiết.",
       },
       {
         key: "processing_timestamps",
         label: "Mốc xử lý",
-        role: "Cho biết hồ sơ đã bắt đầu xử lý hay vẫn đang chờ lấy mẫu.",
+        role: "Mốc xử lý lấy từ tb_servicedata.order_date để biết hồ sơ đã bắt đầu xử lý hay vẫn đang chờ lấy mẫu.",
       },
       {
         key: "result_timestamps",
         label: "Mốc trả kết quả",
-        role: "Cho biết hồ sơ đã hoàn thành hay vẫn còn nằm trong hàng chờ.",
+        role: "Mốc trả kết quả lấy từ tb_servicedata.data_date hoặc dòng con cùng gốc trong tb_servicedata để biết hồ sơ đã hoàn thành hay vẫn còn nằm trong hàng chờ.",
       },
     ],
     pipeline: [
       buildPipelineStep(
         "raw_day_orders",
         "Tập hồ sơ gốc trong ngày",
-        "Lấy các hồ sơ xét nghiệm gốc có ngày tiếp nhận thuộc ngày đang xem.",
+        "Lấy các hồ sơ xét nghiệm gốc từ tb_servicedata có tb_servicedata.servicedatausedate thuộc ngày đang xem.",
         input.timelineRows.length,
         input.timelineRows.length,
       ),
       buildPipelineStep(
         "valid_requested_at",
         "Giữ hồ sơ có thời điểm tiếp nhận hợp lệ",
-        "Loại các hồ sơ thiếu thời điểm tiếp nhận hợp lệ trước khi đối soát hàng chờ.",
+        "Loại các hồ sơ thiếu tb_servicedata.servicedatausedate hợp lệ trước khi đối soát hàng chờ.",
         input.timelineRows.length,
         validRequestedRows.length,
       ),
       buildPipelineStep(
         "attach_patient_codes",
         "Bổ sung mã bệnh nhân để hiển thị",
-        "Chuẩn hóa mã bệnh nhân để hiển thị; hồ sơ thiếu mã sẽ được thay bằng mã Ẩn danh thay vì bị loại khỏi danh sách.",
+        "Chuẩn hóa mã bệnh nhân qua tb_patientrecord và tb_patient để hiển thị; hồ sơ thiếu mã sẽ được thay bằng mã Ẩn danh thay vì bị loại khỏi danh sách.",
         validRequestedRows.length,
         patientCodeRows.length,
       ),
       buildPipelineStep(
         "derive_stage",
         "Suy ra trạng thái hồ sơ",
-        "Xác định hồ sơ đang chờ, đang xử lý hay đã hoàn thành từ các mốc thời gian hiện có.",
+        "Xác định hồ sơ đang chờ, đang xử lý hay đã hoàn thành từ tb_servicedata.order_date và tb_servicedata.data_date.",
         patientCodeRows.length,
         stageRows.length,
       ),
@@ -370,59 +372,59 @@ export function buildTatSourceProvenance(input: TatSourceProvenanceInput): LabDa
   return {
     ...buildSourceInfoBase("tat", "TAT xét nghiệm", "his", input.generatedAt, input.asOfDate, input.error),
     calculationNotes: [
-        "Nguồn HIS: dùng cùng tập hồ sơ gốc như phần tổng hợp TAT, chỉ lấy các hồ sơ đã có mốc trả kết quả hợp lệ.",
+      "Nguồn HIS: dùng tb_servicedata làm tập hồ sơ gốc, ghép tb_patientrecord và tb_patient để hiển thị patientcode, rồi chỉ giữ các hồ sơ đã có tb_servicedata.data_date hợp lệ.",
       tatFocus.note,
     ],
-    summary: `Danh sách này lấy từ các hồ sơ xét nghiệm đã hoàn thành trong ngày ${input.asOfDate} để đối soát thời gian xử lý và trả kết quả.`,
+    summary: `Danh sách này đi từ tb_servicedata trong ngày ${input.asOfDate}, ghép tb_patientrecord và tb_patient, rồi chỉ giữ các hồ sơ đã hoàn thành để đối soát thời gian xử lý và trả kết quả.`,
     displayedRowCount: input.displayedRows.length,
     datasets: [
       {
         key: "lab_root_orders",
         label: "Hồ sơ xét nghiệm gốc",
-        role: "Là tập hồ sơ đầu vào để tính các mốc thời gian TAT.",
+        role: "tb_servicedata là tập hồ sơ đầu vào để tính các mốc thời gian TAT.",
       },
       {
         key: "requested_timestamps",
         label: "Mốc tiếp nhận",
-        role: "Làm mốc đầu cho các phép tính TAT.",
+        role: "Mốc tiếp nhận lấy từ tb_servicedata.servicedatausedate để làm mốc đầu cho các phép tính TAT.",
       },
       {
         key: "processing_timestamps",
         label: "Mốc xử lý",
-        role: "Làm mốc giữa để tách thời gian chờ xử lý và thời gian trả kết quả.",
+        role: "Mốc xử lý lấy từ tb_servicedata.order_date để tách thời gian chờ xử lý và thời gian trả kết quả.",
       },
       {
         key: "result_timestamps",
         label: "Mốc trả kết quả",
-        role: "Làm mốc cuối để xác định hồ sơ đã hoàn thành và tính TAT.",
+        role: "Mốc trả kết quả lấy từ tb_servicedata.data_date hoặc dòng con cùng gốc trong tb_servicedata để xác định hồ sơ đã hoàn thành và tính TAT.",
       },
     ],
     pipeline: [
       buildPipelineStep(
         "raw_day_orders",
         "Tập hồ sơ gốc trong ngày",
-        "Lấy các hồ sơ xét nghiệm gốc có ngày tiếp nhận thuộc ngày đang xem.",
+        "Lấy các hồ sơ xét nghiệm gốc từ tb_servicedata có tb_servicedata.servicedatausedate thuộc ngày đang xem.",
         input.timelineRows.length,
         input.timelineRows.length,
       ),
       buildPipelineStep(
         "valid_requested_at",
         "Giữ hồ sơ có thời điểm tiếp nhận hợp lệ",
-        "Loại các hồ sơ thiếu thời điểm tiếp nhận hợp lệ trước khi tính TAT.",
+        "Loại các hồ sơ thiếu tb_servicedata.servicedatausedate hợp lệ trước khi tính TAT.",
         input.timelineRows.length,
         validRequestedRows.length,
       ),
       buildPipelineStep(
         "completed_orders",
         "Giữ hồ sơ đã hoàn thành",
-        "Chỉ giữ các hồ sơ đã có kết quả cuối và có tổng TAT hợp lệ.",
+        "Chỉ giữ các hồ sơ đã có tb_servicedata.data_date hợp lệ và có tổng TAT hợp lệ.",
         validRequestedRows.length,
         completedRows.length,
       ),
       buildPipelineStep(
         "metric_ready_rows",
         "Giữ hồ sơ đủ mốc cho chỉ số đang xem",
-        "Loại các hồ sơ thiếu mốc thời gian cần thiết cho chỉ số hoặc mục hiện tại.",
+        "Loại các hồ sơ còn thiếu tb_servicedata.servicedatausedate, tb_servicedata.order_date hoặc tb_servicedata.data_date theo chỉ số đang xem.",
         completedRows.length,
         metricReadyRows.length,
       ),
@@ -446,33 +448,33 @@ export function buildAbnormalSourceProvenance(
       input.error,
     ),
     calculationNotes: [
-      "Nguồn HIS: kết quả xét nghiệm có data_date trong ngày, có data_value và có cờ bất thường.",
+      "Nguồn HIS: lấy từ tb_servicedata có tb_servicedata.data_date trong ngày, tb_servicedata.data_value có giá trị, và tb_servicedata.data_value_lh mang cờ bất thường; tb_patientrecord và tb_patient chỉ bổ sung patientcode.",
       "Mức độ nghiêm trọng được suy ra từ abnormal_flag kết hợp giá trị số và khoảng tham chiếu nếu có.",
     ],
-    summary: `Danh sách này lấy từ các kết quả xét nghiệm trong ngày ${input.asOfDate} có cờ nằm ngoài khoảng tham chiếu.`,
+    summary: `Danh sách này đi từ tb_servicedata trong ngày ${input.asOfDate}, ghép tb_patientrecord và tb_patient, rồi chỉ giữ các kết quả có cờ nằm ngoài khoảng tham chiếu.`,
     displayedRowCount: input.displayedRows.length,
     datasets: [
       {
         key: "lab_results",
         label: "Kết quả xét nghiệm trong ngày",
-        role: "Là tập kết quả đầu vào để phát hiện các dòng bất thường.",
+        role: "tb_servicedata là tập kết quả đầu vào để phát hiện các dòng bất thường.",
       },
       {
         key: "reference_ranges",
         label: "Khoảng tham chiếu",
-        role: "Giúp diễn giải mức độ lệch của kết quả khi có dữ liệu tham chiếu.",
+        role: "Khoảng tham chiếu đọc từ tb_servicedata.datareference để diễn giải mức độ lệch của kết quả khi có dữ liệu tham chiếu.",
       },
       {
         key: "abnormal_flags",
         label: "Cờ bất thường",
-        role: "Cho biết kết quả đang vượt ngưỡng cao hay thấp trước khi suy ra mức độ cảnh báo.",
+        role: "Cờ bất thường đọc từ tb_servicedata.data_value_lh để biết kết quả đang vượt ngưỡng cao hay thấp trước khi suy ra mức độ cảnh báo.",
       },
     ],
     pipeline: [
       buildPipelineStep(
         "abnormal_results",
         "Tập kết quả bất thường",
-        "Giữ các kết quả trong ngày đã có giá trị đo và có cờ bất thường hợp lệ.",
+        "Giữ các dòng tb_servicedata trong ngày đã có data_value và data_value_lh hợp lệ.",
         input.abnormalRows.length,
         input.abnormalRows.length,
       ),
@@ -507,99 +509,93 @@ export function buildReagentSourceProvenance(
 ): LabDashboardDetailSourceInfo {
   const focusName = resolveReagentDisplayLabel(input.focus, input.displayedRows, input.focusDisplayLabel);
   const focusKey = input.focus === "all" ? "focus_all" : "focus_reagent";
-  const focusLabel = input.focus === "all" ? "Giữ toàn bộ dòng đã gán" : `Lọc theo nhóm hóa chất ${focusName}`;
-  const claimOrderText = resolveClaimOrderLabels(input.claimOrder, input.claimOrderDisplayLabels).join(", ");
+  const focusLabel = input.focus === "all" ? "Giu toan bo vat tu dang hien thi" : `Loc theo vat tu ${focusName}`;
+  const focusRuleSummary =
+    input.focus === "all"
+      ? "Giu toan bo cac dong vat tu cua kho xet nghiem sau khi da sap theo current_stock tang dan."
+      : `Chi giu cac dong vat tu co khoa hien thi trung voi ${focusName}.`;
 
   return {
     ...buildSourceInfoBase(
       "reagents",
-      "Tồn kho khoa xét nghiệm",
+      "Ton kho khoa xet nghiem",
       "supabase",
       input.generatedAt,
       input.snapshotDate,
       input.error,
     ),
     calculationNotes: [
-      "Nguồn Supabase: dữ liệu tồn kho của ngày chụp mới nhất, chỉ lấy các dòng thuộc kho xét nghiệm.",
-      "Mỗi dòng chỉ được gán cho một nhóm hóa chất theo thứ tự cấu hình hiện tại để số chi tiết khớp với phần tổng hợp.",
+      "Nguon Supabase: doc truc tiep tung dong duong ton tu fdc_inventory_snapshots o snapshot_date moi nhat.",
+      "Chi giu cac dong fdc_inventory_snapshots co warehouse thuoc Khoa Xet Nghiem; khong con gop theo nhom hoa chat cau hinh san.",
       input.focus === "all"
-        ? "Chế độ này hiển thị toàn bộ các dòng tồn kho đang đóng góp vào các chỉ số tồn kho hóa chất."
-        : "Mục này chỉ giữ lại các dòng tồn kho đã được gán vào nhóm hóa chất được chọn.",
+        ? "Che do nay hien thi toan bo vat tu that cua kho xet nghiem sau khi da sap theo ton thap truoc de uu tien theo doi tren TV."
+        : "Muc nay chi giu lai vat tu dang duoc chon, nen danh sach chi tiet va source tab cung bam vao mot khoa vat tu that.",
     ],
-    summary: `Danh sách này lấy từ dữ liệu tồn kho ngày ${input.snapshotDate} của khoa xét nghiệm, sau đó gán từng dòng vào đúng nhóm hóa chất theo thứ tự cấu hình hiện tại.`,
+    summary: `Danh sach nay lay truc tiep tu fdc_inventory_snapshots cua ngay ${input.snapshotDate}, chi giu warehouse thuoc Khoa Xet Nghiem roi sap tung vat tu theo ton thap truoc.`,
     displayedRowCount: input.displayedRows.length,
     datasets: [
       {
         key: "inventory_snapshot",
-        label: "Dữ liệu tồn kho mới nhất",
-        role: "Cung cấp tập dòng tồn kho đầu vào cho phần tồn kho khoa xét nghiệm.",
+        label: "Du lieu ton kho moi nhat",
+        role: "fdc_inventory_snapshots cung cap tung dong vat tu that cho phan ton kho khoa xet nghiem.",
       },
       {
         key: "lab_warehouse",
-        label: "Kho khoa xét nghiệm",
-        role: "Giới hạn phạm vi chỉ còn các dòng thuộc kho của khoa xét nghiệm.",
+        label: "Kho khoa xet nghiem",
+        role: "Loc tren cot warehouse cua fdc_inventory_snapshots de chi con cac dong thuoc Khoa Xet Nghiem.",
       },
       {
-        key: "reagent_claim_rules",
-        label: "Quy tắc gán nhóm hóa chất",
-        role: "Gán mỗi dòng tồn kho vào nhóm hóa chất đầu tiên phù hợp theo thứ tự cấu hình hiện tại.",
+        key: "inventory_item_sorting",
+        label: "Sap thu tu vat tu",
+        role: "Cac dong vat tu duoc sap theo current_stock tang dan roi theo ten de TV uu tien hien thi vat tu sap het.",
       },
     ],
     pipeline: [
       buildPipelineStep(
         "positive_stock_snapshot",
-        "Tập dòng tồn còn dương",
-        "Giữ các dòng tồn kho có số lượng lớn hơn 0 ở ngày chụp mới nhất.",
+        "Giu cac dong con duong ton",
+        "Giu cac dong fdc_inventory_snapshots co current_stock lon hon 0 o snapshot_date moi nhat.",
         input.positiveSnapshotRows.length,
         input.positiveSnapshotRows.length,
       ),
       buildPipelineStep(
         "lab_warehouse_scope",
-        "Giữ dòng thuộc kho xét nghiệm",
-        "Chỉ giữ các dòng tồn kho thuộc kho của khoa xét nghiệm.",
+        "Giu dong thuoc kho xet nghiem",
+        "Chi giu cac dong fdc_inventory_snapshots co warehouse thuoc Khoa Xet Nghiem.",
         input.positiveSnapshotRows.length,
         input.labScopedRows.length,
       ),
       buildPipelineStep(
-        "reagent_keyword_match",
-        "So khớp với bộ từ khóa hóa chất",
-        "Giữ các dòng tồn kho có thể phù hợp với ít nhất một nhóm hóa chất đang theo dõi.",
+        "sort_inventory_rows",
+        "Sap vat tu ton thap truoc",
+        "Sap cac dong vat tu cua kho xet nghiem theo current_stock tang dan, roi theo ten vat tu tang dan.",
         input.labScopedRows.length,
         input.matchedRows.length,
       ),
       buildPipelineStep(
-        "claim_first_match",
-        "Gán theo thứ tự phù hợp đầu tiên",
-        `Mỗi dòng được gán cho nhóm hóa chất đầu tiên phù hợp theo thứ tự cấu hình hiện tại: ${claimOrderText}.`,
-        input.matchedRows.length,
-        input.claimedRows.length,
-      ),
-      buildPipelineStep(
         focusKey,
         focusLabel,
-        input.focus === "all"
-          ? "Giữ toàn bộ các dòng tồn kho đã được gán vào các nhóm hóa chất đang theo dõi."
-          : `Chỉ giữ các dòng tồn kho đã được gán vào nhóm hóa chất ${focusName}.`,
-        input.claimedRows.length,
+        focusRuleSummary,
+        input.matchedRows.length,
         input.displayedRows.length,
       ),
     ],
     focusReason:
       input.focus === "all"
-        ? "Mục xem toàn bộ giữ toàn bộ các dòng tồn kho đã được gán vào các nhóm hóa chất đang theo dõi, nên danh sách hiện tại là toàn bộ các dòng tồn kho đã được gán."
-        : `Mục ${focusName} chỉ giữ các dòng tồn kho đã được gán vào nhóm hóa chất ${focusName}, nên danh sách hiện tại chỉ còn các dòng đóng góp cho ${focusName}.`,
+        ? "Muc Toan bo giu tat ca vat tu that cua kho xet nghiem sau khi da loc kho va sap theo ton thap truoc, nen danh sach hien tai chinh la tap vat tu dang duoc TV su dung."
+        : `Muc ${focusName} chi giu vat tu ${focusName}, nen danh sach hien tai chi con cac dong cua dung vat tu nay.`,
     metricExplanation: [
       {
-        label: "Thứ tự gán nhóm hóa chất",
+        label: "Thu tu hien thi vat tu",
         description:
-          "Nếu một dòng tồn kho phù hợp với nhiều nhóm hóa chất, dòng phù hợp trước sẽ được giữ cho nhóm đó theo thứ tự cấu hình hiện tại.",
+          "TV uu tien cac vat tu co current_stock thap hon len truoc; neu ton bang nhau thi sap theo ten vat tu de danh sach on dinh giua cac lan tai.",
       },
       {
-        label: "Hiển thị theo mục đang xem",
+        label: "Hien thi theo vat tu dang xem",
         description:
           input.focus === "all"
-            ? "Mục Toàn bộ giữ tất cả các dòng tồn kho đã được gán vào các chỉ số tồn kho hóa chất."
-            : `Mục ${focusName} chỉ giữ các dòng đã được gán vào nhóm hóa chất ${focusName}.`,
+            ? "Muc Toan bo giu tat ca vat tu that cua kho xet nghiem sau buoc loc va sap xep."
+            : `Muc ${focusName} chi giu vat tu ${focusName} de detail screen va TV drill-down cung nhin vao mot vat tu that.`,
       },
     ],
   };

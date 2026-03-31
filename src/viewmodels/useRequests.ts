@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Request, RequestStatus, RequestType, Priority, RequestAttachment } from '@/types/request';
+import { Request, RequestStatus } from '@/types/request';
+import { REQUEST_READ_ALL_ROLES } from '@/lib/role-access';
 import { supabase } from '@/lib/supabase';
-
-const REQUEST_ADMIN_ROLES = new Set(['super_admin', 'director', 'chairman']);
+import { mapRequestRecord } from '@/lib/request-helpers';
+import { resolveEffectiveApproverId } from '@/lib/delegations';
 
 export function useRequests() {
   const { user } = useAuth();
@@ -32,7 +33,7 @@ export function useRequests() {
         `)
         .order('created_at', { ascending: false });
 
-      if (!REQUEST_ADMIN_ROLES.has(user.role)) {
+      if (!REQUEST_READ_ALL_ROLES.includes(user.role)) {
         query = query.eq('requester_id', user.id);
       }
 
@@ -44,59 +45,21 @@ export function useRequests() {
       }
 
       if (data) {
-        const mapped: Request[] = data.map(dbReq => ({
-          id: dbReq.id,
-          requestNumber: dbReq.request_number,
-          type: dbReq.request_type as RequestType,
-          title: dbReq.title,
-          description: dbReq.description,
-          requesterId: dbReq.requester_id,
-          department: dbReq.department_name,
-          status: dbReq.status as RequestStatus,
-          priority: dbReq.priority as Priority,
-          totalAmount: dbReq.total_amount,
-          costCenter: dbReq.cost_center || undefined,
-          createdAt: dbReq.created_at,
-          updatedAt: dbReq.updated_at,
-          requesterName: dbReq.requester?.full_name || 'Unknown',
-          requesterDept: dbReq.requester?.department_name || '',
-          requesterAvatar: dbReq.requester?.avatar_url || null,
-          approvalSteps: (dbReq.approvalSteps || []).map((step: any) => ({
-            id: step.id,
-            stepOrder: step.step_order,
-            approverRole: step.approver_role,
-            approverId: step.approver_id,
-            status: step.status,
-            comment: step.comment,
-            actedAt: step.acted_at,
-            approverName: step.approver?.full_name || null,
-            approverAvatar: step.approver?.avatar_url || null,
-          })),
-          attachments: (dbReq.attachments || []).map((a: any) => ({
-            id: a.id,
-            requestId: a.request_id,
-            fileName: a.file_name,
-            fileSize: a.file_size,
-            mimeType: a.mime_type,
-            storagePath: a.storage_path,
-            publicUrl: a.public_url,
-            uploadedBy: a.uploaded_by,
-            uploadedAt: a.uploaded_at || a.created_at,
-          })),
-        }));
-        setRequests(mapped);
+        setRequests(data.map(mapRequestRecord));
       }
     };
 
     fetchRequests();
 
-    // Setup realtime
     const channel = supabase
       .channel('public:fdc_approval_requests')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_approval_requests' }, () => {
-        fetchRequests(); // simply refetch for simplicity since we also need approval_steps
+        fetchRequests();
       })
       .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_approval_steps' }, () => {
+        fetchRequests();
+      })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_request_attachments' }, () => {
         fetchRequests();
       })
       .subscribe();
@@ -111,47 +74,46 @@ export function useRequests() {
 
     if (statusFilter !== 'all') {
       if (statusFilter === 'pending') {
-        filtered = filtered.filter(r => r.status === 'pending' || r.status === 'escalated');
+        filtered = filtered.filter((request) => request.status === 'pending' || request.status === 'escalated');
       } else if (statusFilter === 'approved') {
-        filtered = filtered.filter(r => r.status === 'approved' || r.status === 'completed');
+        filtered = filtered.filter((request) => request.status === 'approved' || request.status === 'completed');
       } else if (statusFilter === 'rejected') {
-        filtered = filtered.filter(r => r.status === 'rejected' || r.status === 'cancelled');
+        filtered = filtered.filter((request) => request.status === 'rejected' || request.status === 'cancelled');
       } else {
-        filtered = filtered.filter(r => r.status === statusFilter);
+        filtered = filtered.filter((request) => request.status === statusFilter);
       }
     }
 
     if (searchQuery) {
       const lowerQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.title.toLowerCase().includes(lowerQuery) ||
-        r.requestNumber.toLowerCase().includes(lowerQuery)
+      filtered = filtered.filter(
+        (request) =>
+          request.title.toLowerCase().includes(lowerQuery) ||
+          request.requestNumber.toLowerCase().includes(lowerQuery),
       );
     }
 
-    filtered.sort((a, b) => {
+    filtered.sort((left, right) => {
       if (sortBy === 'newest') {
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      } else if (sortBy === 'oldest') {
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      } else if (sortBy === 'priority') {
-        const priorityWeight = { urgent: 4, high: 3, normal: 2, low: 1 };
-        return priorityWeight[b.priority] - priorityWeight[a.priority];
+        return new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime();
       }
-      return 0;
+      if (sortBy === 'oldest') {
+        return new Date(left.createdAt).getTime() - new Date(right.createdAt).getTime();
+      }
+
+      const priorityWeight = { urgent: 4, high: 3, normal: 2, low: 1 };
+      return priorityWeight[right.priority] - priorityWeight[left.priority];
     });
 
     return filtered;
   }, [requests, statusFilter, searchQuery, sortBy]);
 
-  const getRequest = (id: string) => {
-    return requests.find(r => r.id === id);
-  };
+  const getRequest = (id: string) => requests.find((request) => request.id === id);
 
   const createRequest = async (newRequest: Partial<Request>) => {
     if (!user) return null;
 
-    const { data: reqData, error: reqError } = await supabase
+    const { data: requestData, error: requestError } = await supabase
       .from('fdc_approval_requests')
       .insert({
         request_type: newRequest.type,
@@ -162,95 +124,104 @@ export function useRequests() {
         priority: newRequest.priority || 'normal',
         total_amount: newRequest.totalAmount,
         cost_center: newRequest.costCenter || null,
+        metadata: newRequest.metadata || {},
       })
       .select()
       .single();
 
-    if (reqError) {
-      console.error('Error creating request:', reqError);
+    if (requestError) {
+      console.error('Error creating request:', requestError);
       return null;
     }
 
     if (newRequest.approvalSteps && newRequest.approvalSteps.length > 0) {
-      const stepsToInsert = await Promise.all(newRequest.approvalSteps.map(async step => {
-        let finalApproverId = step.approverId;
+      const stepsToInsert = await Promise.all(
+        newRequest.approvalSteps.map(async (step) => {
+          let finalApproverId = step.approverId;
 
-        // Auto-assign approver if not provided
-        if (!finalApproverId && step.approverRole) {
-          let query = supabase.from('fdc_user_mapping').select('id').eq('role', step.approverRole);
-          if (step.approverRole === 'dept_head') {
-            query = query.eq('department_name', user.department || 'Chung');
+          if (!finalApproverId && step.approverRole) {
+            let query = supabase.from('fdc_user_mapping').select('id').eq('role', step.approverRole);
+            if (step.approverRole === 'dept_head') {
+              query = query.eq('department_name', user.department || 'Chung');
+            }
+
+            const { data: approvers, error: approverError } = await query.limit(1);
+            if (!approverError && approvers && approvers.length > 0) {
+              finalApproverId = approvers[0].id;
+            }
           }
-          const { data: approvers, error: approverErr } = await query.limit(1);
-          if (!approverErr && approvers && approvers.length > 0) {
-            finalApproverId = approvers[0].id;
-          }
-        }
 
-        return {
-          request_id: reqData.id,
-          step_order: step.stepOrder,
-          approver_role: step.approverRole,
-          approver_id: finalApproverId,
-          status: step.status || 'pending'
-        };
-      }));
+          return {
+            request_id: requestData.id,
+            step_order: step.stepOrder,
+            approver_role: step.approverRole,
+            approver_id: finalApproverId,
+            status: step.status || 'pending',
+          };
+        }),
+      );
 
-      const { error: stepsError } = await supabase
-        .from('fdc_approval_steps')
-        .insert(stepsToInsert);
+      const { error: stepsError } = await supabase.from('fdc_approval_steps').insert(stepsToInsert);
 
       if (stepsError) {
         console.error('Error creating approval steps:', stepsError);
       }
 
-      // Notify first approver
-      const firstApprover = stepsToInsert.find(s => s.step_order === 1);
-      if (firstApprover && firstApprover.approver_id) {
+      const firstApprover = stepsToInsert.find((step) => step.step_order === 1);
+      if (firstApprover?.approver_id) {
+        const recipientId = await resolveEffectiveApproverId(
+          firstApprover.approver_id,
+          requestData.request_type,
+        );
+
         await supabase.from('fdc_notifications').insert({
-          recipient_id: firstApprover.approver_id,
+          recipient_id: recipientId,
           type: 'approval',
-          title: 'Đề nghị mới cần duyệt',
-          body: `Đề nghị ${reqData.request_number} cần bạn phê duyệt.`,
-          data: { linkTo: `/approvals` }
+          title: 'De nghi moi can duyet',
+          body: `De nghi ${requestData.request_number} can ban phe duyet.`,
+          data: { linkTo: '/approvals' },
         });
       }
     }
 
-    return reqData.id;
+    return requestData.id;
   };
 
-  const uploadAttachments = useCallback(async (requestId: string, files: File[]) => {
-    if (!user || files.length === 0) return;
+  const uploadAttachments = useCallback(
+    async (requestId: string, files: File[]) => {
+      if (!user || files.length === 0) return;
 
-    for (const file of files) {
-      const ext = file.name.split('.').pop() || '';
-      const storagePath = `${requestId}/${Date.now()}_${file.name}`;
+      for (const file of files) {
+        const sanitizedFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storagePath = `${requestId}/${Date.now()}_${sanitizedFileName}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from('request-attachments')
-        .upload(storagePath, file, { upsert: false });
+        const { error: uploadError } = await supabase.storage
+          .from('request-attachments')
+          .upload(storagePath, file, { upsert: false });
 
-      if (uploadError) {
-        console.error('Failed to upload file:', uploadError);
-        continue;
+        if (uploadError) {
+          console.error('Failed to upload file:', uploadError);
+          continue;
+        }
+
+        const { error: attachmentError } = await supabase.from('fdc_request_attachments').insert({
+          request_id: requestId,
+          file_name: file.name,
+          file_size: file.size,
+          mime_type: file.type,
+          storage_path: storagePath,
+          public_url: null,
+          uploaded_by: user.id,
+        });
+
+        if (attachmentError) {
+          console.error('Failed to save attachment metadata:', attachmentError);
+          await supabase.storage.from('request-attachments').remove([storagePath]);
+        }
       }
-
-      const { data: { publicUrl } } = supabase.storage
-        .from('request-attachments')
-        .getPublicUrl(storagePath);
-
-      await supabase.from('fdc_request_attachments').insert({
-        request_id: requestId,
-        file_name: file.name,
-        file_size: file.size,
-        mime_type: file.type,
-        storage_path: storagePath,
-        public_url: publicUrl,
-        uploaded_by: user.id,
-      });
-    }
-  }, [user]);
+    },
+    [user],
+  );
 
   return {
     requests: filteredRequests,

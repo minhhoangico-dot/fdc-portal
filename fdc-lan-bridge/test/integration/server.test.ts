@@ -126,11 +126,11 @@ const mockGetLabDashboardCurrent = jest.fn(async () => ({
   },
   reagents: [
     {
-      key: "glucose",
-      name: "Glucose",
+      key: "s9751",
+      name: "Hoa chat xet nghiem HBA1C",
+      medicineCode: "S9751",
       currentStock: 3,
-      targetStock: 2,
-      unit: "hộp",
+      unit: "Cai",
       status: "ok",
     },
   ],

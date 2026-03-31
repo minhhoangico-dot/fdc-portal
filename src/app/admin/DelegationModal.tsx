@@ -1,5 +1,5 @@
 import React from "react";
-import { ROLES } from "@/lib/constants";
+import { useRoleCatalog } from "@/contexts/RoleCatalogContext";
 import { User } from "@/types/user";
 
 interface DelegationModalProps {
@@ -32,6 +32,7 @@ export function DelegationModal({
   users,
   onSave,
 }: DelegationModalProps) {
+  const { getRoleLabel } = useRoleCatalog();
   const [delegateId, setDelegateId] = React.useState("");
   const [startDate, setStartDate] = React.useState("");
   const [endDate, setEndDate] = React.useState("");
@@ -50,9 +51,9 @@ export function DelegationModal({
 
   if (!isOpen || !selectedUser) return null;
 
-  const toggleType = (t: string) => {
-    setTypes((prev) =>
-      prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t],
+  const toggleType = (type: string) => {
+    setTypes((previous) =>
+      previous.includes(type) ? previous.filter((item) => item !== type) : [...previous, type],
     );
   };
 
@@ -61,6 +62,7 @@ export function DelegationModal({
       setTriedSubmit(true);
       return;
     }
+
     await onSave({
       delegatorId: selectedUser.id,
       delegateId,
@@ -76,63 +78,66 @@ export function DelegationModal({
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40"
-        onClick={onClose}
-      />
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md bg-white rounded-2xl shadow-xl z-50 p-6 animate-in zoom-in-95 duration-200">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">
+      <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 rounded-2xl bg-white p-6 shadow-xl duration-200">
+        <h2 className="mb-4 text-lg font-bold text-gray-900">
           Ủy quyền duyệt: {selectedUser.name}
         </h2>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="mb-1 block text-sm font-medium text-gray-700">
               Người được ủy quyền
             </label>
             <select
-              className={`w-full text-sm rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 ${showValidation && !delegateId ? "border border-rose-300" : "border border-gray-200"}`}
+              className={`w-full rounded-lg py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                showValidation && !delegateId ? "border border-rose-300" : "border border-gray-200"
+              }`}
               value={delegateId}
-              onChange={(e) => setDelegateId(e.target.value)}
+              onChange={(event) => setDelegateId(event.target.value)}
             >
               <option value="">Chọn người dùng...</option>
               {users
-                .filter((u) => u.id !== selectedUser.id)
-                .map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name} ({ROLES[u.role]})
+                .filter((user) => user.id !== selectedUser.id)
+                .map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.name} ({getRoleLabel(user.role)})
                   </option>
                 ))}
             </select>
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Từ ngày
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Từ ngày</label>
               <input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className={`w-full text-sm rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 ${showValidation && !startDate ? "border border-rose-300" : "border border-gray-200"}`}
+                onChange={(event) => setStartDate(event.target.value)}
+                className={`w-full rounded-lg py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                  showValidation && !startDate ? "border border-rose-300" : "border border-gray-200"
+                }`}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Đến ngày
-              </label>
+              <label className="mb-1 block text-sm font-medium text-gray-700">Đến ngày</label>
               <input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className={`w-full text-sm rounded-lg py-2 focus:ring-indigo-500 focus:border-indigo-500 ${showValidation && !endDate ? "border border-rose-300" : "border border-gray-200"}`}
+                onChange={(event) => setEndDate(event.target.value)}
+                className={`w-full rounded-lg py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 ${
+                  showValidation && !endDate ? "border border-rose-300" : "border border-gray-200"
+                }`}
               />
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="mb-2 block text-sm font-medium text-gray-700">
               Loại đề nghị ủy quyền
             </label>
-            <div className={`space-y-2 ${showValidation && types.length === 0 ? "rounded-lg border border-rose-200 p-2" : ""}`}>
+            <div
+              className={`space-y-2 ${
+                showValidation && types.length === 0 ? "rounded-lg border border-rose-200 p-2" : ""
+              }`}
+            >
               {DELEGATION_REQUEST_TYPES.map(({ value, label }) => (
                 <label key={value} className="flex items-center gap-2">
                   <input
@@ -146,20 +151,22 @@ export function DelegationModal({
               ))}
             </div>
             {showValidation && (
-              <p className="text-xs text-rose-600">Vui lòng điền đầy đủ và chọn ít nhất một loại đề nghị.</p>
+              <p className="text-xs text-rose-600">
+                Vui lòng điền đầy đủ và chọn ít nhất một loại đề nghị.
+              </p>
             )}
           </div>
         </div>
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
           >
             Hủy
           </button>
           <button
             onClick={handleSubmit}
-            className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-colors"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
           >
             Lưu ủy quyền
           </button>
@@ -168,4 +175,3 @@ export function DelegationModal({
     </>
   );
 }
-

@@ -11,7 +11,19 @@
       "Bash(timeout 5 npm start)",
       "Bash(node -e \"const DigestFetch = require\\(''digest-fetch''\\); const df = new DigestFetch\\(''user'', ''pass''\\); console.log\\(''DigestFetch loaded successfully. Has fetch method:'', typeof df.fetch === ''function''\\);\")",
       "Bash(node -e \"const fetch = require\\(''node-fetch''\\); console.log\\(''node-fetch available, version:'', fetch.default ? ''v3+'' : ''v2''\\);\")",
-      "Bash(node -e \"try { const fetch = require\\(''node-fetch''\\); console.log\\(''Successfully resolved node-fetch''\\); } catch\\(e\\) { console.log\\(''Error:'', e.message\\); }\")"
+      "Bash(node -e \"try { const fetch = require\\(''node-fetch''\\); console.log\\(''Successfully resolved node-fetch''\\); } catch\\(e\\) { console.log\\(''Error:'', e.message\\); }\")",
+      "Bash(gh repo:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh issue:*)",
+      "Bash(rm c:/Users/Minh/Desktop/ERP_v1/tasks/01-heartbeat-timeout.md c:/Users/Minh/Desktop/ERP_v1/tasks/02-health-id-sync-guard.md c:/Users/Minh/Desktop/ERP_v1/tasks/03-update-health-test-coverage.md c:/Users/Minh/Desktop/ERP_v1/tasks/04-fix-hikvision-node-fetch.md)",
+      "Bash(rmdir c:/Users/Minh/Desktop/ERP_v1/tasks)",
+      "Bash(npx jest:*)",
+      "Bash(pm2 restart:*)",
+      "Bash(curl -s http://localhost:3333/health)",
+      "Bash(find /c/Users/Minh/Desktop/ERP_v1 -name *.sql -o -name schema* -o -name migrations*)",
+      "Bash(find /c/Users/Minh/Desktop/ERP_v1 -type f -name *.test.ts -o -name *.spec.ts)",
+      "Bash(xargs ls:*)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

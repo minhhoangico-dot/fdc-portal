@@ -1,0 +1,437 @@
+<style>
+  .room-grid {
+    display: grid;
+    gap: 1rem;
+  }
+
+  .layout-card {
+    position: relative;
+  }
+
+  .layout-card .card-image {
+    padding: 1rem;
+    background:
+      radial-gradient(circle at top left, rgba(21, 128, 61, 0.16), transparent 42%),
+      linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(240, 244, 248, 0.94));
+  }
+
+  .recommend {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    background: #166534;
+    color: white;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .mini-shell {
+    border: 1px solid rgba(148, 163, 184, 0.35);
+    border-radius: 14px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.9);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+  }
+
+  .mini-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    background: #0f172a;
+    color: white;
+    font-size: 0.72rem;
+    font-weight: 600;
+  }
+
+  .mini-body {
+    display: grid;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .mini-split {
+    display: grid;
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 0.6rem;
+  }
+
+  .floor-tabs {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+  }
+
+  .floor-tab {
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    color: #475569;
+    background: #e2e8f0;
+  }
+
+  .floor-tab.active {
+    background: #dcfce7;
+    color: #166534;
+  }
+
+  .mini-floorplan {
+    display: grid;
+    gap: 0.32rem;
+    min-height: 150px;
+    padding: 0.45rem;
+    border-radius: 12px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .mini-row {
+    display: grid;
+    gap: 0.32rem;
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .room-chip {
+    border-radius: 10px;
+    padding: 0.4rem 0.35rem;
+    font-size: 0.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+    color: #0f172a;
+    border: 1px solid rgba(148, 163, 184, 0.4);
+  }
+
+  .chip-medical { background: #dcfce7; }
+  .chip-lab { background: #fee2e2; }
+  .chip-office { background: #fef3c7; }
+  .chip-utility { background: #e2e8f0; }
+  .chip-pharmacy { background: #ede9fe; }
+  .chip-highlight {
+    background: #dcfce7;
+    border-color: #16a34a;
+    box-shadow: inset 0 0 0 1px rgba(22, 163, 74, 0.18);
+  }
+
+  .side-stack {
+    display: grid;
+    gap: 0.45rem;
+    align-content: start;
+  }
+
+  .side-card {
+    padding: 0.55rem 0.65rem;
+    border-radius: 11px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .side-card h4 {
+    font-size: 0.68rem;
+    margin-bottom: 0.22rem;
+  }
+
+  .side-card p,
+  .side-card li,
+  .side-card span {
+    font-size: 0.62rem;
+    color: #475569;
+  }
+
+  .queue-list {
+    display: grid;
+    gap: 0.28rem;
+    margin-top: 0.35rem;
+  }
+
+  .queue-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.28rem 0.42rem;
+    border-radius: 9px;
+    background: white;
+    border: 1px solid #e2e8f0;
+  }
+
+  .severity {
+    padding: 0.14rem 0.35rem;
+    border-radius: 999px;
+    font-size: 0.56rem;
+    font-weight: 700;
+  }
+
+  .severity.red { color: #991b1b; background: #fee2e2; }
+  .severity.orange { color: #9a3412; background: #ffedd5; }
+  .severity.blue { color: #1d4ed8; background: #dbeafe; }
+
+  .print-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    padding-top: 0.45rem;
+    border-top: 1px dashed #cbd5e1;
+  }
+
+  .print-pill {
+    padding: 0.24rem 0.48rem;
+    border-radius: 999px;
+    background: #dbeafe;
+    color: #1d4ed8;
+    font-size: 0.58rem;
+    font-weight: 700;
+  }
+
+  .table-shell {
+    padding: 0.55rem;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+  }
+
+  .table-head,
+  .table-row {
+    display: grid;
+    grid-template-columns: 1fr 1.1fr 0.6fr 0.7fr;
+    gap: 0.35rem;
+    align-items: center;
+  }
+
+  .table-head {
+    padding-bottom: 0.28rem;
+    margin-bottom: 0.28rem;
+    border-bottom: 1px solid #cbd5e1;
+    font-size: 0.55rem;
+    font-weight: 800;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+
+  .table-row {
+    padding: 0.34rem 0;
+    font-size: 0.6rem;
+    color: #0f172a;
+    border-bottom: 1px solid #e2e8f0;
+  }
+
+  .table-row:last-child {
+    border-bottom: none;
+  }
+
+  .card-body ul {
+    margin: 0.65rem 0 0 1rem;
+    color: var(--text-secondary);
+    font-size: 0.82rem;
+  }
+
+  .card-body li {
+    margin-bottom: 0.22rem;
+  }
+</style>
+
+<h2>Chọn điểm neo cho hệ thống quản lý phòng</h2>
+<p class="subtitle">
+  Tôi lấy đúng tinh thần từ sơ đồ tầng 1-3 trong <code>public/</code> và gắn luôn 3 nghiệp vụ chính:
+  báo cáo sự cố/bảo trì, yêu cầu vật tư theo từng phòng, và in danh sách tổng hợp vật tư theo phòng.
+</p>
+
+<div class="cards room-grid">
+  <div class="card layout-card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mini-shell">
+        <div class="mini-topbar">
+          <span>Sơ đồ phòng là trang chính</span>
+          <span>Room 1.0</span>
+        </div>
+        <div class="mini-body">
+          <div class="floor-tabs">
+            <span class="floor-tab active">Tầng 1</span>
+            <span class="floor-tab">Tầng 2</span>
+            <span class="floor-tab">Tầng 3</span>
+          </div>
+          <div class="mini-split">
+            <div class="mini-floorplan">
+              <div class="mini-row">
+                <div class="room-chip chip-lab">Khu Lấy Máu</div>
+                <div class="room-chip chip-medical">P111</div>
+                <div class="room-chip chip-utility">Server</div>
+              </div>
+              <div class="mini-row">
+                <div class="room-chip chip-medical">P109</div>
+                <div class="room-chip chip-medical chip-highlight">P110</div>
+                <div class="room-chip chip-pharmacy">Nhà Thuốc</div>
+              </div>
+              <div class="mini-row">
+                <div class="room-chip chip-lab">X-Quang</div>
+                <div class="room-chip chip-utility">Kho T1</div>
+                <div class="room-chip chip-medical">Khí Dung</div>
+              </div>
+            </div>
+            <div class="side-stack">
+              <div class="side-card">
+                <h4>P110</h4>
+                <p>1 sự cố mở</p>
+                <p>2 yêu cầu vật tư chờ duyệt</p>
+              </div>
+              <div class="side-card">
+                <h4>Thao tác</h4>
+                <p>+ Báo cáo sự cố</p>
+                <p>+ Yêu cầu vật tư</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Floorplan-first</h3>
+      <p>Người dùng vào là thấy sơ đồ tầng, bấm vào phòng để mở drawer nghiệp vụ.</p>
+      <ul>
+        <li>Rất trực quan với điều dưỡng, bảo trì, hành chính.</li>
+        <li>Phù hợp khi phòng là đơn vị quản lý chính.</li>
+        <li>Yếu hơn ở vai trò cần xử lý hàng loạt nhiều yêu cầu cùng lúc.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card layout-card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="recommend">Khuyên dùng</div>
+    <div class="card-image">
+      <div class="mini-shell">
+        <div class="mini-topbar">
+          <span>Sơ đồ + điều phối yêu cầu</span>
+          <span>Hybrid desk</span>
+        </div>
+        <div class="mini-body">
+          <div class="mini-split">
+            <div>
+              <div class="floor-tabs">
+                <span class="floor-tab active">Tầng 2</span>
+                <span class="floor-tab">Tầng 1</span>
+                <span class="floor-tab">Tầng 3</span>
+              </div>
+              <div class="mini-floorplan" style="margin-top:0.45rem;">
+                <div class="mini-row">
+                  <div class="room-chip chip-office">P. Giám Đốc</div>
+                  <div class="room-chip chip-lab">Xét Nghiệm</div>
+                  <div class="room-chip chip-medical">RHM</div>
+                </div>
+                <div class="mini-row">
+                  <div class="room-chip chip-medical">P205</div>
+                  <div class="room-chip chip-medical">P204</div>
+                  <div class="room-chip chip-highlight">Kho T2</div>
+                </div>
+                <div class="mini-row">
+                  <div class="room-chip chip-medical">Phụ Sản</div>
+                  <div class="room-chip chip-utility">Vệ Sinh T2</div>
+                  <div class="room-chip chip-medical">P203</div>
+                </div>
+              </div>
+            </div>
+            <div class="side-stack">
+              <div class="side-card">
+                <h4>Hàng chờ xử lý</h4>
+                <div class="queue-list">
+                  <div class="queue-item"><span>Kho T2 - bóng đèn</span><span class="severity red">Khẩn</span></div>
+                  <div class="queue-item"><span>P204 - găng tay</span><span class="severity blue">VT</span></div>
+                  <div class="queue-item"><span>Xét nghiệm - máy in</span><span class="severity orange">BT</span></div>
+                </div>
+              </div>
+              <div class="side-card">
+                <h4>In tổng hợp</h4>
+                <div class="print-bar">
+                  <span>Phiếu vật tư theo phòng</span>
+                  <span class="print-pill">In / PDF</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. Hybrid floorplan + inbox</h3>
+      <p>Sơ đồ vẫn là trung tâm, nhưng cạnh phải luôn có hàng chờ và nút in tổng hợp vật tư theo phòng.</p>
+      <ul>
+        <li>Cân bằng giữa trực quan và khả năng điều phối.</li>
+        <li>Dễ mở rộng thêm KPI: số phòng có sự cố, số yêu cầu chờ cấp.</li>
+        <li>Hợp nhất tốt với luồng duyệt hiện có của portal.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card layout-card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mini-shell">
+        <div class="mini-topbar">
+          <span>Bảng vận hành / in ấn trước</span>
+          <span>Ops view</span>
+        </div>
+        <div class="mini-body">
+          <div class="table-shell">
+            <div class="table-head">
+              <span>Phòng</span>
+              <span>Nội dung</span>
+              <span>Loại</span>
+              <span>Trạng thái</span>
+            </div>
+            <div class="table-row">
+              <span>P110</span>
+              <span>Kim luồn 22G</span>
+              <span>Vật tư</span>
+              <span>Chờ duyệt</span>
+            </div>
+            <div class="table-row">
+              <span>Server</span>
+              <span>Điều hòa yếu</span>
+              <span>Bảo trì</span>
+              <span>Đang xử lý</span>
+            </div>
+            <div class="table-row">
+              <span>Kho T3</span>
+              <span>Ổ cắm lỏng</span>
+              <span>Sự cố</span>
+              <span>Mới</span>
+            </div>
+            <div class="table-row">
+              <span>P203</span>
+              <span>Bông, cồn, dây garo</span>
+              <span>Vật tư</span>
+              <span>Đã in</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. List-first / print-first</h3>
+      <p>Mở vào là bảng tổng hợp theo phòng, sau đó mới drill down ngược về sơ đồ.</p>
+      <ul>
+        <li>Mạnh cho bộ phận tổng hợp, hành chính, kho.</li>
+        <li>In danh sách nhanh nhất.</li>
+        <li>Mất đi lợi thế “nhìn mặt bằng để hiểu vị trí phòng”.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:1.6rem;">
+  <div class="mockup">
+    <div class="mockup-header">Câu hỏi đầu tiên</div>
+    <div class="mockup-body">
+      <p style="font-size:0.95rem; color:var(--text-primary);">
+        Bạn muốn màn hình chính của module này nghiêng về hướng nào: <strong>A</strong>, <strong>B</strong>, hay <strong>C</strong>?
+      </p>
+      <p class="subtitle" style="margin:0.45rem 0 0;">
+        Nếu chưa chắc, cứ chọn phương án gần nhất. Tôi sẽ tinh chỉnh tiếp luồng chi tiết cho sự cố/bảo trì và yêu cầu vật tư ở bước sau.
+      </p>
+    </div>
+  </div>
+</div>

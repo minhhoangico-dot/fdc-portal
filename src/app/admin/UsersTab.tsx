@@ -1,6 +1,6 @@
 import React from "react";
 import { Key, Plus, Search, UserCog } from "lucide-react";
-import { ROLES } from "@/lib/constants";
+import { useRoleCatalog } from "@/contexts/RoleCatalogContext";
 import { User } from "@/types/user";
 
 interface UsersTabProps {
@@ -24,124 +24,127 @@ export function UsersTab({
   onSearchChange,
   onToggleActive,
 }: UsersTabProps) {
+  const { getAssignableRoles } = useRoleCatalog();
+
   return (
-    <div className="flex flex-col h-full">
-      <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="flex h-full flex-col">
+      <div className="flex flex-col justify-between gap-4 border-b border-gray-100 p-4 sm:flex-row sm:items-center">
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
             placeholder="Tìm kiếm người dùng..."
             value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-9 pr-4 py-2 bg-gray-50 border-transparent rounded-lg text-sm focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200"
+            onChange={(event) => onSearchChange(event.target.value)}
+            className="w-full rounded-lg border-transparent bg-gray-50 py-2 pl-9 pr-4 text-sm focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-200"
           />
         </div>
         <button
           onClick={onOpenAddUser}
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="h-4 w-4" />
           Thêm người dùng
         </button>
       </div>
 
       <div className="flex-1 overflow-auto">
-        <table className="w-full text-left border-collapse">
-          <thead className="bg-gray-50 sticky top-0 z-10">
+        <table className="w-full border-collapse text-left">
+          <thead className="sticky top-0 z-10 bg-gray-50">
             <tr>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
                 Người dùng
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
+              <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">
                 Vai trò
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
+              <th className="hidden px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 sm:table-cell">
                 Phòng ban
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">
+              <th className="px-4 py-3 text-center text-xs font-medium uppercase tracking-wider text-gray-500">
                 Trạng thái
               </th>
-              <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
+              <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wider text-gray-500">
                 Thao tác
               </th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {users.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50 transition-colors">
-                <td className="px-4 py-3">
-                  <div className="flex items-center gap-3">
-                    {user.avatarUrl ? (
-                      <img
-                        src={user.avatarUrl}
-                        alt=""
-                        className="w-8 h-8 rounded-full bg-gray-100 object-cover"
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 text-xs font-bold">
-                        {user.name?.charAt(0)?.toUpperCase() ?? "?"}
+            {users.map((user) => {
+              const roleOptions = getAssignableRoles(user.role);
+
+              return (
+                <tr key={user.id} className="transition-colors hover:bg-gray-50">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt=""
+                          className="h-8 w-8 rounded-full bg-gray-100 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-600">
+                          {user.name?.charAt(0)?.toUpperCase() ?? "?"}
+                        </div>
+                      )}
+                      <div>
+                        <div className="font-medium text-gray-900">{user.name}</div>
+                        <div className="text-xs text-gray-500">{user.email}</div>
                       </div>
-                    )}
-                    <div>
-                      <div className="font-medium text-gray-900">{user.name}</div>
-                      <div className="text-xs text-gray-500">{user.email}</div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-4 py-3">
-                  <select
-                    value={user.role}
-                    onChange={(e) => onRoleChange(user.id, e.target.value)}
-                    className="text-sm rounded-md border border-gray-200 py-1 pl-2 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
-                  >
-                    {Object.entries(ROLES).map(([key, label]) => (
-                      <option key={key} value={key}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </td>
-                <td className="px-4 py-3 hidden sm:table-cell">
-                  <span className="text-sm text-gray-600">
-                    {user.department || "-"}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-center">
-                  <label className="relative inline-flex items-center cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="sr-only peer"
-                      checked={user.isActive ?? true}
-                      onChange={() => onToggleActive(user.id)}
-                    />
-                    <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                  </label>
-                </td>
-                <td className="px-4 py-3 text-right">
-                  <div className="flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => onResetPassword(user.id)}
-                      className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                      title="Reset mật khẩu"
+                  </td>
+                  <td className="px-4 py-3">
+                    <select
+                      value={user.role}
+                      onChange={(event) => onRoleChange(user.id, event.target.value)}
+                      className="rounded-md border border-gray-200 py-1 pl-2 pr-8 text-sm focus:border-indigo-500 focus:ring-indigo-500"
                     >
-                      <Key className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => onOpenDelegation(user)}
-                      className="p-1.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
-                      title="Ủy quyền"
-                    >
-                      <UserCog className="w-4 h-4" />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                      {roleOptions.map((roleOption) => (
+                        <option key={roleOption.roleKey} value={roleOption.roleKey}>
+                          {roleOption.displayName}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
+                  <td className="hidden px-4 py-3 sm:table-cell">
+                    <span className="text-sm text-gray-600">{user.department || "-"}</span>
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <label className="relative inline-flex cursor-pointer items-center">
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={user.isActive ?? true}
+                        onChange={() => onToggleActive(user.id)}
+                      />
+                      <div className="peer h-5 w-9 rounded-full bg-gray-200 peer-focus:outline-none peer-checked:bg-emerald-500 peer-checked:after:translate-x-full peer-checked:after:border-white after:absolute after:left-[2px] after:top-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-['']" />
+                    </label>
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => onResetPassword(user.id)}
+                        className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
+                        title="Reset mật khẩu"
+                      >
+                        <Key className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => onOpenDelegation(user)}
+                        className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-amber-50 hover:text-amber-600"
+                        title="Ủy quyền"
+                      >
+                        <UserCog className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
     </div>
   );
 }
-

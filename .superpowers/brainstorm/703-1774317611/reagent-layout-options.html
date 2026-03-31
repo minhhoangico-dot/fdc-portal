@@ -1,0 +1,222 @@
+<style>
+  .inventory-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+  }
+  .inventory-card {
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(25,25,40,0.96), rgba(14,14,24,0.96));
+    overflow: hidden;
+  }
+  .inventory-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    font-size: 12px;
+    color: #d7d7e8;
+  }
+  .inventory-badge {
+    border-radius: 999px;
+    padding: 2px 8px;
+    font-size: 11px;
+    font-weight: 700;
+  }
+  .inventory-badge--danger { background: rgba(255,92,92,0.15); color: #ff7c7c; }
+  .inventory-badge--warn { background: rgba(255,196,79,0.18); color: #ffcf65; }
+  .inventory-badge--ok { background: rgba(48,209,141,0.15); color: #53e5a6; }
+  .inventory-body { padding: 12px; display: grid; gap: 10px; }
+  .inventory-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 9px 10px;
+    border-radius: 12px;
+    background: rgba(255,255,255,0.04);
+  }
+  .inventory-name { font-size: 13px; font-weight: 600; color: #f4f5ff; }
+  .inventory-code { font-size: 11px; color: #9ea3c9; margin-top: 2px; }
+  .inventory-stock { font-size: 14px; font-weight: 800; color: #f8f7ff; white-space: nowrap; }
+  .inventory-stock--danger { color: #ff7c7c; }
+  .inventory-stock--warn { color: #ffcf65; }
+  .inventory-stock--ok { color: #53e5a6; }
+  .inventory-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+  .inventory-kpi {
+    border-radius: 12px;
+    padding: 10px;
+    background: rgba(255,255,255,0.05);
+  }
+  .inventory-kpi .label { color: #969ab8; font-size: 10px; margin-bottom: 6px; }
+  .inventory-kpi .value { color: #ffffff; font-size: 18px; font-weight: 800; }
+  .inventory-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+  .inventory-table th, .inventory-table td {
+    padding: 8px 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    text-align: left;
+  }
+  .inventory-table th { color: #9ea3c9; font-weight: 600; }
+  .inventory-table td { color: #f1f2fb; }
+  .inventory-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .inventory-pill {
+    min-width: 160px;
+    border-radius: 999px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,0.05);
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 12px;
+    color: #f2f3ff;
+  }
+  .inventory-note {
+    margin-top: 16px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: rgba(255,255,255,0.04);
+    color: #bcc0de;
+    font-size: 13px;
+  }
+</style>
+
+<h2>Redesign Khối Tồn Kho Khoa Xét Nghiệm</h2>
+<p class="subtitle">
+  Cả 3 phương án đều lấy trực tiếp từ các dòng vật tư thật trong <code>fdc_inventory_snapshots</code> của
+  <code>Khoa Xét Nghiệm</code>, không còn nhóm cấu hình kiểu <code>Glucose 1 / 2</code> hay <code>CRP 0 / 3</code>.
+</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="inventory-card">
+        <div class="inventory-head">
+          <strong>Phương án A</strong>
+          <span class="inventory-badge inventory-badge--danger">Ưu tiên sắp hết</span>
+        </div>
+        <div class="inventory-body">
+          <div class="inventory-row">
+            <div>
+              <div class="inventory-name">Hóa chất xét nghiệm ALT</div>
+              <div class="inventory-code">XN0026</div>
+            </div>
+            <div class="inventory-stock inventory-stock--danger">1 Cái</div>
+          </div>
+          <div class="inventory-row">
+            <div>
+              <div class="inventory-name">Hóa chất xét nghiệm AST</div>
+              <div class="inventory-code">XN0027</div>
+            </div>
+            <div class="inventory-stock inventory-stock--danger">1 Cái</div>
+          </div>
+          <div class="inventory-row">
+            <div>
+              <div class="inventory-name">Hóa chất xét nghiệm CRE</div>
+              <div class="inventory-code">XN0030</div>
+            </div>
+            <div class="inventory-stock inventory-stock--warn">1 Cái</div>
+          </div>
+          <div class="inventory-row">
+            <div>
+              <div class="inventory-name">Test nước tiểu</div>
+              <div class="inventory-code">XN0084</div>
+            </div>
+            <div class="inventory-stock inventory-stock--warn">2 Cái</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A. Danh sách cảnh báo</h3>
+      <p>Nhìn vào là thấy ngay vật tư nào sắp hết. Phù hợp màn TV và ca vận hành nhanh.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="inventory-card">
+        <div class="inventory-head">
+          <strong>Phương án B</strong>
+          <span class="inventory-badge inventory-badge--ok">Đủ bối cảnh</span>
+        </div>
+        <div class="inventory-body">
+          <div class="inventory-summary">
+            <div class="inventory-kpi">
+              <div class="label">Mã còn tồn</div>
+              <div class="value">123</div>
+            </div>
+            <div class="inventory-kpi">
+              <div class="label">Sắp hết</div>
+              <div class="value">9</div>
+            </div>
+            <div class="inventory-kpi">
+              <div class="label">Kho chụp ngày</div>
+              <div class="value">24/03</div>
+            </div>
+          </div>
+          <table class="inventory-table">
+            <thead>
+              <tr><th>Vật tư</th><th>Mã</th><th>Tồn</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Hóa chất xét nghiệm HBA1C</td><td>XN0033</td><td>1 Cái</td></tr>
+              <tr><td>Hóa chất điện giải ISE High</td><td>XN0179</td><td>1 Cái</td></tr>
+              <tr><td>Hóa chất xét nghiệm Cholesterol</td><td>XN0036</td><td>1 Cái</td></tr>
+              <tr><td>Test Maglumi FT4</td><td>XN0061</td><td>34 Cái</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B. KPI + bảng mini</h3>
+      <p>Vẫn là dữ liệu vật tư thật, nhưng có thêm vài chỉ số tổng quan trước khi nhìn danh sách.</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="inventory-card">
+        <div class="inventory-head">
+          <strong>Phương án C</strong>
+          <span class="inventory-badge inventory-badge--warn">Giữ cảm giác chip</span>
+        </div>
+        <div class="inventory-body">
+          <div class="inventory-pills">
+            <div class="inventory-pill"><span>ALT</span><strong>1 Cái</strong></div>
+            <div class="inventory-pill"><span>AST</span><strong>1 Cái</strong></div>
+            <div class="inventory-pill"><span>CRE</span><strong>1 Cái</strong></div>
+            <div class="inventory-pill"><span>Glucose</span><strong>1 Cái</strong></div>
+            <div class="inventory-pill"><span>HBA1C</span><strong>1 Cái</strong></div>
+            <div class="inventory-pill"><span>FT4</span><strong>34 Cái</strong></div>
+            <div class="inventory-pill"><span>TSH</span><strong>92 Cái</strong></div>
+            <div class="inventory-pill"><span>Nước tiểu</span><strong>2 Cái</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C. Dải chip vật tư thật</h3>
+      <p>Ít thay đổi giao diện nhất, nhưng vẫn bỏ dữ liệu giả. Dễ triển khai, ít chỗ cho diễn giải sai.</p>
+    </div>
+  </div>
+</div>
+
+<div class="inventory-note">
+  Câu hỏi cần chốt: trong 3 cách này, bạn muốn khối TV/dashboard nghiêng về <strong>cảnh báo nhanh</strong>,
+  <strong>đủ thông tin</strong>, hay <strong>giữ nhịp layout cũ</strong>? Hãy click chọn một phương án rồi trả lời thêm trong terminal nếu muốn chỉnh.
+</div>

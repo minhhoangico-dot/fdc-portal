@@ -105,8 +105,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* KTT / SUPER_ADMIN Widgets */}
-          {user.role === 'super_admin' && (
+          {/* Full-access operational widgets */}
+          {(user.role === 'super_admin' || user.role === 'head_nurse') && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">

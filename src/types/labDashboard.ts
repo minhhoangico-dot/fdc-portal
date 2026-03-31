@@ -91,8 +91,8 @@ export interface LabDashboardAbnormal {
 export interface LabDashboardReagent {
   key: string;
   name: string;
+  medicineCode: string | null;
   currentStock: number;
-  targetStock: number;
   unit: string;
   status: LabDashboardReagentStatus;
 }
@@ -171,6 +171,7 @@ export interface LabDashboardTatDetailRow {
   patientCode: string;
   subgroupKey: string;
   subgroupName: string;
+  testName: string;
   requestedAt: string;
   processingAt: string | null;
   resultAt: string | null;

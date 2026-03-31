@@ -1,46 +1,144 @@
--- Backend support for attachments, cost center, reporting access, and push subscriptions.
--- This repo maps auth.uid() -> public.fdc_user_mapping.supabase_uid, so policies must
--- resolve the app-level user id through fdc_user_mapping instead of comparing auth.uid()
--- to public table UUIDs directly.
+-- Backend support for attachments, cost center, delegated approvals, and push subscriptions.
+-- This script is intentionally idempotent so it can be re-run on environments that already
+-- applied an earlier version with weaker policies.
+
+CREATE OR REPLACE FUNCTION public.fdc_current_user_mapping_id()
+RETURNS uuid
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT um.id
+  FROM public.fdc_user_mapping um
+  WHERE um.supabase_uid = auth.uid()
+  LIMIT 1
+$$;
+
+CREATE OR REPLACE FUNCTION public.fdc_can_view_request(p_request_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.fdc_approval_requests req
+    JOIN public.fdc_user_mapping actor
+      ON actor.supabase_uid = auth.uid()
+    WHERE req.id = p_request_id
+      AND (
+        req.requester_id = actor.id
+        OR actor.role IN ('super_admin', 'director', 'chairman', 'accountant')
+        OR EXISTS (
+          SELECT 1
+          FROM public.fdc_approval_steps step
+          WHERE step.request_id = req.id
+            AND step.approver_id = actor.id
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.fdc_approval_steps step
+          JOIN public.fdc_delegations delegation
+            ON delegation.delegator_id = step.approver_id
+          WHERE step.request_id = req.id
+            AND step.status = 'pending'
+            AND delegation.delegate_id = actor.id
+            AND current_date BETWEEN delegation.start_date AND delegation.end_date
+            AND req.request_type = ANY (delegation.request_types)
+        )
+      )
+  )
+$$;
+
+CREATE OR REPLACE FUNCTION public.fdc_can_act_on_step(p_step_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.fdc_approval_steps step
+    JOIN public.fdc_approval_requests req
+      ON req.id = step.request_id
+    JOIN public.fdc_user_mapping actor
+      ON actor.supabase_uid = auth.uid()
+    WHERE step.id = p_step_id
+      AND step.status = 'pending'
+      AND (
+        actor.role = 'super_admin'
+        OR step.approver_id = actor.id
+        OR EXISTS (
+          SELECT 1
+          FROM public.fdc_delegations delegation
+          WHERE delegation.delegator_id = step.approver_id
+            AND delegation.delegate_id = actor.id
+            AND current_date BETWEEN delegation.start_date AND delegation.end_date
+            AND req.request_type = ANY (delegation.request_types)
+        )
+      )
+  )
+$$;
 
 INSERT INTO storage.buckets (id, name, public)
-VALUES ('request-attachments', 'request-attachments', true)
+VALUES ('request-attachments', 'request-attachments', false)
 ON CONFLICT (id) DO UPDATE
-SET public = EXCLUDED.public;
+SET public = false;
 
 DROP POLICY IF EXISTS "Authenticated users can upload" ON storage.objects;
-CREATE POLICY "Authenticated users can upload"
+DROP POLICY IF EXISTS "Authenticated users can read" ON storage.objects;
+DROP POLICY IF EXISTS "Uploader or admin can delete" ON storage.objects;
+DROP POLICY IF EXISTS "Requester uploads own request attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Authorized users read request attachments" ON storage.objects;
+DROP POLICY IF EXISTS "Requester uploader or admin delete objects" ON storage.objects;
+
+CREATE POLICY "Requester uploads own request attachments"
 ON storage.objects FOR INSERT
 TO authenticated
-WITH CHECK (bucket_id = 'request-attachments');
+WITH CHECK (
+  bucket_id = 'request-attachments'
+  AND EXISTS (
+    SELECT 1
+    FROM public.fdc_approval_requests req
+    WHERE req.id::text = (storage.foldername(name))[1]
+      AND req.requester_id = public.fdc_current_user_mapping_id()
+  )
+);
 
-DROP POLICY IF EXISTS "Authenticated users can read" ON storage.objects;
-CREATE POLICY "Authenticated users can read"
+CREATE POLICY "Authorized users read request attachments"
 ON storage.objects FOR SELECT
 TO authenticated
-USING (bucket_id = 'request-attachments');
+USING (
+  bucket_id = 'request-attachments'
+  AND EXISTS (
+    SELECT 1
+    FROM public.fdc_request_attachments attachment
+    WHERE attachment.storage_path = name
+      AND public.fdc_can_view_request(attachment.request_id)
+  )
+);
 
-DROP POLICY IF EXISTS "Uploader or admin can delete" ON storage.objects;
-CREATE POLICY "Uploader or admin can delete"
+CREATE POLICY "Requester uploader or admin delete objects"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (
   bucket_id = 'request-attachments'
-  AND (
-    EXISTS (
-      SELECT 1
-      FROM public.fdc_approval_requests req
-      JOIN public.fdc_user_mapping requester
-        ON requester.id = req.requester_id
-      WHERE req.id::text = (storage.foldername(name))[1]
-        AND requester.supabase_uid = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1
-      FROM public.fdc_user_mapping um
-      WHERE um.supabase_uid = auth.uid()
-        AND um.role IN ('super_admin', 'director')
-    )
+  AND EXISTS (
+    SELECT 1
+    FROM public.fdc_request_attachments attachment
+    JOIN public.fdc_approval_requests req
+      ON req.id = attachment.request_id
+    JOIN public.fdc_user_mapping actor
+      ON actor.supabase_uid = auth.uid()
+    WHERE attachment.storage_path = name
+      AND (
+        attachment.uploaded_by = actor.id
+        OR req.requester_id = actor.id
+        OR actor.role IN ('super_admin', 'director')
+      )
   )
 );
 
@@ -51,10 +149,17 @@ CREATE TABLE IF NOT EXISTS public.fdc_request_attachments (
   file_size INTEGER NOT NULL,
   mime_type TEXT NOT NULL,
   storage_path TEXT NOT NULL,
-  public_url TEXT NOT NULL,
+  public_url TEXT,
   uploaded_by UUID NOT NULL REFERENCES public.fdc_user_mapping(id),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.fdc_request_attachments
+  ALTER COLUMN public_url DROP NOT NULL;
+
+UPDATE public.fdc_request_attachments
+SET public_url = NULL
+WHERE public_url IS NOT NULL;
 
 CREATE INDEX IF NOT EXISTS idx_request_attachments_request_id
   ON public.fdc_request_attachments(request_id);
@@ -62,46 +167,45 @@ CREATE INDEX IF NOT EXISTS idx_request_attachments_request_id
 ALTER TABLE public.fdc_request_attachments ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Authenticated can read attachments" ON public.fdc_request_attachments;
-CREATE POLICY "Authenticated can read attachments"
+DROP POLICY IF EXISTS "Requester can insert attachments" ON public.fdc_request_attachments;
+DROP POLICY IF EXISTS "Uploader or admin can delete attachments" ON public.fdc_request_attachments;
+DROP POLICY IF EXISTS "Authorized users read attachment metadata" ON public.fdc_request_attachments;
+DROP POLICY IF EXISTS "Requester inserts attachment metadata" ON public.fdc_request_attachments;
+DROP POLICY IF EXISTS "Requester uploader or admin delete attachment metadata" ON public.fdc_request_attachments;
+
+CREATE POLICY "Authorized users read attachment metadata"
 ON public.fdc_request_attachments FOR SELECT
 TO authenticated
-USING (true);
+USING (public.fdc_can_view_request(request_id));
 
-DROP POLICY IF EXISTS "Requester can insert attachments" ON public.fdc_request_attachments;
-CREATE POLICY "Requester can insert attachments"
+CREATE POLICY "Requester inserts attachment metadata"
 ON public.fdc_request_attachments FOR INSERT
 TO authenticated
 WITH CHECK (
-  uploaded_by = (
-    SELECT id
-    FROM public.fdc_user_mapping
-    WHERE supabase_uid = auth.uid()
-  )
+  uploaded_by = public.fdc_current_user_mapping_id()
   AND EXISTS (
     SELECT 1
     FROM public.fdc_approval_requests req
-    JOIN public.fdc_user_mapping requester
-      ON requester.id = req.requester_id
     WHERE req.id = request_id
-      AND requester.supabase_uid = auth.uid()
+      AND req.requester_id = public.fdc_current_user_mapping_id()
   )
 );
 
-DROP POLICY IF EXISTS "Uploader or admin can delete attachments" ON public.fdc_request_attachments;
-CREATE POLICY "Uploader or admin can delete attachments"
+CREATE POLICY "Requester uploader or admin delete attachment metadata"
 ON public.fdc_request_attachments FOR DELETE
 TO authenticated
 USING (
-  uploaded_by = (
-    SELECT id
-    FROM public.fdc_user_mapping
-    WHERE supabase_uid = auth.uid()
-  )
-  OR EXISTS (
+  EXISTS (
     SELECT 1
-    FROM public.fdc_user_mapping um
-    WHERE um.supabase_uid = auth.uid()
-      AND um.role IN ('super_admin', 'director')
+    FROM public.fdc_approval_requests req
+    JOIN public.fdc_user_mapping actor
+      ON actor.supabase_uid = auth.uid()
+    WHERE req.id = request_id
+      AND (
+        uploaded_by = actor.id
+        OR req.requester_id = actor.id
+        OR actor.role IN ('super_admin', 'director')
+      )
   )
 );
 
@@ -130,18 +234,28 @@ BEGIN
   END IF;
 END $$;
 
+DROP POLICY IF EXISTS "fdc_approver_view" ON public.fdc_approval_requests;
+DROP POLICY IF EXISTS "fdc_own_requests" ON public.fdc_approval_requests;
 DROP POLICY IF EXISTS "fdc_reporting_roles_read_all" ON public.fdc_approval_requests;
-CREATE POLICY "fdc_reporting_roles_read_all"
+DROP POLICY IF EXISTS "fdc_request_read_access" ON public.fdc_approval_requests;
+
+CREATE POLICY "fdc_request_read_access"
 ON public.fdc_approval_requests FOR SELECT
 TO authenticated
-USING (
-  EXISTS (
-    SELECT 1
-    FROM public.fdc_user_mapping um
-    WHERE um.supabase_uid = auth.uid()
-      AND um.role IN ('super_admin', 'director', 'chairman', 'accountant')
-  )
-);
+USING (public.fdc_can_view_request(id));
+
+DROP POLICY IF EXISTS "fdc_read_steps" ON public.fdc_approval_steps;
+DROP POLICY IF EXISTS "fdc_update_steps" ON public.fdc_approval_steps;
+
+CREATE POLICY "fdc_read_steps"
+ON public.fdc_approval_steps FOR SELECT
+TO authenticated
+USING (public.fdc_can_view_request(request_id));
+
+CREATE POLICY "fdc_update_steps"
+ON public.fdc_approval_steps FOR UPDATE
+TO authenticated
+USING (public.fdc_can_act_on_step(id));
 
 CREATE TABLE IF NOT EXISTS public.fdc_push_subscriptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -163,16 +277,8 @@ CREATE POLICY "Users manage own subscriptions"
 ON public.fdc_push_subscriptions FOR ALL
 TO authenticated
 USING (
-  user_id = (
-    SELECT id
-    FROM public.fdc_user_mapping
-    WHERE supabase_uid = auth.uid()
-  )
+  user_id = public.fdc_current_user_mapping_id()
 )
 WITH CHECK (
-  user_id = (
-    SELECT id
-    FROM public.fdc_user_mapping
-    WHERE supabase_uid = auth.uid()
-  )
+  user_id = public.fdc_current_user_mapping_id()
 );

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User, Role } from '@/types/user';
 import { supabase } from '@/lib/supabase';
 
@@ -15,8 +15,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const clearSession = useCallback(async () => {
+    await supabase.auth.signOut({ scope: 'local' }).catch((error) => {
+      console.error('Error clearing local session:', error);
+    });
+    setUser(null);
+  }, []);
+
+  const fetchUserMapping = useCallback(async (supabaseUid: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('fdc_user_mapping')
+        .select('*')
+        .eq('supabase_uid', supabaseUid)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (!data || data.is_active === false) {
+        await clearSession();
+        return;
+      }
+
+      setUser({
+        id: data.id,
+        supabaseUid,
+        name: data.full_name,
+        email: data.email,
+        role: data.role as Role,
+        department: data.department_name,
+        avatarUrl: data.avatar_url,
+        isActive: data.is_active ?? true,
+        hikvisionEmployeeId: data.hikvision_employee_id || undefined,
+      });
+    } catch (error) {
+      console.error('Error fetching user mapping:', error);
+      await clearSession();
+    } finally {
+      setLoading(false);
+    }
+  }, [clearSession]);
+
   useEffect(() => {
-    // Check active session
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         fetchUserMapping(session.user.id);
@@ -25,52 +65,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
-        if (session?.user) {
-          fetchUserMapping(session.user.id);
-        } else {
-          setUser(null);
-          setLoading(false);
-        }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setLoading(true);
+        fetchUserMapping(session.user.id);
+      } else {
+        setUser(null);
+        setLoading(false);
       }
-    );
+    });
 
     return () => {
       subscription.unsubscribe();
     };
-  }, []);
+  }, [fetchUserMapping]);
 
-  const fetchUserMapping = async (supabaseUid: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('fdc_user_mapping')
-        .select('*')
-        .eq('supabase_uid', supabaseUid)
-        .single();
+  useEffect(() => {
+    if (!user?.supabaseUid) return;
 
-      if (error) throw error;
+    const channel = supabase
+      .channel(`public:fdc_user_mapping:${user.supabaseUid}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'fdc_user_mapping',
+          filter: `supabase_uid=eq.${user.supabaseUid}`,
+        },
+        () => {
+          fetchUserMapping(user.supabaseUid!);
+        },
+      )
+      .subscribe();
 
-      if (data) {
-        setUser({
-          id: data.id,
-          name: data.full_name,
-          email: data.email,
-          role: data.role as Role,
-          department: data.department_name,
-          avatarUrl: data.avatar_url,
-          isActive: data.is_active ?? true,
-          hikvisionEmployeeId: data.hikvision_employee_id || undefined,
-        });
-      }
-    } catch (error) {
-      console.error('Error fetching user mapping:', error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [fetchUserMapping, user?.supabaseUid]);
 
   const logout = async () => {
     await supabase.auth.signOut();
@@ -79,6 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateAvatar = async (file: File): Promise<boolean> => {
     if (!user) return false;
+
     try {
       const fileExt = file.name.split(".").pop();
       const filePath = `${user.id}.${fileExt}`;
@@ -99,8 +132,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
       setUser({ ...user, avatarUrl: publicUrl });
       return true;
-    } catch (err) {
-      console.error("Error uploading avatar:", err);
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
       return false;
     }
   };

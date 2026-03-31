@@ -54,7 +54,7 @@ function getEmptyMessage(section: string): string {
   if (section === 'queue') return 'Không có hồ sơ phù hợp với trạng thái đang chọn.';
   if (section === 'tat') return 'Không có hồ sơ hoàn thành phù hợp với focus TAT đang chọn.';
   if (section === 'abnormal') return 'Không ghi nhận kết quả bất thường trong ngày dữ liệu.';
-  return 'Không có dòng snapshot nào đóng góp vào số liệu reagent đang chọn.';
+  return 'Không có dòng tồn kho nào phù hợp với vật tư đang chọn.';
 }
 
 function getStageLabel(stage: LabDashboardQueueDetailRow['stage']): string {
@@ -103,6 +103,7 @@ function renderTatTable(rows: LabDashboardTatDetailRow[]) {
         <tr>
           <th>Mã BN</th>
           <th>Nhóm XN</th>
+          <th>Tên test</th>
           <th>Tiếp nhận</th>
           <th>Xử lý</th>
           <th>Trả KQ</th>
@@ -116,6 +117,7 @@ function renderTatTable(rows: LabDashboardTatDetailRow[]) {
           <tr key={`${row.serviceDataId}-${row.patientCode}`}>
             <td>{row.patientCode}</td>
             <td>{row.subgroupName}</td>
+            <td>{row.testName}</td>
             <td>{formatDateTime(row.requestedAt)}</td>
             <td>{formatDateTime(row.processingAt)}</td>
             <td>{formatDateTime(row.resultAt)}</td>
@@ -169,9 +171,8 @@ function renderReagentTable(rows: LabDashboardReagentDetailRow[]) {
     <table className="lab-dashboard-detail-table">
       <thead>
         <tr>
-          <th>Reagent</th>
-          <th>Nguồn snapshot</th>
-          <th>Mã thuốc</th>
+          <th>Vật tư</th>
+          <th>Mã vật tư</th>
           <th>Kho</th>
           <th>Tồn</th>
           <th>Đơn vị</th>
@@ -180,12 +181,11 @@ function renderReagentTable(rows: LabDashboardReagentDetailRow[]) {
       </thead>
       <tbody>
         {rows.map((row, index) => (
-          <tr key={`${row.reagentKey}-${row.sourceName}-${index}`}>
+          <tr key={`${row.reagentKey}-${row.medicineCode || "item"}-${index}`}>
             <td>{row.reagentName}</td>
-            <td>{row.sourceName}</td>
-            <td>{row.medicineCode || '—'}</td>
-            <td>{row.warehouse || '—'}</td>
-            <td>{row.currentStock.toLocaleString('vi-VN')}</td>
+            <td>{row.medicineCode || "--"}</td>
+            <td>{row.warehouse || "--"}</td>
+            <td>{row.currentStock.toLocaleString("vi-VN")}</td>
             <td>{row.unit}</td>
             <td>{row.snapshotDate}</td>
           </tr>

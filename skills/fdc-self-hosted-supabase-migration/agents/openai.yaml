@@ -1,0 +1,4 @@
+interface:
+  display_name: "FDC Supabase Migration"
+  short_description: "Migrate projects to FDC Supabase"
+  default_prompt: "Use $fdc-self-hosted-supabase-migration to migrate this project to the FDC self-hosted Supabase instance."

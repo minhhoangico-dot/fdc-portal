@@ -1,3 +1,5 @@
+import { DEFAULT_ROLE_LABELS } from '@/lib/role-catalog';
+
 export const REQUEST_TYPES = {
   material_release: 'Xuất vật tư',
   purchase: 'Mua sắm',
@@ -24,15 +26,7 @@ export const PRIORITY = {
   urgent: 'Khẩn cấp',
 } as const;
 
-export const ROLES = {
-  super_admin: 'KTT / Admin',
-  director: 'Giám đốc',
-  chairman: 'CT HĐQT',
-  dept_head: 'Trưởng phòng',
-  accountant: 'Kế toán',
-  staff: 'Nhân viên',
-  doctor: 'Bác sĩ',
-} as const;
+export const ROLES = DEFAULT_ROLE_LABELS;
 
 export const COST_CENTERS = {
   general: 'Chung',

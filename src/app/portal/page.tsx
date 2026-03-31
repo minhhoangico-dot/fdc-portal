@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
+import { useRoleCatalog } from "@/contexts/RoleCatalogContext";
 import { usePortal } from "@/viewmodels/usePortal";
 import { useNotifications } from "@/viewmodels/useNotifications";
 import {
@@ -21,6 +22,7 @@ import { format, parseISO } from "date-fns";
 import { REQUEST_STATUS } from "@/lib/constants";
 
 export default function PortalPage() {
+  const { getRoleLabel } = useRoleCatalog();
   const {
     currentUser,
     currentMonth,
@@ -165,7 +167,7 @@ export default function PortalPage() {
             </h1>
             <div className="flex flex-wrap items-center gap-2 mt-1">
               <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-700">
-                {currentUser.role}
+                {getRoleLabel(currentUser.role)}
               </span>
               {currentUser.department && (
                 <span className="text-sm text-gray-500">

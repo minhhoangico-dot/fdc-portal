@@ -1,24 +1,22 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
 import { BottomNav } from './BottomNav';
+import { APPROVER_ROLES } from '@/lib/role-access';
 import { useApprovals } from '@/viewmodels/useApprovals';
-
-const APPROVER_ROLES = new Set(['dept_head', 'accountant', 'director', 'chairman', 'super_admin']);
 
 export function AppShell() {
   const { user } = useAuth();
-  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const approvalEnabled = Boolean(user && APPROVER_ROLES.has(user.role));
+  const approvalEnabled = Boolean(user && APPROVER_ROLES.includes(user.role));
   const { pendingApprovals } = useApprovals({ enabled: approvalEnabled });
   const pendingCount = pendingApprovals.length;
   const shellStyle = { ['--sidebar-width' as any]: '16rem' } as React.CSSProperties;
 
   if (!user) {
-    return <Navigate to="/login" state={{ from: location }} replace />;
+    return null;
   }
 
   return (

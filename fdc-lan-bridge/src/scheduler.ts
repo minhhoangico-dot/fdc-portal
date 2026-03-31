@@ -12,6 +12,7 @@ import { detectAnomaliesJob } from "./jobs/detectAnomalies";
 import { syncSupplyConsumptionJob } from "./jobs/syncSupplyConsumption";
 import { syncSupplyInwardJob } from "./jobs/syncSupplyInward";
 import { syncSupplyMonthlyStatsJob } from "./jobs/syncSupplyMonthlyStats";
+import { generateWeeklyReportJob } from "./jobs/generateWeeklyReport";
 
 export function startScheduler(): void {
   logger.info("Initializing Node Cron Scheduler...");
@@ -53,5 +54,11 @@ export function startScheduler(): void {
     logger.info("Running scheduled syncSupplyMonthlyStatsJob...");
     await syncSupplyMonthlyStatsJob();
   });
+
+  cron.schedule("0 23 * * 0", async () => {
+    logger.info("Running scheduled generateWeeklyReportJob...");
+    await generateWeeklyReportJob(undefined, "scheduler");
+  });
+  logger.info("Cron registered: generateWeeklyReportJob (Sunday 23:00: 0 23 * * 0)");
 }
 

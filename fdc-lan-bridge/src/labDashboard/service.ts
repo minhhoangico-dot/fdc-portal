@@ -52,6 +52,7 @@ const LAB_GROUP_ID = 3;
 const ABNORMAL_ROW_FETCH_LIMIT = 60;
 const ABNORMAL_ROW_DISPLAY_LIMIT = 12;
 const INVENTORY_BATCH_SIZE = 1000;
+const DEFAULT_INVENTORY_UNIT = "Cái";
 
 const VALID_TIMESTAMP = (column: string) =>
   `CASE WHEN ${column} IS NOT NULL AND EXTRACT(YEAR FROM ${column}) >= 2000 THEN ${column} ELSE NULL END`;
@@ -63,19 +64,30 @@ const LAB_ORDER_TIMELINE_CTE = `
       sd.patientrecordid,
       sd.dm_servicesubgroupid,
       subgroup.dm_servicesubgroupname AS subgroup_name,
+      COALESCE(NULLIF(BTRIM(sd.servicename), ''), NULLIF(BTRIM(sd.servicecode), ''), 'Xet nghiem') AS test_name,
+      EXISTS (
+        SELECT 1
+        FROM tb_treatment treatment
+        WHERE treatment.patientrecordid = sd.patientrecordid
+          AND COALESCE(treatment.isthutien, 0) = 1
+      ) AS has_paid_treatment,
       ${VALID_TIMESTAMP("sd.servicedatausedate")} AS requested_at,
-      ${VALID_TIMESTAMP("sd.order_date")} AS processing_at,
-      ${VALID_TIMESTAMP("sd.data_date")} AS root_result_at
+      ${VALID_TIMESTAMP("sd.order_date")} AS order_processing_at,
+      ${VALID_TIMESTAMP("sd.do_servicedatadate")} AS fallback_processing_at,
+      ${VALID_TIMESTAMP("sd.data_date")} AS root_result_at,
+      ${VALID_TIMESTAMP("sd.end_date")} AS root_end_at
     FROM tb_servicedata sd
     LEFT JOIN tb_dm_servicesubgroup subgroup ON subgroup.dm_servicesubgroupid = sd.dm_servicesubgroupid
     WHERE sd.dm_servicegroupid = ${LAB_GROUP_ID}
       AND COALESCE(sd.servicedataid_master, 0) = 0
+      AND COALESCE(NULLIF(BTRIM(sd.servicename), ''), '') NOT ILIKE 'Chênh lệch BH - %'
       AND (${VALID_TIMESTAMP("sd.servicedatausedate")})::date = $1::date
   ),
   child_results AS (
     SELECT
       child.servicedataid_master AS root_id,
-      MAX(${VALID_TIMESTAMP("child.data_date")}) AS child_result_at
+      MAX(${VALID_TIMESTAMP("child.data_date")}) AS child_result_at,
+      MAX(${VALID_TIMESTAMP("child.end_date")}) AS child_end_at
     FROM tb_servicedata child
     JOIN lab_roots roots ON roots.servicedataid = child.servicedataid_master
     WHERE child.dm_servicegroupid = ${LAB_GROUP_ID}
@@ -88,12 +100,29 @@ const LAB_ORDER_TIMELINE_CTE = `
       roots.patientrecordid,
       roots.dm_servicesubgroupid,
       COALESCE(NULLIF(BTRIM(roots.subgroup_name), ''), 'Khác') AS subgroup_name,
+      roots.test_name,
+      roots.has_paid_treatment,
       roots.requested_at,
-      roots.processing_at,
-      COALESCE(roots.root_result_at, child_results.child_result_at) AS result_at
+      COALESCE(roots.order_processing_at, roots.fallback_processing_at) AS processing_at,
+      COALESCE(
+        roots.root_result_at,
+        child_results.child_result_at,
+        roots.root_end_at,
+        child_results.child_end_at
+      ) AS result_at
     FROM lab_roots roots
     LEFT JOIN child_results ON child_results.root_id = roots.servicedataid
     WHERE roots.requested_at IS NOT NULL
+      AND (
+        COALESCE(roots.order_processing_at, roots.fallback_processing_at) IS NOT NULL
+        OR COALESCE(
+          roots.root_result_at,
+          child_results.child_result_at,
+          roots.root_end_at,
+          child_results.child_end_at
+        ) IS NOT NULL
+        OR roots.has_paid_treatment
+      )
   )
 `;
 
@@ -104,85 +133,6 @@ const LAB_SUBGROUP_KEYS: Record<number, string> = {
   305: "nuoc-tieu",
   318: "mien-dich",
 };
-
-const REAGENT_CONFIGS: Array<{
-  key: string;
-  name: string;
-  targetStock: number;
-  keywords: string[];
-  unitFallback?: string;
-}> = [
-  {
-    key: "hematology",
-    name: "Huyết học CBC",
-    targetStock: 6,
-    unitFallback: "hộp",
-    keywords: ["lyse-mek", "diluit-mek", "cbc", "hemo", "huyet hoc"],
-  },
-  {
-    key: "glucose",
-    name: "Glucose",
-    targetStock: 2,
-    unitFallback: "hộp",
-    keywords: ["glucose"],
-  },
-  {
-    key: "creatinine",
-    name: "Creatinine",
-    targetStock: 2,
-    unitFallback: "hộp",
-    keywords: ["creatinin", "cre "],
-  },
-  {
-    key: "crp",
-    name: "CRP",
-    targetStock: 3,
-    unitFallback: "hộp",
-    keywords: ["crp"],
-  },
-  {
-    key: "hba1c",
-    name: "HbA1c",
-    targetStock: 2,
-    unitFallback: "hộp",
-    keywords: ["hba1c"],
-  },
-  {
-    key: "alt-ast",
-    name: "ALT / AST",
-    targetStock: 2,
-    unitFallback: "hộp",
-    keywords: ["alt", "ast", "sgpt", "sgot"],
-  },
-  {
-    key: "electrolyte",
-    name: "Điện giải",
-    targetStock: 3,
-    unitFallback: "hộp",
-    keywords: ["dien giai", "điện giải", "ise", "electrolyte"],
-  },
-  {
-    key: "urine",
-    name: "Nước tiểu",
-    targetStock: 10,
-    unitFallback: "hộp",
-    keywords: ["nuoc tieu", "nước tiểu", "urine"],
-  },
-  {
-    key: "thyroid",
-    name: "TSH / FT4",
-    targetStock: 4,
-    unitFallback: "hộp",
-    keywords: ["tsh", "ft4"],
-  },
-  {
-    key: "lipid",
-    name: "Lipid panel",
-    targetStock: 4,
-    unitFallback: "hộp",
-    keywords: ["triglyceride", "cholesterol", "lipid"],
-  },
-];
 
 type QueueCountsRow = {
   waiting_for_sample: string | number | null;
@@ -227,6 +177,7 @@ type TimelineDetailRow = {
   patientcode: string | null;
   dm_servicesubgroupid: number | null;
   subgroup_name: string | null;
+  test_name: string | null;
   requested_at: string | null;
   processing_at: string | null;
   result_at: string | null;
@@ -327,14 +278,7 @@ function buildDefaultAbnormal(): LabDashboardAbnormal {
 }
 
 function buildDefaultReagents(): LabDashboardReagent[] {
-  return REAGENT_CONFIGS.map((config) => ({
-    key: config.key,
-    name: config.name,
-    currentStock: 0,
-    targetStock: config.targetStock,
-    unit: config.unitFallback || "hộp",
-    status: "critical",
-  }));
+  return [];
 }
 
 function buildFreshness(source: "his" | "supabase", generatedAt: string, dataDate?: string): LabDashboardSectionFreshness {
@@ -416,87 +360,83 @@ function isLikelyLabInventoryRow(row: InventorySnapshotRow): boolean {
   return warehouse.includes("xet nghiem");
 }
 
-function matchesAnyReagentKeyword(row: InventorySnapshotRow): boolean {
-  return REAGENT_CONFIGS.some((config) => matchesReagentConfig(row, config.keywords));
+function normalizeInventoryStock(value: string | number | null | undefined): number {
+  return Number(toNumber(value).toFixed(1));
 }
 
-function matchesKeywordSequence(haystack: string, keyword: string): boolean {
-  const haystackTokens = haystack.split(" ").filter(Boolean);
-  const keywordTokens = normalizeText(keyword).split(" ").filter(Boolean);
-
-  if (keywordTokens.length === 0 || haystackTokens.length < keywordTokens.length) {
-    return false;
-  }
-
-  for (let index = 0; index <= haystackTokens.length - keywordTokens.length; index += 1) {
-    const matches = keywordTokens.every((token, offset) => haystackTokens[index + offset] === token);
-    if (matches) {
-      return true;
-    }
-  }
-
-  return false;
+function normalizeInventoryName(row: InventorySnapshotRow): string {
+  return row.name?.trim() || row.medicine_code?.trim() || "Vat tu xet nghiem";
 }
 
-function matchesReagentConfig(row: InventorySnapshotRow, keywords: string[]): boolean {
-  const haystack = `${normalizeText(row.name)} ${normalizeText(row.medicine_code)}`;
-  return keywords.some((keyword) => matchesKeywordSequence(haystack, keyword));
+function normalizeInventoryUnit(unit: string | null | undefined): string {
+  return unit?.trim() || DEFAULT_INVENTORY_UNIT;
 }
 
-function getReagentStatus(currentStock: number, targetStock: number): LabDashboardReagentStatus {
-  if (currentStock <= targetStock * 0.25) return "critical";
-  if (currentStock <= targetStock * 0.5) return "low";
+function buildInventoryItemKey(row: InventorySnapshotRow): string {
+  return slugify(row.medicine_code?.trim() || row.name?.trim() || "vat-tu-xet-nghiem");
+}
+
+function getReagentStatus(currentStock: number): LabDashboardReagentStatus {
+  if (currentStock <= 1) return "critical";
+  if (currentStock <= 2) return "low";
   return "ok";
 }
 
-function allocateReagentRows(sourceRows: InventorySnapshotRow[]): {
+function compareInventoryRowsByStockThenName(
+  left: Pick<InventorySnapshotRow, "current_stock" | "name" | "medicine_code">,
+  right: Pick<InventorySnapshotRow, "current_stock" | "name" | "medicine_code">,
+): number {
+  const stockDiff = normalizeInventoryStock(left.current_stock) - normalizeInventoryStock(right.current_stock);
+  if (stockDiff !== 0) {
+    return stockDiff;
+  }
+
+  const nameDiff = normalizeInventoryName(left as InventorySnapshotRow).localeCompare(
+    normalizeInventoryName(right as InventorySnapshotRow),
+    "vi",
+  );
+  if (nameDiff !== 0) {
+    return nameDiff;
+  }
+
+  return buildInventoryItemKey(left as InventorySnapshotRow).localeCompare(
+    buildInventoryItemKey(right as InventorySnapshotRow),
+    "vi",
+  );
+}
+
+function buildReagentRowsFromInventory(sourceRows: InventorySnapshotRow[]): {
   reagents: LabDashboardReagent[];
   detailRows: LabDashboardReagentDetailRow[];
 } {
-  const claimedRows = new Set<number>();
-  const detailRows: LabDashboardReagentDetailRow[] = [];
-
-  const reagents = REAGENT_CONFIGS.map((config) => {
-    const matchedRows = sourceRows.filter((row, index) => {
-      if (claimedRows.has(index)) return false;
-      if (!matchesReagentConfig(row, config.keywords)) return false;
-      claimedRows.add(index);
-      return true;
-    });
-
-    detailRows.push(
-      ...matchedRows.map((row) => ({
-        kind: "reagent" as const,
-        reagentKey: config.key,
-        reagentName: config.name,
-        sourceName: row.name?.trim() || config.name,
-        medicineCode: row.medicine_code?.trim() || null,
-        warehouse: row.warehouse?.trim() || null,
-        currentStock: toNumber(row.current_stock),
-        unit: row.unit?.trim() || config.unitFallback || "há»™p",
-        snapshotDate: row.snapshot_date,
-      })),
-    );
-
-    const currentStock = Number(
-      matchedRows
-        .reduce((sum, row) => sum + toNumber(row.current_stock), 0)
-        .toFixed(1),
-    );
-    const unit =
-      matchedRows.find((row) => row.unit && row.unit.trim())?.unit?.trim() ||
-      config.unitFallback ||
-      "há»™p";
+  const sortedRows = [...sourceRows].sort(compareInventoryRowsByStockThenName);
+  const detailRows = sortedRows.map((row) => {
+    const itemName = normalizeInventoryName(row);
+    const itemKey = buildInventoryItemKey(row);
+    const currentStock = normalizeInventoryStock(row.current_stock);
+    const unit = normalizeInventoryUnit(row.unit);
 
     return {
-      key: config.key,
-      name: config.name,
+      kind: "reagent" as const,
+      reagentKey: itemKey,
+      reagentName: itemName,
+      sourceName: itemName,
+      medicineCode: row.medicine_code?.trim() || null,
+      warehouse: row.warehouse?.trim() || null,
       currentStock,
-      targetStock: config.targetStock,
       unit,
-      status: getReagentStatus(currentStock, config.targetStock),
-    } satisfies LabDashboardReagent;
+      snapshotDate: row.snapshot_date,
+    };
   });
+
+  const reagents = detailRows.map((row) => ({
+    key: row.reagentKey,
+    name: row.reagentName,
+    medicineCode: row.medicineCode,
+    currentStock: row.currentStock,
+    unit: row.unit,
+    status: getReagentStatus(row.currentStock),
+  }));
 
   return { reagents, detailRows };
 }
@@ -507,6 +447,7 @@ function mapTimelineDetailRows(rows: TimelineDetailRow[]): LabDashboardTimelineD
     patientCode: row.patientcode?.trim() || "áº¨n danh",
     subgroupKey: resolveTatTypeKey(row.dm_servicesubgroupid, row.subgroup_name || "KhÃ¡c"),
     subgroupName: row.subgroup_name?.trim() || "KhÃ¡c",
+    testName: row.test_name?.trim() || "Xet nghiem",
     requestedAt: row.requested_at || "",
     processingAt: row.processing_at || null,
     resultAt: row.result_at || null,
@@ -538,6 +479,7 @@ async function fetchTimelineDetailRows(asOfDate: string): Promise<LabDashboardTi
         p.patientcode,
         orders.dm_servicesubgroupid,
         orders.subgroup_name,
+        orders.test_name,
         orders.requested_at::text AS requested_at,
         orders.processing_at::text AS processing_at,
         orders.result_at::text AS result_at,
@@ -848,43 +790,11 @@ async function buildReagentSummary(generatedAt: string): Promise<ReagentSummaryR
   const positiveSnapshotRows = mapSnapshotSourceRows(snapshotRows);
   const scopedRows = snapshotRows.filter(isLikelyLabInventoryRow);
   const labScopedRows = mapSnapshotSourceRows(scopedRows);
-  const matchedRows = mapSnapshotSourceRows(scopedRows.filter(matchesAnyReagentKeyword));
-  const sourceRows = scopedRows;
-
-  if (sourceRows.length === 0) {
-    throw new Error("No lab reagent rows matched the latest inventory snapshot.");
+  if (scopedRows.length === 0) {
+    throw new Error("No lab inventory rows were found in the latest inventory snapshot.");
   }
 
-  const allocation = allocateReagentRows(sourceRows);
-
-  const claimedRows = new Set<number>();
-  const reagents = REAGENT_CONFIGS.map((config) => {
-    const matchedRows = sourceRows.filter((row, index) => {
-      if (claimedRows.has(index)) return false;
-      if (!matchesReagentConfig(row, config.keywords)) return false;
-      claimedRows.add(index);
-      return true;
-    });
-
-    const currentStock = Number(
-      matchedRows
-        .reduce((sum, row) => sum + toNumber(row.current_stock), 0)
-        .toFixed(1),
-    );
-    const unit =
-      matchedRows.find((row) => row.unit && row.unit.trim())?.unit?.trim() ||
-      config.unitFallback ||
-      "hộp";
-
-    return {
-      key: config.key,
-      name: config.name,
-      currentStock,
-      targetStock: config.targetStock,
-      unit,
-      status: getReagentStatus(currentStock, config.targetStock),
-    } satisfies LabDashboardReagent;
-  });
+  const allocation = buildReagentRowsFromInventory(scopedRows);
 
   return {
     reagents: allocation.reagents,
@@ -892,7 +802,7 @@ async function buildReagentSummary(generatedAt: string): Promise<ReagentSummaryR
     snapshotDate,
     positiveSnapshotRows,
     labScopedRows,
-    matchedRows,
+    matchedRows: labScopedRows,
     freshness: buildFreshness("supabase", generatedAt, snapshotDate),
   };
 }
@@ -1148,8 +1058,8 @@ async function loadReagentDetail(
         matchedRows: result.matchedRows,
         claimedRows: result.detailRows,
         displayedRows: rows,
-        claimOrder: REAGENT_CONFIGS.map((config) => config.key),
-        claimOrderDisplayLabels: REAGENT_CONFIGS.map((config) => config.name),
+        claimOrder: [],
+        claimOrderDisplayLabels: [],
       }),
     };
   } catch (error) {
@@ -1167,8 +1077,8 @@ async function loadReagentDetail(
         matchedRows,
         claimedRows,
         displayedRows: rows,
-        claimOrder: REAGENT_CONFIGS.map((config) => config.key),
-        claimOrderDisplayLabels: REAGENT_CONFIGS.map((config) => config.name),
+        claimOrder: [],
+        claimOrderDisplayLabels: [],
         error: message,
       }),
     };

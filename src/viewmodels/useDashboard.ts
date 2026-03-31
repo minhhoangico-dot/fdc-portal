@@ -4,6 +4,7 @@ import { useApprovals } from '@/viewmodels/useApprovals';
 import { useInventory } from '@/viewmodels/useInventory';
 import { useAttendance } from '@/viewmodels/useAttendance';
 import { useAdmin } from '@/viewmodels/useAdmin';
+import { APPROVER_ROLES, INVENTORY_ACCESS_ROLES } from '@/lib/role-access';
 import { formatDate } from '@/lib/utils';
 import { RequestType } from '@/types/request';
 import { FileText, Calendar, Clock, CheckCircle, Package, Settings, RefreshCw, Users } from 'lucide-react';
@@ -11,8 +12,8 @@ import { FileText, Calendar, Clock, CheckCircle, Package, Settings, RefreshCw, U
 export function useDashboard() {
   const { user } = useAuth();
   const { requests: visibleRequests } = useRequests();
-  const approvalEnabled = user?.role === 'dept_head' || user?.role === 'super_admin' || user?.role === 'director' || user?.role === 'chairman';
-  const inventoryEnabled = user?.role === 'super_admin';
+  const approvalEnabled = Boolean(user && APPROVER_ROLES.includes(user.role));
+  const inventoryEnabled = Boolean(user && INVENTORY_ACCESS_ROLES.includes(user.role));
   const adminEnabled = user?.role === 'super_admin' || user?.role === 'director' || user?.role === 'chairman';
   const adminPreload: Array<'users' | 'approval' | 'misa' | 'sync' | 'audit'> =
     user?.role === 'super_admin'
@@ -64,7 +65,6 @@ export function useDashboard() {
         )
       : 0;
 
-  // Base Quick Actions
   let quickActions = [
     { label: 'Tạo đề nghị', icon: FileText, path: '/requests', color: 'bg-blue-100 text-blue-700' },
     { label: 'Xin nghỉ phép', icon: Calendar, path: '/requests', color: 'bg-emerald-100 text-emerald-700' },
@@ -75,6 +75,11 @@ export function useDashboard() {
     quickActions.push(
       { label: 'Duyệt đề nghị', icon: CheckCircle, path: '/approvals', color: 'bg-amber-100 text-amber-700' },
       { label: 'Xuất vật tư', icon: Package, path: '/inventory', color: 'bg-indigo-100 text-indigo-700' }
+    );
+  } else if (user.role === 'head_nurse') {
+    quickActions.push(
+      { label: 'Duyệt đề nghị', icon: CheckCircle, path: '/approvals', color: 'bg-amber-100 text-amber-700' },
+      { label: 'Quản lý kho', icon: Package, path: '/inventory', color: 'bg-indigo-100 text-indigo-700' }
     );
   } else if (user.role === 'super_admin' || user.role === 'accountant') {
     quickActions.push(
@@ -90,10 +95,8 @@ export function useDashboard() {
     );
   }
 
-  // Recent Activity (last 5 requests by user)
   const recentActivity = [...myRequests].sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()).slice(0, 5);
 
-  // My Requests Summary
   const myRequestsSummary = {
     pending: myRequests.filter(r => r.status === 'pending' || r.status === 'escalated').length,
     approved: myRequests.filter(r => r.status === 'approved' || r.status === 'completed').length,
@@ -109,30 +112,17 @@ export function useDashboard() {
     attendanceSummary,
   };
 
-  // Dept Head specific
   if (user.role === 'dept_head') {
     data.deptPendingApprovals = pendingApprovals.filter(r => r.department === user.department);
   }
 
-  // KTT / Super Admin specific
-  if (user.role === 'super_admin') {
+  if (user.role === 'super_admin' || user.role === 'head_nurse') {
     const systemPendingByType = pendingApprovals.reduce((acc, req) => {
       acc[req.type] = (acc[req.type] || 0) + 1;
       return acc;
     }, {} as Record<RequestType, number>);
 
     data.systemPendingByType = systemPendingByType;
-    data.bridgeHealth = bridgeHealth;
-
-    const misaSyncRuns = syncHistory
-      .filter((sync) => sync.type === 'scanMisaPhieuchi' && sync.status === 'success')
-      .sort((a, b) => new Date(b.completedAt || b.startedAt).getTime() - new Date(a.completedAt || a.startedAt).getTime());
-    const lastMisaSync = misaSyncRuns[0];
-    data.misaSyncStatus = {
-      lastSync: lastMisaSync?.completedAt || null,
-      paymentsMatched: lastMisaSync?.recordsSynced || 0,
-    };
-
     data.anomalyCount = anomalies.filter(a => !a.acknowledged).length;
 
     data.stats = {
@@ -143,9 +133,21 @@ export function useDashboard() {
           : 0,
       avgTimeHours,
     };
+
+    if (user.role === 'super_admin') {
+      data.bridgeHealth = bridgeHealth;
+
+      const misaSyncRuns = syncHistory
+        .filter((sync) => sync.type === 'scanMisaPhieuchi' && sync.status === 'success')
+        .sort((a, b) => new Date(b.completedAt || b.startedAt).getTime() - new Date(a.completedAt || a.startedAt).getTime());
+      const lastMisaSync = misaSyncRuns[0];
+      data.misaSyncStatus = {
+        lastSync: lastMisaSync?.completedAt || null,
+        paymentsMatched: lastMisaSync?.recordsSynced || 0,
+      };
+    }
   }
 
-  // Director specific
   if (user.role === 'director' || user.role === 'chairman') {
     data.directorPendingRequests = pendingApprovals;
 

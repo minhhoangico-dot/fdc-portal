@@ -16,7 +16,7 @@ import {
   Area,
 } from "recharts";
 
-const CONSUMPTION_LOOKBACK_DAYS = 365;
+const CONSUMPTION_LOOKBACK_DAYS = 90;
 const PAGE_SIZE = 1000;
 
 const formatCurrency = (value: number) =>

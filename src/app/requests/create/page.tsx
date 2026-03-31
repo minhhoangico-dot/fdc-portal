@@ -1,13 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useRoleCatalog } from '@/contexts/RoleCatalogContext';
 import { useRequests } from '@/viewmodels/useRequests';
-import { RequestType } from '@/types/request';
-import { REQUEST_TYPES, ROLES, COST_CENTERS } from '@/lib/constants';
+import { RequestMetadata, RequestType } from '@/types/request';
+import { REQUEST_TYPES, COST_CENTERS } from '@/lib/constants';
 import { FileText, Package, DollarSign, CreditCard, Calendar, ChevronRight, ArrowLeft, Check, Plus, Trash2, AlertTriangle, Paperclip } from 'lucide-react';
 import { cn, formatVND } from '@/lib/utils';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { FileUpload } from '@/components/shared/FileUpload';
+import { buildRequestTotalAmount, requiresDirectorApproval } from '@/lib/request-helpers';
 
 const TYPE_CARDS = [
   { type: 'material_release', icon: Package, title: 'Xuất vật tư', desc: 'Xin xuất kho vật tư y tế, văn phòng phẩm' },
@@ -23,17 +25,6 @@ type ApprovalPreviewStep = {
   stepOrder: number;
   approverRole: string;
   status: 'pending';
-};
-
-const requiresDirectorApproval = (startDate: string, endDate: string) => {
-  if (!startDate || !endDate) return false;
-
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-  if (end.getTime() < start.getTime()) return false;
-  const diffDays = Math.ceil((end.getTime() - start.getTime()) / 86400000);
-
-  return diffDays > 1 || start.getDay() === 1;
 };
 
 const buildFallbackApprovalSteps = (type: string, formData: any): ApprovalPreviewStep[] => {
@@ -68,6 +59,7 @@ export default function CreateRequestPage() {
   const navigate = useNavigate();
   const { createRequest, uploadAttachments } = useRequests();
   const { user } = useAuth();
+  const { getRoleLabel } = useRoleCatalog();
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
 
   const [step, setStep] = useState(1);
@@ -154,6 +146,39 @@ export default function CreateRequestPage() {
     else setStep(s => s - 1);
   };
 
+  const buildRequestMetadata = (): RequestMetadata => {
+    if (['material_release', 'purchase'].includes(formData.type)) {
+      return {
+        items: formData.items
+          .map((item: any) => ({
+            name: String(item.name || '').trim(),
+            qty: Number(item.qty || 0),
+            unit: String(item.unit || '').trim(),
+            price: formData.type === 'purchase' ? Number(item.price || 0) : undefined,
+          }))
+          .filter((item: any) => item.name),
+      };
+    }
+
+    if (['payment', 'advance'].includes(formData.type)) {
+      return {
+        beneficiary: formData.beneficiary || undefined,
+        method: formData.type === 'payment' ? formData.method : undefined,
+        expectedDate: formData.type === 'advance' ? formData.expectedDate || undefined : undefined,
+      };
+    }
+
+    if (formData.type === 'leave') {
+      return {
+        leaveType: formData.leaveType,
+        startDate: formData.startDate,
+        endDate: formData.endDate,
+      };
+    }
+
+    return {};
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) {
       return;
@@ -167,9 +192,9 @@ export default function CreateRequestPage() {
         ? approvalPreviewSteps
         : await buildApprovalSteps();
 
-      const totalAmount = ['purchase', 'payment', 'advance'].includes(formData.type)
-        ? (formData.type === 'purchase' ? formData.items.reduce((sum: number, i: any) => sum + (i.qty * i.price), 0) : Number(formData.amount))
-        : undefined;
+      const metadata = buildRequestMetadata();
+      const explicitAmount = ['payment', 'advance'].includes(formData.type) ? Number(formData.amount) : undefined;
+      const totalAmount = buildRequestTotalAmount(formData.type, metadata, explicitAmount);
 
       const newId = await createRequest({
         type: formData.type,
@@ -178,8 +203,8 @@ export default function CreateRequestPage() {
         priority: formData.priority,
         totalAmount,
         costCenter: formData.costCenter || undefined,
+        metadata,
         approvalSteps,
-        ...(formData.type === 'leave' && { description: `Từ: ${formData.startDate} Đến: ${formData.endDate}\nLý do: ${formData.description}` }),
       });
 
       if (newId) {
@@ -199,8 +224,9 @@ export default function CreateRequestPage() {
   const isStep2Valid = () => {
     if (!formData.title) return false;
     if (formData.type === 'leave' && (!formData.startDate || !formData.endDate || !formData.description)) return false;
-    if (['payment', 'advance'].includes(formData.type) && !formData.amount) return false;
-    if (['material_release', 'purchase'].includes(formData.type) && formData.items.length === 0) return false;
+    if (['payment', 'advance'].includes(formData.type) && (!formData.amount || !formData.beneficiary)) return false;
+    if (formData.type === 'advance' && !formData.expectedDate) return false;
+    if (['material_release', 'purchase'].includes(formData.type) && !formData.items.some((item: any) => item.name?.trim())) return false;
     return true;
   };
 
@@ -342,6 +368,16 @@ export default function CreateRequestPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Người/đơn vị thụ hưởng <span className="text-red-500">*</span></label>
+                    <input
+                      type="text"
+                      value={formData.beneficiary}
+                      onChange={e => setFormData({ ...formData, beneficiary: e.target.value })}
+                      placeholder="VD: Nhà cung cấp A"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                    />
+                  </div>
                   {formData.type === 'payment' && (
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Hình thức</label>
@@ -357,7 +393,7 @@ export default function CreateRequestPage() {
                   )}
                   {formData.type === 'advance' && (
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày dự kiến hoàn ứng</label>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Ngày dự kiến hoàn ứng <span className="text-red-500">*</span></label>
                       <input
                         type="date"
                         value={formData.expectedDate}
@@ -518,16 +554,40 @@ export default function CreateRequestPage() {
                     <dd className="font-medium text-gray-900">{formatVND(Number(formData.amount))}</dd>
                   </div>
                 )}
+                {formData.beneficiary && (
+                  <div>
+                    <dt className="text-gray-500">Thụ hưởng</dt>
+                    <dd className="font-medium text-gray-900">{formData.beneficiary}</dd>
+                  </div>
+                )}
                 {formData.costCenter && (
                   <div>
                     <dt className="text-gray-500">Trung tâm chi phí</dt>
                     <dd className="font-medium text-gray-900">{COST_CENTERS[formData.costCenter as keyof typeof COST_CENTERS] || formData.costCenter}</dd>
                   </div>
                 )}
+                {formData.type === 'advance' && formData.expectedDate && (
+                  <div>
+                    <dt className="text-gray-500">Ngày hoàn ứng dự kiến</dt>
+                    <dd className="font-medium text-gray-900">{formData.expectedDate}</dd>
+                  </div>
+                )}
                 {formData.type === 'leave' && (
                   <div className="sm:col-span-2">
                     <dt className="text-gray-500">Thời gian nghỉ</dt>
                     <dd className="font-medium text-gray-900">{formData.startDate} đến {formData.endDate}</dd>
+                  </div>
+                )}
+                {formData.type === 'leave' && (
+                  <div>
+                    <dt className="text-gray-500">Loại nghỉ</dt>
+                    <dd className="font-medium text-gray-900">{formData.leaveType}</dd>
+                  </div>
+                )}
+                {['material_release', 'purchase'].includes(formData.type) && formData.items.some((item: any) => item.name?.trim()) && (
+                  <div className="sm:col-span-2">
+                    <dt className="text-gray-500">Danh sách vật tư</dt>
+                    <dd className="font-medium text-gray-900">{formData.items.filter((item: any) => item.name?.trim()).length} dòng</dd>
                   </div>
                 )}
                 <div className="sm:col-span-2">
@@ -555,7 +615,7 @@ export default function CreateRequestPage() {
                         {index + 1}
                       </div>
                       <span className="font-medium text-gray-900">
-                        {ROLES[approvalStep.approverRole as keyof typeof ROLES] || approvalStep.approverRole}
+                        {getRoleLabel(approvalStep.approverRole)}
                       </span>
                     </div>
                   ))}

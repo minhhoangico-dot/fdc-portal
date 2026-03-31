@@ -3,39 +3,15 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useRequests } from "@/viewmodels/useRequests";
 import { useAttendance } from "@/viewmodels/useAttendance";
 import { supabase } from "@/lib/supabase";
+import { getInclusiveDayCount, getLeaveDates, requiresDirectorApproval } from "@/lib/request-helpers";
 
 const LEAVE_ALLOWANCE_DAYS = 12;
-const MS_PER_DAY = 1000 * 60 * 60 * 24;
 
 const formatLocalDate = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
-};
-
-const getInclusiveDayCount = (startDate: string, endDate: string) => {
-  if (!startDate || !endDate) return 0;
-
-  const start = new Date(`${startDate}T00:00:00`);
-  const end = new Date(`${endDate}T00:00:00`);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end < start) {
-    return 0;
-  }
-
-  return Math.floor((end.getTime() - start.getTime()) / MS_PER_DAY) + 1;
-};
-
-const extractLeaveDates = (description?: string) => {
-  if (!description) return null;
-
-  const matches = description.match(/\d{4}-\d{2}-\d{2}/g);
-  if (!matches || matches.length < 2) return null;
-
-  return {
-    startDate: matches[0],
-    endDate: matches[1],
-  };
 };
 
 export function usePortal() {
@@ -45,19 +21,11 @@ export function usePortal() {
     currentMonth,
     setCurrentMonth,
     attendanceRecords,
-    attendanceSummary
+    attendanceSummary,
   } = useAttendance();
 
   const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false);
   const [todayAttendanceRecord, setTodayAttendanceRecord] = useState<any | null>(null);
-
-  const requiresDirectorApproval = (startDate: string, endDate: string) => {
-    const leaveDays = getInclusiveDayCount(startDate, endDate);
-    if (leaveDays <= 0) return false;
-
-    const start = new Date(`${startDate}T00:00:00`);
-    return leaveDays > 1 || start.getDay() === 1;
-  };
 
   useEffect(() => {
     if (!currentUser) {
@@ -111,7 +79,7 @@ export function usePortal() {
           (request.status === "approved" || request.status === "completed"),
       )
       .reduce((sum, request) => {
-        const leaveDates = extractLeaveDates(request.description);
+        const leaveDates = getLeaveDates(request);
         if (!leaveDates) return sum;
 
         const start = new Date(`${leaveDates.startDate}T00:00:00`);
@@ -126,7 +94,10 @@ export function usePortal() {
           return sum;
         }
 
-        return sum + Math.floor((clippedEnd.getTime() - clippedStart.getTime()) / MS_PER_DAY) + 1;
+        return sum + getInclusiveDayCount(
+          formatLocalDate(clippedStart),
+          formatLocalDate(clippedEnd),
+        );
       }, 0);
 
     return {
@@ -136,39 +107,29 @@ export function usePortal() {
     };
   }, [currentUser, myRequests]);
 
-  // Recent requests
   const recentRequests = useMemo(() => {
     if (!currentUser) return [];
     return myRequests
-      .filter((r) => r.requesterId === currentUser.id)
-      .sort(
-        (a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      )
+      .filter((request) => request.requesterId === currentUser.id)
+      .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
       .slice(0, 5);
-  }, [myRequests, currentUser]);
+  }, [currentUser, myRequests]);
 
-  // Handle month change
   const handlePrevMonth = () => {
-    setCurrentMonth(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-    );
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
   };
 
   const handleNextMonth = () => {
-    setCurrentMonth(
-      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-    );
+    setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
   };
 
-  // Submit leave request
   const submitLeaveRequest = async (data: {
     type: string;
     startDate: string;
     endDate: string;
     reason: string;
   }) => {
-    const requiresDirector = requiresDirectorApproval(data.startDate, data.endDate);
+    const needsDirectorApproval = requiresDirectorApproval(data.startDate, data.endDate);
 
     const approvalSteps: any[] = [
       {
@@ -178,7 +139,7 @@ export function usePortal() {
       },
     ];
 
-    if (requiresDirector) {
+    if (needsDirectorApproval) {
       approvalSteps.push({
         stepOrder: 2,
         approverRole: "director",
@@ -189,8 +150,13 @@ export function usePortal() {
     await createRequest({
       type: "leave",
       title: `Xin ${data.type.toLowerCase()}`,
-      description: `Từ ${data.startDate} đến ${data.endDate}. Lý do: ${data.reason}`,
+      description: data.reason,
       priority: "normal",
+      metadata: {
+        leaveType: data.type,
+        startDate: data.startDate,
+        endDate: data.endDate,
+      },
       approvalSteps,
     });
 

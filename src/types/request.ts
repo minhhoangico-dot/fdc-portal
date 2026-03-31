@@ -4,6 +4,23 @@ export type RequestType = 'material_release' | 'purchase' | 'payment' | 'advance
 export type RequestStatus = 'draft' | 'pending' | 'approved' | 'rejected' | 'escalated' | 'completed' | 'cancelled';
 export type Priority = 'low' | 'normal' | 'high' | 'urgent';
 
+export interface RequestLineItem {
+  name: string;
+  qty: number;
+  unit: string;
+  price?: number;
+}
+
+export interface RequestMetadata {
+  items?: RequestLineItem[];
+  beneficiary?: string;
+  method?: string;
+  expectedDate?: string;
+  leaveType?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 export interface RequestAttachment {
   id: string;
   requestId: string;
@@ -11,7 +28,7 @@ export interface RequestAttachment {
   fileSize: number;
   mimeType: string;
   storagePath: string;
-  publicUrl: string;
+  downloadUrl?: string | null;
   uploadedBy: string;
   uploadedAt: string;
 }
@@ -28,6 +45,7 @@ export interface Request {
   priority: Priority;
   totalAmount?: number;
   costCenter?: string;
+  metadata?: RequestMetadata;
   createdAt: string;
   updatedAt: string;
   approvalSteps: ApprovalStep[];

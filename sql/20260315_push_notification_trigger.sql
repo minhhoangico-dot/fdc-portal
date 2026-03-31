@@ -6,7 +6,7 @@ CREATE OR REPLACE FUNCTION public.notify_push_on_insert()
 RETURNS TRIGGER AS $$
 BEGIN
   PERFORM net.http_post(
-    url := 'https://fezgplhcszgxisqmnhuv.supabase.co/functions/v1/send-push-notification',
+    url := 'http://supabase-edge-functions:9000/send-push-notification',
     headers := '{"Content-Type":"application/json"}'::jsonb,
     body := jsonb_build_object('record', row_to_json(NEW))
   );
@@ -19,4 +19,3 @@ CREATE TRIGGER trg_push_notification
 AFTER INSERT ON public.fdc_notifications
 FOR EACH ROW
 EXECUTE FUNCTION public.notify_push_on_insert();
-

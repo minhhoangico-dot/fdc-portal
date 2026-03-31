@@ -651,39 +651,69 @@
 
 .lab-dashboard-reagents {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-content: flex-start;
+  flex: 1;
+  min-height: 0;
 }
 
 .lab-dashboard-reagents--compact {
   overflow: hidden;
 }
 
-.lab-dashboard-reagent {
+.lab-dashboard-reagents__viewport {
+  position: relative;
+  overflow: hidden;
+  flex: 1;
+  min-height: 154px;
+  max-height: 154px;
+  mask-image: linear-gradient(to bottom, transparent 0, black 8%, black 92%, transparent 100%);
+}
+
+.lab-dashboard-reagents__track {
   display: flex;
+  flex-direction: column;
+  gap: 10px;
+  will-change: transform;
+}
+
+.lab-dashboard-reagents__track--loop {
+  animation: lab-dashboard-reagent-marquee 84s linear infinite;
+}
+
+.lab-dashboard-reagents__group {
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px 10px;
+}
+
+.lab-dashboard-reagent {
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  border-radius: 8px;
+  gap: 7px;
+  border-radius: 10px;
   background: var(--lab-bg-3);
   border: 1px solid rgba(255, 255, 255, 0.04);
-  padding: 6px 12px;
+  padding: 6px 10px;
   min-width: 0;
-  width: auto;
+  max-width: 228px;
+  width: fit-content;
   flex: 0 0 auto;
 }
 
 .lab-dashboard-reagent__name {
   color: var(--lab-text-2);
-  font-size: 12px;
-  white-space: nowrap;
-  max-width: 140px;
+  font-size: 11px;
+  line-height: 1.25;
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 156px;
 }
 
 .lab-dashboard-reagent__bar {
-  width: 40px;
+  width: 34px;
   height: 6px;
   border-radius: 999px;
   background: var(--lab-bg);
@@ -692,7 +722,7 @@
 }
 
 .lab-dashboard-reagent__value {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   white-space: nowrap;
 }
@@ -1167,6 +1197,16 @@ button.lab-dashboard-reagent {
 }
 
 @keyframes lab-dashboard-scroll {
+  0% {
+    transform: translateY(0);
+  }
+
+  100% {
+    transform: translateY(-50%);
+  }
+}
+
+@keyframes lab-dashboard-reagent-marquee {
   0% {
     transform: translateY(0);
   }

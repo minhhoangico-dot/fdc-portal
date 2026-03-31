@@ -1,0 +1,331 @@
+<style>
+  .intro-note {
+    max-width: 900px;
+    margin-bottom: 20px;
+  }
+
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+  }
+
+  .card {
+    border: 1px solid #d8e0ef;
+    border-radius: 22px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #ffffff 0%, #f7f9fc 100%);
+  }
+
+  .card-image {
+    padding: 18px;
+    background:
+      radial-gradient(circle at top left, rgba(14, 165, 233, 0.12), transparent 32%),
+      radial-gradient(circle at bottom right, rgba(99, 102, 241, 0.12), transparent 32%),
+      #f8fbff;
+  }
+
+  .mini-floor {
+    border: 1px solid #d7deea;
+    border-radius: 18px;
+    padding: 12px;
+    min-height: 360px;
+    background: linear-gradient(180deg, #ffffff 0%, #f5f7fb 100%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.9);
+  }
+
+  .mini-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .mini-title strong {
+    font-size: 14px;
+  }
+
+  .mini-title span {
+    font-size: 11px;
+    color: #637088;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .chip-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 12px;
+  }
+
+  .chip {
+    border-radius: 999px;
+    padding: 4px 8px;
+    font-size: 10px;
+    font-weight: 700;
+    color: #30415a;
+    background: #eef3fb;
+  }
+
+  .plan {
+    display: grid;
+    gap: 8px;
+  }
+
+  .plan-a {
+    grid-template-columns: 1fr 38px 1fr;
+    align-items: stretch;
+  }
+
+  .plan-b {
+    grid-template-columns: 1fr;
+  }
+
+  .plan-c {
+    grid-template-columns: 1fr;
+  }
+
+  .stack {
+    display: grid;
+    gap: 8px;
+  }
+
+  .spine {
+    border-radius: 16px;
+    background: repeating-linear-gradient(
+      180deg,
+      #dae4f5,
+      #dae4f5 14px,
+      #edf2fa 14px,
+      #edf2fa 28px
+    );
+    border: 1px dashed #b8c5db;
+    min-height: 250px;
+  }
+
+  .zone-band {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .lane {
+    display: grid;
+    gap: 8px;
+  }
+
+  .room {
+    min-height: 36px;
+    border-radius: 14px;
+    border: 1px solid rgba(121, 136, 163, 0.22);
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    background: #fff;
+    box-shadow: 0 6px 18px rgba(36, 60, 90, 0.06);
+  }
+
+  .room.small {
+    min-height: 28px;
+  }
+
+  .room.tall {
+    min-height: 58px;
+  }
+
+  .room-line {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .room-code {
+    font-size: 10px;
+    font-weight: 800;
+    color: #20314a;
+    letter-spacing: 0.04em;
+  }
+
+  .room-name {
+    font-size: 10px;
+    color: #56657d;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .type-reception { background: linear-gradient(180deg, #eef6ff 0%, #e4efff 100%); }
+  .type-waiting { background: linear-gradient(180deg, #fff8dd 0%, #fff2bf 100%); }
+  .type-medical { background: linear-gradient(180deg, #e9fbf3 0%, #d7f6e8 100%); }
+  .type-lab { background: linear-gradient(180deg, #ffeaf1 0%, #ffd8e6 100%); }
+  .type-pharmacy { background: linear-gradient(180deg, #f4eaff 0%, #ead9ff 100%); }
+  .type-utility { background: linear-gradient(180deg, #eef1f7 0%, #e2e7ef 100%); }
+
+  .card-body p {
+    min-height: 52px;
+  }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 700;
+    background: #eef3fb;
+    color: #344154;
+  }
+
+  @media (max-width: 1100px) {
+    .cards {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+
+<h2>Chọn bố cục “sơ đồ khối hiện đại”</h2>
+<p class="subtitle intro-note">
+  Tôi giữ đúng thứ tự và số lượng phòng. Khác nhau ở cách chia nhịp nhìn, hành lang và các cụm phòng để màn hình đỡ rối hơn nhiều.
+</p>
+
+<div class="cards">
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mini-floor">
+        <div class="mini-title">
+          <strong>A. Trục trung tâm</strong>
+          <span>rõ luồng di chuyển</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip">điều hướng nhanh</span>
+          <span class="chip">đối xứng</span>
+          <span class="chip">giống sơ đồ vận hành</span>
+        </div>
+        <div class="plan plan-a">
+          <div class="stack">
+            <div class="room type-reception tall"><div class="room-line"><span class="room-code">01</span><span class="room-name">Khu Tiếp Đón</span></div><div class="room-line"><span class="room-code">02</span><span class="room-name">Phòng Chờ</span></div></div>
+            <div class="room type-reception small"><div class="room-line"><span class="room-code">03</span><span class="room-name">Quầy Thu Ngân</span></div></div>
+            <div class="room type-medical small"><div class="room-line"><span class="room-code">04</span><span class="room-name">P110</span></div></div>
+            <div class="room type-utility small"><div class="room-line"><span class="room-code">05</span><span class="room-name">Kho T1</span></div></div>
+            <div class="room type-medical small"><div class="room-line"><span class="room-code">06</span><span class="room-name">P109</span></div></div>
+            <div class="room type-medical small"><div class="room-line"><span class="room-code">07</span><span class="room-name">P108</span></div></div>
+            <div class="room type-lab small"><div class="room-line"><span class="room-code">08</span><span class="room-name">Khu X-Quang</span></div></div>
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">09</span><span class="room-name">Khu Thủ Thuật</span></div></div>
+          </div>
+          <div class="spine"></div>
+          <div class="stack">
+            <div class="room type-lab tall"><div class="room-line"><span class="room-code">10</span><span class="room-name">Khu Lấy Máu</span></div></div>
+            <div class="room type-pharmacy tall"><div class="room-line"><span class="room-code">11</span><span class="room-name">Nhà Thuốc</span></div></div>
+            <div class="room type-medical small"><div class="room-line"><span class="room-code">12</span><span class="room-name">P111</span></div></div>
+            <div class="room type-utility small"><div class="room-line"><span class="room-code">13</span><span class="room-name">Phòng Server</span></div></div>
+            <div class="room type-medical small"><div class="room-line"><span class="room-code">14</span><span class="room-name">P104</span></div></div>
+            <div class="room type-utility small"><div class="room-line"><span class="room-code">15</span><span class="room-name">Khu Vệ Sinh</span></div></div>
+            <div class="room type-utility small"><div class="room-line"><span class="room-code">16</span><span class="room-name">Khử Khuẩn</span></div></div>
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">17</span><span class="room-name">Khu Khí Dung</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Nhìn như một bản đồ điều hướng</h3>
+      <p>Phù hợp nếu muốn vừa đẹp vừa rõ luồng trái/phải, rất dễ scan khi bấm phòng.</p>
+      <div class="badge">Khuyến nghị nếu muốn thay toàn bộ cảm giác “xấu và rối” hiện tại</div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mini-floor">
+        <div class="mini-title">
+          <strong>B. Cụm chức năng</strong>
+          <span>quản trị rõ vùng</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip">rõ khu chức năng</span>
+          <span class="chip">gọn dashboard</span>
+          <span class="chip">ít nhấn hành lang</span>
+        </div>
+        <div class="plan plan-b">
+          <div class="zone-band">
+            <div class="room type-reception tall"><div class="room-line"><span class="room-code">01</span><span class="room-name">Tiếp Đón</span></div><div class="room-line"><span class="room-code">02</span><span class="room-name">Phòng Chờ</span></div></div>
+            <div class="room type-reception small"><div class="room-line"><span class="room-code">03</span><span class="room-name">Thu Ngân</span></div></div>
+            <div class="room type-lab tall"><div class="room-line"><span class="room-code">10</span><span class="room-name">Lấy Máu</span></div><div class="room-line"><span class="room-code">11</span><span class="room-name">Nhà Thuốc</span></div></div>
+          </div>
+          <div class="zone-band">
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">04</span><span class="room-name">P110</span></div><div class="room-line"><span class="room-code">06</span><span class="room-name">P109</span></div></div>
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">07</span><span class="room-name">P108</span></div><div class="room-line"><span class="room-code">08</span><span class="room-name">X-Quang</span></div></div>
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">12</span><span class="room-name">P111</span></div><div class="room-line"><span class="room-code">14</span><span class="room-name">P104</span></div></div>
+          </div>
+          <div class="zone-band">
+            <div class="room type-utility small"><div class="room-line"><span class="room-code">05</span><span class="room-name">Kho T1</span></div></div>
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">09</span><span class="room-name">Thủ Thuật</span></div></div>
+            <div class="room type-utility tall"><div class="room-line"><span class="room-code">13</span><span class="room-name">Server</span></div><div class="room-line"><span class="room-code">15-16</span><span class="room-name">VS / Khử Khuẩn</span></div></div>
+          </div>
+          <div class="zone-band">
+            <div class="room type-medical tall"><div class="room-line"><span class="room-code">17</span><span class="room-name">Khu Khí Dung</span></div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Nhìn như dashboard quản trị không gian</h3>
+      <p>Dễ đọc nhất ở mức tổng quan, nhưng bớt cảm giác “đây là một tầng thực tế”.</p>
+      <div class="badge">Hợp nếu ưu tiên thao tác nhanh hơn cảm giác mặt bằng</div>
+    </div>
+  </div>
+
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mini-floor">
+        <div class="mini-title">
+          <strong>C. Dải phòng phân tầng</strong>
+          <span>nhiều nhịp hơn</span>
+        </div>
+        <div class="chip-row">
+          <span class="chip">hiện đại</span>
+          <span class="chip">có nhịp thị giác</span>
+          <span class="chip">ít cứng hơn A</span>
+        </div>
+        <div class="plan plan-c">
+          <div class="lane">
+            <div class="room type-reception tall"><div class="room-line"><span class="room-code">01-03</span><span class="room-name">Tiếp Đón / Chờ / Thu Ngân</span></div></div>
+            <div class="zone-band">
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">04</span><span class="room-name">P110</span></div></div>
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">06</span><span class="room-name">P109</span></div></div>
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">07</span><span class="room-name">P108</span></div></div>
+            </div>
+            <div class="zone-band">
+              <div class="room type-lab small"><div class="room-line"><span class="room-code">08</span><span class="room-name">X-Quang</span></div></div>
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">09</span><span class="room-name">Thủ Thuật</span></div></div>
+              <div class="room type-utility small"><div class="room-line"><span class="room-code">05</span><span class="room-name">Kho T1</span></div></div>
+            </div>
+            <div class="zone-band">
+              <div class="room type-lab tall"><div class="room-line"><span class="room-code">10</span><span class="room-name">Lấy Máu</span></div></div>
+              <div class="room type-pharmacy tall"><div class="room-line"><span class="room-code">11</span><span class="room-name">Nhà Thuốc</span></div></div>
+            </div>
+            <div class="zone-band">
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">12</span><span class="room-name">P111</span></div></div>
+              <div class="room type-utility small"><div class="room-line"><span class="room-code">13</span><span class="room-name">Server</span></div></div>
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">14</span><span class="room-name">P104</span></div></div>
+            </div>
+            <div class="zone-band">
+              <div class="room type-utility small"><div class="room-line"><span class="room-code">15</span><span class="room-name">Vệ Sinh</span></div></div>
+              <div class="room type-utility small"><div class="room-line"><span class="room-code">16</span><span class="room-name">Khử Khuẩn</span></div></div>
+              <div class="room type-medical small"><div class="room-line"><span class="room-code">17</span><span class="room-name">Khí Dung</span></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>Mềm hơn, có nhịp nhưng vẫn gọn</h3>
+      <p>Đỡ cứng hơn A, đỡ “dashboard” hơn B, nhưng cảm giác định hướng không mạnh bằng A.</p>
+      <div class="badge">Hợp nếu muốn hiện đại hơn mà không quá kỹ thuật</div>
+    </div>
+  </div>
+</div>

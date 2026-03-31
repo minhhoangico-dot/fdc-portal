@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Be Vietnam Pro", ui-sans-serif, system-ui, sans-serif;
+  --color-primary: #1a6b4e;
+  --color-primary-dark: #13523b;
+  --color-bg-warm: #f5f0eb;
+  
+  --color-room-medical: #e8f5ee;
+  --color-room-lab: #fde8e8;
+  --color-room-reception: #dceef8;
+  --color-room-pharmacy: #f0e8f5;
+  --color-room-utility: #f5f5f5;
+  --color-room-vaccine: #e8eef5;
+  --color-room-office: #fdf6e8;
+  --color-room-waiting: #fef3e2;
+  --color-room-storage: #f5f5f5;
+  --color-room-inpatient: #e8f0fe;
+  --color-room-stairs: #e0e0e0;
+}
+
+body {
+  font-family: "Be Vietnam Pro", sans-serif;
+  background-color: var(--color-bg-warm);
+  color: #333;
+}

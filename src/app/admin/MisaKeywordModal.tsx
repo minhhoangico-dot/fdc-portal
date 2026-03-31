@@ -4,7 +4,7 @@ interface MisaKeywordForm {
   keyword: string;
   category?: string;
   alertOnMatch: boolean;
-  isActive?: boolean;
+  isActive: boolean;
 }
 
 interface MisaKeywordModalProps {

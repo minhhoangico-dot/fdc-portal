@@ -6,15 +6,16 @@ import { User, Role } from "@/types/user";
 import { BridgeHealth, SyncRecord } from "@/types/sync";
 import { validateHikvisionEmployeeId } from "./hikvision";
 
-export type AdminTab = "users" | "approval" | "misa" | "health" | "audit";
+export type AdminTab = "users" | "approval" | "misa" | "health" | "audit" | "roles";
+type AdminPreload = "users" | "approval" | "misa" | "sync" | "audit";
 
 interface UseAdminOptions {
   enabled?: boolean;
-  preload?: Array<"users" | "approval" | "misa" | "sync" | "audit">;
+  preload?: AdminPreload[];
   useActiveTab?: boolean;
 }
 
-const EMPTY_PRELOADS: Array<"users" | "approval" | "misa" | "sync" | "audit"> = [];
+const EMPTY_PRELOADS: AdminPreload[] = [];
 
 export function useAdmin(options: UseAdminOptions = {}) {
   const { user: currentUser } = useAuth();
@@ -39,6 +40,7 @@ export function useAdmin(options: UseAdminOptions = {}) {
       setUsers(
         data.map((u) => ({
           id: u.id,
+          supabaseUid: u.supabase_uid ?? undefined,
           name: u.full_name,
           role: u.role as Role,
           department: u.department_name,
@@ -50,6 +52,36 @@ export function useAdmin(options: UseAdminOptions = {}) {
       );
     }
   }, [enabled]);
+
+  const invokeUserLifecycle = useCallback(
+    async (payload: Record<string, unknown>) => {
+      const { data, error } = await supabase.functions.invoke("admin-user-lifecycle", {
+        body: payload,
+      });
+
+      if (error) {
+        console.error("Failed to invoke admin-user-lifecycle:", error);
+        throw error;
+      }
+
+      if (data?.error) {
+        throw new Error(data.error);
+      }
+
+      return data as Record<string, unknown>;
+    },
+    [],
+  );
+
+  const revealTemporaryPassword = useCallback(async (title: string, password: string) => {
+    try {
+      await navigator.clipboard.writeText(password);
+      window.prompt(`${title} (da copy vao clipboard):`, password);
+      return;
+    } catch (_error) {
+      window.prompt(title, password);
+    }
+  }, []);
 
   const handleRoleChange = async (userId: string, newRole: Role) => {
     const { error } = await supabase
@@ -70,61 +102,95 @@ export function useAdmin(options: UseAdminOptions = {}) {
     });
   };
 
-  // TODO: Implement via Supabase Edge Function — reset password for user's email using admin API
-  const handleResetPassword = (userId: string) => {
-    alert(`Đã gửi email reset mật khẩu cho user ${userId}`);
+  const handleResetPassword = async (userId: string) => {
+    const target = users.find((item) => item.id === userId);
+    if (!target) return;
+
+    try {
+      const result = await invokeUserLifecycle({
+        action: "reset_password",
+        userId,
+      });
+
+      const temporaryPassword = result.temporaryPassword;
+      if (typeof temporaryPassword === "string" && temporaryPassword) {
+        await revealTemporaryPassword(
+          `Mat khau tam thoi cho ${target.email || target.name}`,
+          temporaryPassword,
+        );
+      }
+
+      await supabase.from("fdc_audit_log").insert({
+        user_id: currentUser?.id,
+        action: "reset_password",
+        entity_type: "user",
+        entity_id: userId,
+        new_value: { email: target.email ?? null },
+      });
+    } catch (error) {
+      console.error("Failed to reset password:", error);
+      window.alert("Khong the cap lai mat khau tam thoi cho tai khoan nay.");
+    }
   };
 
   const handleToggleActive = async (userId: string) => {
     const target = users.find((u) => u.id === userId);
     if (!target) return;
     const nextActive = !target.isActive;
-    const { error } = await supabase
-      .from("fdc_user_mapping")
-      .update({ is_active: nextActive })
-      .eq("id", userId);
-    if (error) {
+    try {
+      await invokeUserLifecycle({
+        action: "set_active",
+        userId,
+        isActive: nextActive,
+      });
+
+      setUsers(users.map((u) => (u.id === userId ? { ...u, isActive: nextActive } : u)));
+      await supabase.from("fdc_audit_log").insert({
+        user_id: currentUser?.id,
+        action: "toggle_active",
+        entity_type: "user",
+        entity_id: userId,
+        new_value: { is_active: nextActive },
+      });
+    } catch (error) {
       console.error("Failed to toggle active:", error);
-      return;
+      window.alert("Khong the cap nhat trang thai kich hoat cua tai khoan.");
     }
-    setUsers(users.map((u) => (u.id === userId ? { ...u, isActive: nextActive } : u)));
-    await supabase.from("fdc_audit_log").insert({
-      user_id: currentUser?.id,
-      action: "toggle_active",
-      entity_type: "user",
-      entity_id: userId,
-      new_value: { is_active: nextActive },
-    });
   };
 
-  // TODO: Implement via Supabase Edge Function — create Auth user + fdc_user_mapping so user can log in
   const handleAddUser = async (payload: {
     name: string;
-    email?: string;
+    email: string;
     department?: string;
     role: Role;
     hikvisionEmployeeId?: string;
   }) => {
-    const { error } = await supabase.from("fdc_user_mapping").insert({
-      full_name: payload.name,
-      email: payload.email,
-      department_name: payload.department ?? null,
-      role: payload.role,
-      is_active: true,
-      hikvision_employee_id: payload.hikvisionEmployeeId ?? null,
-    });
-    if (error) {
+    try {
+      const result = await invokeUserLifecycle({
+        action: "create_user",
+        ...payload,
+      });
+
+      await fetchUsers();
+      await supabase.from("fdc_audit_log").insert({
+        user_id: currentUser?.id,
+        action: "create_user",
+        entity_type: "user",
+        entity_id: typeof result.mappingId === "string" ? result.mappingId : null,
+        new_value: { name: payload.name, email: payload.email, role: payload.role },
+      });
+
+      const temporaryPassword = result.temporaryPassword;
+      if (typeof temporaryPassword === "string" && temporaryPassword) {
+        await revealTemporaryPassword(
+          `Tai khoan ${payload.email} da duoc tao. Mat khau tam thoi:`,
+          temporaryPassword,
+        );
+      }
+    } catch (error) {
       console.error("Failed to add user:", error);
-      return;
+      window.alert("Khong the tao tai khoan. Kiem tra email va trang thai user hien co.");
     }
-    await fetchUsers();
-    await supabase.from("fdc_audit_log").insert({
-      user_id: currentUser?.id,
-      action: "create_user",
-      entity_type: "user",
-      entity_id: payload.email ?? payload.name,
-      new_value: { name: payload.name, role: payload.role },
-    });
   };
 
   // Approval Config state
@@ -547,9 +613,7 @@ export function useAdmin(options: UseAdminOptions = {}) {
     if (!enabled) return;
 
     const preloadSet = new Set(
-      preloadKey
-        ? (preloadKey.split("|") as Array<"users" | "approval" | "misa" | "sync" | "audit">)
-        : [],
+      preloadKey ? (preloadKey.split("|") as AdminPreload[]) : [],
     );
     if (preloadSet.has("users")) fetchUsers();
     if (preloadSet.has("approval")) fetchApprovalConfigs();

@@ -2,10 +2,10 @@
 
 ## Current Task
 
-- Task ID: `lab-dashboard-source-provenance`
-- Owner: `planner`
-- Status: `completed`
-- Spec: `tasks/active/2026-03-23-lab-dashboard-source-provenance.md`
+- Task ID: `lab-dashboard-tat-test-name`
+- Owner: `implementer`
+- Status: `done`
+- Spec: `tasks/active/2026-03-25-lab-dashboard-tat-test-name.md`
 
 ## Operating Checklist
 
@@ -26,6 +26,215 @@
 - [x] Verification
 - [x] Review
 - [x] Lessons and closeout
+
+## 2026-03-25 Admin TV Surface Removal
+
+- Scope: remove the duplicate `Màn hình TV` tab from `/admin` and redirect the legacy `admin?tab=tv_screens` entry to `/tv-management`.
+- Checklist:
+  - [x] Save the follow-up spec and implementation plan
+  - [x] Add failing regression coverage for the legacy admin TV deep link and tab list
+  - [x] Remove the TV tab from `AdminPage`
+  - [x] Redirect `admin?tab=tv_screens` to `/tv-management`
+  - [x] Drop obsolete `tv_screens` admin tab typing
+  - [x] Run targeted verification and record evidence
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\adminNavigation.test.ts`: passed, 3/3.
+  - `cmd /c npx tsx --test test\unit\adminNavigation.test.ts test\unit\navigation.test.ts`: passed, 6/6.
+  - `cmd /c npm run build`: passed, Vite production build completed successfully.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://713c48b6.fdc-portal.pages.dev`.
+  - Live bundle check on `2026-03-25`: both `https://713c48b6.fdc-portal.pages.dev/` and `https://portal.fdc-nhanvien.org/` serve `assets/index-CEz0pAN3.js`.
+- Residual risk:
+  - Browser smoke is still useful for `/admin?tab=tv_screens` to confirm the redirect lands on `/tv-management` in-app.
+
+## 2026-03-25 Weekly Report TV Management
+
+- Scope: move weekly report management under `/tv-management`, add a row-level settings action for the weekly report TV screen, and convert legacy weekly report/admin routes into redirects.
+- Checklist:
+  - [x] Confirm the target flow and architecture with the user
+  - [x] Save the design spec, implementation plan, and active task spec
+  - [x] Add failing tests for navigation, TV screen feature helpers, and weekly report URL helpers
+  - [x] Implement the `/tv-management/weekly-report` management flow and new TV/detail namespace
+  - [x] Redirect `/weekly-report*` and `admin?tab=weekly_report` to the new flow
+  - [x] Preserve `fdc_tv_screens.settings` during edit and add the row-level weekly report settings action
+  - [x] Add SQL backfill for `settings.featureKey = "weekly_report"` and the new TV route
+  - [x] Run verification and record evidence
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\navigation.test.ts test\unit\tvScreenLinks.test.ts test\unit\weeklyReportLinks.test.ts`: passed, 13/13.
+  - `cmd /c npm run build`: passed, Vite production build completed successfully.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://2c28fa65.fdc-portal.pages.dev`.
+  - Live bundle check on `2026-03-25`: both `https://2c28fa65.fdc-portal.pages.dev/` and `https://portal.fdc-nhanvien.org/` serve `assets/index-Cs7T1ENy.js`.
+  - Live Supabase verification via `POST /pg/query` on `2026-03-25`: production initially had no weekly report row in `public.fdc_tv_screens`; after the seed/upsert, slug `weekly-report` exists with `content_url = /tv-management/weekly-report/tv`, `feature_key = weekly_report`, `is_active = true`, and `updated_at = 2026-03-25 12:00:08.015144+00`.
+- Residual risk:
+  - Browser smoke is still pending for `/tv-management/weekly-report`, `admin?tab=weekly_report`, and the public alias `/tv/weekly-report`.
+
+## 2026-03-25 Head Nurse Role Label Encoding
+
+- Scope: repair the mojibake `head_nurse` label/description shown in the employee portal and prevent future SQL seeds from reintroducing the corrupted Vietnamese text.
+- Checklist:
+  - [x] Confirm the root cause between portal defaults and SQL-seeded role data
+  - [x] Save the task spec and verification plan
+  - [x] Add failing portal regression coverage for corrupted role catalog strings
+  - [x] Patch the portal role-catalog merge path to repair corrupted seeded text
+  - [x] Correct the SQL seed/update script for `head_nurse`
+  - [x] Run targeted verification and record evidence
+  - [x] Append the lesson and close out workflow notes
+- Verification evidence:
+  - `cmd /c npx tsx --test test\\unit\\roleCatalog.test.ts`: passed, 1/1 after first failing against the mojibake `head_nurse` seed payload.
+  - `cmd /c npm run build`: passed, Vite production build completed successfully; the existing large-chunk warning remains.
+  - Live Supabase verification via service-role REST on `2026-03-25`: `fdc_role_catalog.role_key = head_nurse` now returns `display_name = Điều dưỡng trưởng`, the correct description, and `updated_at = 2026-03-25T09:52:09.983318+00:00`.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://5a063022.fdc-portal.pages.dev`.
+  - Live bundle check on `2026-03-25`: both `https://5a063022.fdc-portal.pages.dev` and `https://portal.fdc-nhanvien.org/` serve `assets/index-ByYbAF67.js`.
+- Residual risk:
+  - Authenticated browser smoke for the specific `pthue` session is still useful, but the underlying live data and deployed bundle now both match the intended fix.
+
+## 2026-03-25 Lab Dashboard TAT Test Name
+
+- Scope: add a `Tên test` column to every `Chi tiết TAT` row by extending the bridge detail payload and keeping the table/export output aligned.
+- Checklist:
+  - [x] Save the task spec and implementation plan
+  - [x] Add failing bridge/export coverage for `testName`
+  - [x] Extend the bridge TAT detail payload with `testName`
+  - [x] Render/export the new `Tên test` column in the portal
+  - [x] Roll out the bridge detail files to the live host and verify the public payload
+  - [x] Run targeted bridge + portal verification
+
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardDetails.test.ts --runInBand` in `fdc-lan-bridge`: passed, 8/8 tests including TAT `testName` preservation across subgroup filters.
+  - `cmd /c npx tsx --test test/unit/labDashboardDetailExport.test.ts`: passed, 6/6 tests including the `TÃªn test` export column assertion.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npm run build` at repo root: passed, Vite production build completed successfully.
+  - Live host root cause on `2026-03-25`: `/opt/fdc-lan-bridge/src/labDashboard/detailHelpers.ts` and `/opt/fdc-lan-bridge/src/labDashboard/service.ts` were stale, so the live TAT detail payload still omitted `testName` even though the local repo and tests were already correct.
+  - SSH rollout to `Vostro-Server` (`hbminh@192.168.1.9`): copied `src/labDashboard/detailHelpers.ts`, `src/labDashboard/service.ts`, and `src/labDashboard/types.ts`, then ran `cd /opt/fdc-lan-bridge && sudo npm run build`.
+  - Sequential restart verification on `2026-03-25`: `sudo systemctl restart fdc-lan-bridge && systemctl is-active fdc-lan-bridge` returned `active` after the rebuild completed.
+  - Raw localhost verification on `2026-03-25`: `curl -s -D - 'http://localhost:3333/lab-dashboard/details?section=tat&focus=type%3Amien-dich&date=2026-03-25' | head -n 30` returned rows with `testName`, for example `[G] Mycoplasma pneumoniae IgM`.
+  - Public bridge verification on `2026-03-25`: `Invoke-RestMethod https://bridge.fdc-nhanvien.org/lab-dashboard/details?section=tat&focus=type%3Amien-dich&date=2026-03-25` now exposes `testName`, for example `22001265 / [G] Mycoplasma pneumoniae IgM`, `23009760 / [G] AFP`, and `23009760 / [G] CA 72-4`.
+- Residual risk:
+  - The portal already rendered the column before this rollout, so operators with an old browser tab may still need a hard refresh to pick up the corrected bridge payload.
+
+## 2026-03-25 Lab Dashboard Waiting Stage Fix
+
+- Scope: stop paid lab rows from remaining in `Chờ lấy mẫu` when HIS only fills `do_servicedatadate`/`end_date`, and keep `Chênh lệch BH - ...` adjustment rows out of the lab queue entirely.
+- Checklist:
+  - [x] Confirm the live HIS root cause for patient `23009760`
+  - [x] Save the task spec and implementation plan
+  - [x] Add failing bridge coverage for timestamp fallback and BH-adjustment exclusion
+  - [x] Patch the shared lab timeline query
+  - [x] Run targeted bridge verification and a live waiting-queue check
+  - [x] Append the lesson and close out workflow notes
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardService.test.ts --runInBand` in `fdc-lan-bridge`: passed, 7/7.
+  - `cmd /c npm test` in `fdc-lan-bridge`: passed, 13/13 suites and 58/58 tests.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - Local live-data check on `2026-03-25`: patient `23009760` is absent from `waiting` after the patch and appears only in `completed`; queue totals are now `waitingForSample=5`, `processing=0`, `completedToday=48`.
+  - SSH rollout completed to `Vostro-Server` (`hbminh@192.168.1.9`): copied `/opt/fdc-lan-bridge/src/labDashboard/service.ts`, ran `sudo npm run build`, then `sudo systemctl restart fdc-lan-bridge`; service status returned `active`.
+  - Public bridge verification on `2026-03-25`: `/lab-dashboard/details?section=queue&focus=waiting&date=2026-03-25` now returns `rowCount=0` with no `23009760`, while `/lab-dashboard/details?section=queue&focus=completed&date=2026-03-25` returns `matched=18` rows for `23009760`.
+- Residual risk:
+  - Queue/source provenance wording still mentions only `order_date` and `data_date`, so the source tab text should be aligned in a follow-up.
+
+## 2026-03-25 TV Screen Preview Link
+
+- Scope: align the TV management preview action with the effective screen URL so `internal` screens open their configured target route, while making `/tv/{slug}` explicit as a public alias rather than the only URL shown to operators.
+- Checklist:
+  - [x] Identify the mismatch between preview action and displayed internal URL
+  - [x] Save the task spec and implementation plan
+  - [x] Add failing unit coverage for preview URL derivation
+  - [x] Implement helper-driven preview link behavior in `TvScreensTab`
+  - [x] Clarify alias wording in the table UI
+  - [x] Run targeted verification and record evidence
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\tvScreenLinks.test.ts`: passed, 3/3.
+  - `cmd /c npm run build`: passed, Vite build completed successfully.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://2cac7f1d.fdc-portal.pages.dev`.
+  - Live bundle check on `https://portal.fdc-nhanvien.org/`: now serves `assets/index-BRr6YnhA.js`, which contains the new `Alias cong khai` copy.
+- Residual risk:
+  - Interactive browser confirmation of the icon click after deploy is still pending, although the helper test and live bundle verification both match the intended fix.
+
+## 2026-03-25 TV Management Route
+
+- Scope: expose `Quản lý TV` as a dedicated `/tv-management` module in sidebar/bottom nav while preserving the existing admin `tv_screens` tab as a secondary entry point.
+- Checklist:
+  - [x] Confirm the desired architecture for a dedicated TV management route
+  - [x] Save the task spec and implementation plan
+  - [x] Add failing navigation visibility test coverage
+  - [x] Add `tv_management` module key, route, and nav item
+  - [x] Reuse `TvScreensTab` from a thin page at `/tv-management`
+  - [x] Run targeted verification and record evidence
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\navigation.test.ts`: passed, 2/2.
+  - `cmd /c npm run build`: passed, Vite build completed successfully.
+- Residual risk:
+  - On mobile, `Quản lý TV` appears inside the `Thêm` sheet for `super_admin` because the bottom nav still caps primary items at 4.
+
+## 2026-03-24 Lab Dashboard Real Inventory TV
+
+- Scope: redesign the reagent section so `/lab-dashboard/tv` and reagent detail use real lab inventory rows from `fdc_inventory_snapshots`, while keeping the original card/chip visual language and slow upward TV marquee motion.
+- Checklist:
+  - [x] Confirm the approved TV summary direction with browser samples
+  - [x] Save the approved design and refresh workflow files
+  - [x] Save the implementation plan for inline execution
+  - [x] Write failing bridge tests for row-level reagent payloads
+  - [x] Replace bridge reagent summary/detail mapping away from synthetic groups
+  - [x] Update portal summary/detail rendering and CSS to the approved TV motion layout
+  - [x] Run targeted bridge + portal verification and record evidence
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardService.test.ts --runInBand` in `fdc-lan-bridge`: passed, 5/5 tests covering real inventory reagent ordering, detail payloads, item-key focus, and paid-only waiting queue behavior.
+  - `cmd /c npx jest test/unit/labDashboardDetails.test.ts --runInBand` in `fdc-lan-bridge`: passed, 7/7 tests including reagent detail sorting by stock and item-key filtering.
+  - `cmd /c npx jest test/unit/labDashboardSourceProvenance.test.ts --runInBand` in `fdc-lan-bridge`: passed, 9/9 tests after reagent provenance switched to real `fdc_inventory_snapshots` rows and item-level focus.
+  - `cmd /c npm test` in `fdc-lan-bridge`: passed, 13/13 suites and 56/56 tests.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npx tsx --test test\unit\labDashboardDisplayModel.test.ts`: passed, 2/2 tests covering item-based chip labels and loop-ready reagent summary data.
+  - `cmd /c npx tsx --test test\unit\labDashboardDetailExport.test.ts`: passed, 6/6 tests covering item-level reagent export labels and workbook output.
+  - `cmd /c npm run build` at repo root: passed, Vite production build completed successfully; the existing large-chunk warning remains.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed, deployment URL `https://eb609305.fdc-portal.pages.dev`.
+  - SSH rollout completed to `Vostro-Server` (`hbminh@192.168.1.9`): copied `src/labDashboard/detailHelpers.ts`, `src/labDashboard/service.ts`, `src/labDashboard/sourceProvenance.ts`, and `src/labDashboard/types.ts`, then ran `sudo npm run build` and `sudo systemctl restart fdc-lan-bridge`; service status returned `active`.
+  - Live bridge verification on `2026-03-24`: local `http://localhost:3333/lab-dashboard/current` and public `https://bridge.fdc-nhanvien.org/lab-dashboard/current` both returned `123` reagent rows sorted as real inventory items; public `/lab-dashboard/details?section=reagents&focus=all` returned title `Chi tiết tồn kho khoa xét nghiệm`, `displayedRowCount=123`, and first row `XN0031 / Hóa chất xét nghiệm AMYLASE / 0.5 Cai`.
+  - Residual risk:
+    - The summary motion/readability requirement is highly visual, so browser smoke on `/lab-dashboard/tv` and `/lab-dashboard/details?section=reagents&focus=all` remains mandatory even after tests/builds pass.
+
+## 2026-03-24 Lab Dashboard Source Table Names
+
+- Scope: update lab dashboard source/provenance explanations so they reference the actual source table names directly in operator-facing text instead of generic dataset descriptions.
+- Checklist:
+  - [x] Identify which provenance builders still describe sources generically
+  - [x] Add a failing test that asserts the rendered provenance strings contain the direct table names
+  - [x] Update queue, TAT, abnormal, and reagent provenance text to call out the exact tables used
+  - [x] Run targeted bridge verification and record evidence
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardSourceProvenance.test.ts --runInBand` in `fdc-lan-bridge`: passed, 9/9 tests including the new direct-table-name provenance assertion.
+  - `cmd /c npm test` in `fdc-lan-bridge`: passed, 13/13 suites and 54/54 tests.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+- Residual risk:
+  - This is an operator-facing wording update, so a browser/source-tab smoke check is still useful after rollout even if the bridge tests pass.
+
+## 2026-03-24 Lab Dashboard Paid Waiting Queue
+
+- Scope: make `Hàng chờ lấy mẫu` count and waiting detail rows only include lab orders with `dm_servicegroupid = 3` and an existing `tb_treatment.isthutien = 1` record on the same `patientrecordid`.
+- Checklist:
+  - [x] Scan the HIS schema for payment-related fields and verify which signal matches live waiting rows
+  - [x] Add a failing bridge test for paid-only waiting queue behavior
+  - [x] Update the bridge queue timeline logic to keep unpaid waiting rows out of summary/detail waiting views
+  - [x] Run targeted bridge verification and record evidence
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardService.test.ts --runInBand` in `fdc-lan-bridge`: passed, 4/4 tests covering reagent alignment plus paid-only waiting summary/detail behavior.
+  - `cmd /c npm test` in `fdc-lan-bridge`: passed, 13/13 suites and 53/53 tests.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+- Residual risk:
+  - The payment rule is being inferred from HIS field behavior and test mocks in this session, so a live browser/API smoke check is still needed after rollout.
+
+## 2026-03-24 Lab Dashboard Reagent Unit Alignment
+
+- Scope: align the lab dashboard reagent stock section with the `Khoa Xét Nghiệm` inventory list so stock counts stay lab-scoped and blank snapshot units fall back to the same `Cái` label the inventory management screen shows.
+- Checklist:
+  - [x] Confirm the mismatch between dashboard reagent mapping and inventory list mapping
+  - [x] Add a failing bridge test for lab-scoped reagent stock plus blank-unit fallback
+  - [x] Update bridge reagent unit fallback to match inventory management
+  - [x] Run targeted bridge verification and record evidence
+- Verification evidence:
+  - `cmd /c npx jest test/unit/labDashboardService.test.ts --runInBand` in `fdc-lan-bridge`: passed, 2/2 tests covering lab-only stock scoping and `Cái` fallback for blank reagent units in both current and detail payloads.
+  - `cmd /c npm test` in `fdc-lan-bridge`: passed, 13/13 suites and 51/51 tests.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+- Residual risk:
+  - Manual browser smoke on `/lab-dashboard` is still required after the bridge fix because this session is validating the mapping through tests rather than the rendered portal page.
 
 ## 2026-03-23 Lab Dashboard Source Provenance
 
@@ -112,6 +321,22 @@
 - Findings: none specific to the lab-dashboard implementation during bridge build/test and portal build verification.
 - Residual risks: live lab queue/TAT stages rely on HIS timestamp fields and grouped root rows; needs post-implementation validation with real lab staff usage. Root `npm run lint` remains blocked by pre-existing repository-wide TypeScript issues outside this task.
 - Follow-ups: apply the seeded TV screen SQL in the target environment if migrations are not auto-applied, then verify `/tv/xet-nghiem` redirects to `/lab-dashboard/tv`.
+
+## 2026-03-25 Room Management Sidebar
+
+- Scope: register the approved `Quản lý phòng` module in portal navigation so it shows up in the shared sidebar and opens a real `/room-management` page.
+- Checklist:
+  - [x] Confirm the missing sidebar item is caused by an unregistered `room_management` module
+  - [x] Save the focused task spec and verification plan
+  - [x] Add failing navigation coverage for the room-management entry
+  - [x] Register the room-management module key, nav item, and route
+  - [x] Add a minimal `/room-management` portal page scaffold
+  - [x] Run targeted verification and record evidence
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\navigation.test.ts`: passed, 4/4 including the new `/room-management` assertion for both `super_admin` and `staff`.
+  - `cmd /c npm run build`: passed, Vite production build completed successfully; the existing large-chunk warning remains.
+- Residual risk:
+  - `/room-management` is currently a floorplan-preview landing page, not the full maintenance/request/print workflow from the approved room-management design.
 
 ## 2026-03-23 Queue/TAT Live Fix
 

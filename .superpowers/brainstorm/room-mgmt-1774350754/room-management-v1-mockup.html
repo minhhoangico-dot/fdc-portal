@@ -1,0 +1,890 @@
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap');
+
+  .rm-page {
+    font-family: 'Be Vietnam Pro', system-ui, sans-serif;
+    color: #14213d;
+  }
+
+  .rm-hero {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+  }
+
+  .rm-hero h2 {
+    margin-bottom: 0.35rem;
+    font-size: 2rem;
+    letter-spacing: -0.04em;
+  }
+
+  .rm-kickers {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.55rem;
+    margin-top: 0.9rem;
+  }
+
+  .rm-kicker {
+    padding: 0.38rem 0.7rem;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #166534;
+    font-size: 0.72rem;
+    font-weight: 700;
+    border: 1px solid #bbf7d0;
+  }
+
+  .rm-actions {
+    display: flex;
+    gap: 0.7rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .rm-action {
+    padding: 0.8rem 1rem;
+    border-radius: 16px;
+    background: #ffffff;
+    border: 1px solid #dbe4ea;
+    min-width: 170px;
+    box-shadow: 0 10px 30px rgba(20, 33, 61, 0.06);
+  }
+
+  .rm-action strong {
+    display: block;
+    font-size: 0.88rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .rm-action span {
+    color: #5c6b80;
+    font-size: 0.72rem;
+  }
+
+  .rm-main {
+    display: grid;
+    grid-template-columns: 1.35fr 0.9fr;
+    gap: 1.2rem;
+    margin-bottom: 1.3rem;
+  }
+
+  .rm-panel {
+    background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(248,250,252,0.96));
+    border: 1px solid #dbe4ea;
+    border-radius: 28px;
+    box-shadow: 0 18px 45px rgba(20, 33, 61, 0.08);
+    overflow: hidden;
+  }
+
+  .rm-panel-header {
+    padding: 1rem 1.2rem;
+    border-bottom: 1px solid #e7edf2;
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(10px);
+  }
+
+  .rm-panel-title {
+    display: flex;
+    flex-direction: column;
+    gap: 0.18rem;
+  }
+
+  .rm-panel-title strong {
+    font-size: 1rem;
+  }
+
+  .rm-panel-title span {
+    font-size: 0.72rem;
+    color: #64748b;
+  }
+
+  .rm-floor-tabs {
+    display: flex;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+  }
+
+  .rm-floor-tab {
+    padding: 0.46rem 0.78rem;
+    border-radius: 999px;
+    border: 1px solid #d6dfeb;
+    background: #f8fafc;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #475569;
+  }
+
+  .rm-floor-tab.active {
+    background: #166534;
+    color: #ffffff;
+    border-color: #166534;
+  }
+
+  .rm-floor-body {
+    padding: 1.15rem;
+  }
+
+  .rm-map-toolbar {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    margin-bottom: 0.9rem;
+  }
+
+  .rm-legend {
+    display: flex;
+    gap: 0.8rem;
+    flex-wrap: wrap;
+  }
+
+  .rm-legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.68rem;
+    color: #64748b;
+  }
+
+  .rm-dot {
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 999px;
+  }
+
+  .rm-map-shell {
+    position: relative;
+    aspect-ratio: 0.74;
+    border-radius: 24px;
+    background: linear-gradient(180deg, #fffdf9, #f7f2eb);
+    border: 2px solid #203040;
+    overflow: hidden;
+  }
+
+  .rm-corridor {
+    position: absolute;
+    left: 43%;
+    top: 29%;
+    width: 14%;
+    height: 69%;
+    background: repeating-linear-gradient(90deg, #f4f4f5 0 10px, #ececec 10px 12px);
+    border-left: 1px dashed #b8c0cc;
+    border-right: 1px dashed #b8c0cc;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 0.66rem;
+    letter-spacing: 0.22em;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+  }
+
+  .rm-room {
+    position: absolute;
+    border-radius: 16px;
+    padding: 0.42rem;
+    border: 1px solid rgba(60, 72, 88, 0.16);
+    box-shadow: 0 8px 18px rgba(20, 33, 61, 0.05);
+    color: #243447;
+  }
+
+  .rm-room strong {
+    display: block;
+    font-size: 0.72rem;
+    line-height: 1.15;
+  }
+
+  .rm-room small {
+    display: block;
+    color: #64748b;
+    font-size: 0.58rem;
+    margin-top: 0.18rem;
+  }
+
+  .rm-room .badges {
+    display: flex;
+    gap: 0.28rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+  }
+
+  .rm-badge {
+    padding: 0.14rem 0.34rem;
+    border-radius: 999px;
+    font-size: 0.52rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+  }
+
+  .rm-blue { background: #dbeafe; color: #1d4ed8; }
+  .rm-orange { background: #ffedd5; color: #c2410c; }
+  .rm-green { background: #dcfce7; color: #166534; }
+  .rm-slate { background: #e2e8f0; color: #475569; }
+
+  .room-medical { background: #e8f6ed; }
+  .room-lab { background: #fde8e8; }
+  .room-reception { background: #dceef8; }
+  .room-pharmacy { background: #f1e7fb; }
+  .room-utility { background: #eff3f6; }
+
+  .rm-room.selected {
+    border: 2px solid #166534;
+    box-shadow: 0 0 0 4px rgba(22, 101, 52, 0.12), 0 10px 28px rgba(20, 33, 61, 0.12);
+  }
+
+  .rm-drawer {
+    padding: 1rem 1.1rem 1.15rem;
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .rm-room-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.8rem;
+    align-items: flex-start;
+  }
+
+  .rm-room-head h3 {
+    font-size: 1.15rem;
+    margin-bottom: 0.25rem;
+  }
+
+  .rm-room-head p {
+    color: #64748b;
+    font-size: 0.78rem;
+  }
+
+  .rm-status-pill {
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    background: #ecfdf5;
+    color: #166534;
+    font-size: 0.68rem;
+    font-weight: 800;
+    border: 1px solid #bbf7d0;
+    white-space: nowrap;
+  }
+
+  .rm-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.65rem;
+  }
+
+  .rm-metric {
+    padding: 0.8rem;
+    border-radius: 18px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .rm-metric strong {
+    display: block;
+    font-size: 1.15rem;
+    margin-top: 0.2rem;
+  }
+
+  .rm-metric span {
+    font-size: 0.66rem;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+  }
+
+  .rm-cta-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.7rem;
+  }
+
+  .rm-cta {
+    padding: 0.88rem 0.95rem;
+    border-radius: 18px;
+    color: #ffffff;
+    min-height: 88px;
+  }
+
+  .rm-cta strong {
+    display: block;
+    margin-bottom: 0.22rem;
+  }
+
+  .rm-cta p {
+    font-size: 0.72rem;
+    opacity: 0.9;
+  }
+
+  .rm-cta.issue { background: linear-gradient(135deg, #f97316, #ea580c); }
+  .rm-cta.material { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
+
+  .rm-section-card {
+    border-radius: 22px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding: 0.9rem;
+  }
+
+  .rm-section-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    align-items: center;
+    margin-bottom: 0.65rem;
+  }
+
+  .rm-section-head strong {
+    font-size: 0.92rem;
+  }
+
+  .rm-section-head span {
+    color: #64748b;
+    font-size: 0.68rem;
+  }
+
+  .rm-list {
+    display: grid;
+    gap: 0.52rem;
+  }
+
+  .rm-list-item {
+    padding: 0.72rem;
+    border-radius: 16px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+
+  .rm-list-item-top {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.25rem;
+  }
+
+  .rm-list-item-top strong {
+    font-size: 0.78rem;
+  }
+
+  .rm-list-item p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.68rem;
+    line-height: 1.45;
+  }
+
+  .rm-secondary {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.2rem;
+  }
+
+  .rm-board {
+    padding: 1rem;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.7rem;
+  }
+
+  .rm-board-col {
+    border-radius: 20px;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    padding: 0.7rem;
+  }
+
+  .rm-board-col h4 {
+    font-size: 0.78rem;
+    margin-bottom: 0.55rem;
+  }
+
+  .rm-ticket {
+    padding: 0.68rem;
+    border-radius: 15px;
+    background: #ffffff;
+    border: 1px solid #dbe4ea;
+    box-shadow: 0 6px 16px rgba(20, 33, 61, 0.05);
+    margin-bottom: 0.5rem;
+  }
+
+  .rm-ticket strong {
+    display: block;
+    font-size: 0.7rem;
+    margin-bottom: 0.15rem;
+  }
+
+  .rm-ticket p {
+    margin: 0;
+    font-size: 0.64rem;
+    color: #64748b;
+    line-height: 1.4;
+  }
+
+  .rm-print {
+    padding: 1rem 1.05rem 1.15rem;
+  }
+
+  .rm-print-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    align-items: center;
+    padding-bottom: 0.75rem;
+    border-bottom: 2px solid #dbe4ea;
+    margin-bottom: 0.75rem;
+  }
+
+  .rm-print-header h4 {
+    font-size: 1rem;
+    margin-bottom: 0.22rem;
+  }
+
+  .rm-print-header p {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.68rem;
+  }
+
+  .rm-print-tag {
+    padding: 0.38rem 0.6rem;
+    border-radius: 999px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    border: 1px solid #bfdbfe;
+    font-size: 0.66rem;
+    font-weight: 800;
+  }
+
+  .rm-group {
+    margin-top: 0.8rem;
+  }
+
+  .rm-group-title {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.42rem;
+  }
+
+  .rm-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.69rem;
+  }
+
+  .rm-table th,
+  .rm-table td {
+    padding: 0.42rem 0.3rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+
+  .rm-table th {
+    color: #64748b;
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .rm-review-note {
+    margin-top: 1.2rem;
+    padding: 0.95rem 1rem;
+    border-radius: 20px;
+    background: linear-gradient(135deg, #14213d, #1f365c);
+    color: #f8fafc;
+  }
+
+  .rm-review-note strong {
+    display: block;
+    margin-bottom: 0.3rem;
+  }
+
+  .rm-review-note p {
+    margin: 0;
+    color: rgba(248, 250, 252, 0.85);
+    font-size: 0.78rem;
+  }
+
+  @media (max-width: 1100px) {
+    .rm-main,
+    .rm-secondary {
+      grid-template-columns: 1fr;
+    }
+
+    .rm-board {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+</style>
+
+<div class="rm-page">
+  <div class="rm-hero">
+    <div>
+      <div class="label">Mock UI • localhost review</div>
+      <h2>Quản lý phòng</h2>
+      <p class="subtitle" style="max-width:760px;">
+        Bản dựng theo hướng <strong>floorplan-first</strong>: vào là thấy sơ đồ tầng, bấm phòng để mở drawer nghiệp vụ,
+        tách riêng hàng chờ bảo trì và màn hình in tổng hợp vật tư theo phòng.
+      </p>
+      <div class="rm-kickers">
+        <span class="rm-kicker">Phòng cố định theo floorplan hiện tại</span>
+        <span class="rm-kicker">Vật tư đi qua luồng phê duyệt hiện có</span>
+        <span class="rm-kicker">Sự cố / bảo trì đi vào queue vận hành</span>
+      </div>
+    </div>
+    <div class="rm-actions">
+      <div class="rm-action">
+        <strong>Hàng chờ bảo trì</strong>
+        <span>Xử lý hàng loạt, cập nhật trạng thái, gán người phụ trách</span>
+      </div>
+      <div class="rm-action">
+        <strong>In tổng hợp vật tư</strong>
+        <span>Một sheet gộp theo tầng và phòng, sẵn cho in nội bộ</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="rm-main">
+    <section class="rm-panel">
+      <div class="rm-panel-header">
+        <div class="rm-panel-title">
+          <strong>Màn hình chính module</strong>
+          <span>Người dùng chọn tầng, nhìn sơ đồ, bấm trực tiếp vào phòng</span>
+        </div>
+        <div class="rm-floor-tabs">
+          <span class="rm-floor-tab active">Tầng 1</span>
+          <span class="rm-floor-tab">Tầng 2</span>
+          <span class="rm-floor-tab">Tầng 3</span>
+        </div>
+      </div>
+      <div class="rm-floor-body">
+        <div class="rm-map-toolbar">
+          <div class="rm-legend">
+            <div class="rm-legend-item"><span class="rm-dot" style="background:#f97316;"></span>Sự cố / bảo trì</div>
+            <div class="rm-legend-item"><span class="rm-dot" style="background:#2563eb;"></span>Yêu cầu vật tư</div>
+            <div class="rm-legend-item"><span class="rm-dot" style="background:#16a34a;"></span>Phòng đang xem</div>
+          </div>
+          <span class="rm-status-pill">16 phòng • 5 phòng có việc mở</span>
+        </div>
+        <div class="rm-map-shell">
+          <div class="rm-room room-reception" style="left:2%;top:2%;width:40%;height:13%;">
+            <strong>Khu Tiếp Đón</strong>
+            <small>Tầng 1</small>
+          </div>
+          <div class="rm-room room-lab" style="left:58%;top:2%;width:40%;height:13%;">
+            <strong>Khu Lấy Máu</strong>
+            <small>Xét nghiệm</small>
+            <div class="badges"><span class="rm-badge rm-orange">1 sự cố</span></div>
+          </div>
+          <div class="rm-room room-reception" style="left:2%;top:16%;width:40%;height:12%;">
+            <strong>Phòng Chờ</strong>
+          </div>
+          <div class="rm-room room-pharmacy" style="left:58%;top:16%;width:40%;height:12%;">
+            <strong>Nhà Thuốc</strong>
+          </div>
+          <div class="rm-room room-reception" style="left:2%;top:29%;width:40%;height:8%;">
+            <strong>Quầy Thu Ngân</strong>
+          </div>
+          <div class="rm-room room-medical" style="left:58%;top:29%;width:40%;height:13%;">
+            <strong>P111</strong>
+            <div class="badges"><span class="rm-badge rm-blue">1 phiếu vật tư</span></div>
+          </div>
+          <div class="rm-room room-medical selected" style="left:2%;top:38%;width:19%;height:11%;">
+            <strong>P110</strong>
+            <small>Phòng khám</small>
+            <div class="badges">
+              <span class="rm-badge rm-orange">1 sự cố</span>
+              <span class="rm-badge rm-blue">2 vật tư</span>
+            </div>
+          </div>
+          <div class="rm-room room-utility" style="left:2%;top:50%;width:10%;height:6%;">
+            <strong>Kho T1</strong>
+          </div>
+          <div class="rm-room room-utility" style="left:58%;top:44%;width:40%;height:11%;">
+            <strong>Phòng Server</strong>
+            <div class="badges"><span class="rm-badge rm-orange">Khẩn</span></div>
+          </div>
+          <div class="rm-room room-medical" style="left:2%;top:57%;width:40%;height:10%;">
+            <strong>P109</strong>
+          </div>
+          <div class="rm-room room-medical" style="left:58%;top:56%;width:40%;height:11%;">
+            <strong>P104</strong>
+          </div>
+          <div class="rm-room room-medical" style="left:2%;top:68%;width:40%;height:10%;">
+            <strong>P108</strong>
+            <div class="badges"><span class="rm-badge rm-blue">1 phiếu vật tư</span></div>
+          </div>
+          <div class="rm-room room-utility" style="left:58%;top:68%;width:19%;height:12%;">
+            <strong>Vệ Sinh</strong>
+          </div>
+          <div class="rm-room room-utility" style="left:79%;top:68%;width:19%;height:12%;">
+            <strong>Khử Khuẩn</strong>
+          </div>
+          <div class="rm-room room-lab" style="left:2%;top:79%;width:40%;height:10%;">
+            <strong>Khu X-Quang</strong>
+          </div>
+          <div class="rm-room room-medical" style="left:58%;top:81%;width:40%;height:17%;">
+            <strong>Khu Khí Dung</strong>
+          </div>
+          <div class="rm-room room-medical" style="left:2%;top:90%;width:40%;height:8%;">
+            <strong>Khu Thủ Thuật</strong>
+          </div>
+          <div class="rm-corridor">HÀNH LANG</div>
+        </div>
+      </div>
+    </section>
+
+    <aside class="rm-panel">
+      <div class="rm-panel-header">
+        <div class="rm-panel-title">
+          <strong>Drawer phòng</strong>
+          <span>Mở khi bấm vào phòng trên sơ đồ</span>
+        </div>
+        <span class="rm-status-pill">P110 đang mở</span>
+      </div>
+      <div class="rm-drawer">
+        <div class="rm-room-head">
+          <div>
+            <h3>P110</h3>
+            <p>Phòng khám • Tầng 1 • Khoa Khám bệnh</p>
+          </div>
+          <span class="rm-status-pill">Hoạt động bình thường</span>
+        </div>
+
+        <div class="rm-metrics">
+          <div class="rm-metric">
+            <span>Sự cố mở</span>
+            <strong>1</strong>
+          </div>
+          <div class="rm-metric">
+            <span>Vật tư chờ duyệt</span>
+            <strong>2</strong>
+          </div>
+          <div class="rm-metric">
+            <span>Cập nhật cuối</span>
+            <strong style="font-size:0.95rem;">10:42</strong>
+          </div>
+        </div>
+
+        <div class="rm-cta-row">
+          <div class="rm-cta issue">
+            <strong>Báo cáo sự cố / bảo trì</strong>
+            <p>Ví dụ: đèn hỏng, máy lạnh yếu, ổ cắm lỏng, bàn khám cần sửa.</p>
+          </div>
+          <div class="rm-cta material">
+            <strong>Yêu cầu vật tư</strong>
+            <p>Tạo phiếu vật tư gắn với phòng này, tự đi vào luồng phê duyệt.</p>
+          </div>
+        </div>
+
+        <div class="rm-section-card">
+          <div class="rm-section-head">
+            <strong>Sự cố / bảo trì</strong>
+            <span>Đi thẳng vào queue vận hành</span>
+          </div>
+          <div class="rm-list">
+            <div class="rm-list-item">
+              <div class="rm-list-item-top">
+                <strong>Đèn thủ thuật chớp liên tục</strong>
+                <span class="rm-badge rm-orange">Đang xử lý</span>
+              </div>
+              <p>Báo lúc 09:15 • Người phụ trách: Hành chính cơ sở vật chất</p>
+            </div>
+            <div class="rm-list-item">
+              <div class="rm-list-item-top">
+                <strong>Lịch sử gần nhất</strong>
+                <span class="rm-badge rm-slate">Đã đóng</span>
+              </div>
+              <p>Điều hòa vệ sinh lại tuần trước • Hoàn tất lúc 16:20 ngày 22/03</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="rm-section-card">
+          <div class="rm-section-head">
+            <strong>Yêu cầu vật tư</strong>
+            <span>Dùng lại request + approvals hiện có</span>
+          </div>
+          <div class="rm-list">
+            <div class="rm-list-item">
+              <div class="rm-list-item-top">
+                <strong>REQ-240324-018</strong>
+                <span class="rm-badge rm-blue">Chờ duyệt</span>
+              </div>
+              <p>Kim luồn 22G x 2 hộp, dây garo x 4 cái, bông gòn x 5 gói</p>
+            </div>
+            <div class="rm-list-item">
+              <div class="rm-list-item-top">
+                <strong>REQ-240324-012</strong>
+                <span class="rm-badge rm-green">Đã duyệt</span>
+              </div>
+              <p>Găng tay S/M, cồn 70°, khẩu trang thủ thuật</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <div class="rm-secondary">
+    <section class="rm-panel">
+      <div class="rm-panel-header">
+        <div class="rm-panel-title">
+          <strong>Hàng chờ bảo trì</strong>
+          <span>Màn hình riêng để xử lý hàng loạt, bù điểm yếu của floorplan-first</span>
+        </div>
+        <span class="rm-status-pill">7 yêu cầu đang mở</span>
+      </div>
+      <div class="rm-board">
+        <div class="rm-board-col">
+          <h4>Mới nhận</h4>
+          <div class="rm-ticket">
+            <strong>Kho T3</strong>
+            <p>Ổ cắm lỏng cạnh cửa • 11:05</p>
+          </div>
+          <div class="rm-ticket">
+            <strong>Khu Lấy Máu</strong>
+            <p>Máy in barcode kẹt giấy • 10:20</p>
+          </div>
+        </div>
+        <div class="rm-board-col">
+          <h4>Đã phân loại</h4>
+          <div class="rm-ticket">
+            <strong>P203</strong>
+            <p>Rèm ngăn giường bung thanh treo • mức trung bình</p>
+          </div>
+        </div>
+        <div class="rm-board-col">
+          <h4>Đang xử lý</h4>
+          <div class="rm-ticket">
+            <strong>P110</strong>
+            <p>Đèn thủ thuật chớp liên tục • cần thay ballast</p>
+          </div>
+          <div class="rm-ticket">
+            <strong>Phòng Server</strong>
+            <p>Nhiệt độ phòng cao • kiểm tra điều hòa</p>
+          </div>
+        </div>
+        <div class="rm-board-col">
+          <h4>Chờ vật tư</h4>
+          <div class="rm-ticket">
+            <strong>Khu Khí Dung</strong>
+            <p>Đang đợi dây nguồn mới • đã sinh phiếu vật tư liên quan</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="rm-panel">
+      <div class="rm-panel-header">
+        <div class="rm-panel-title">
+          <strong>In tổng hợp vật tư theo phòng</strong>
+          <span>Một sheet gộp, lọc theo ngày và trạng thái</span>
+        </div>
+        <span class="rm-print-tag">Print preview</span>
+      </div>
+      <div class="rm-print">
+        <div class="rm-print-header">
+          <div>
+            <h4>Danh sách tổng hợp yêu cầu vật tư theo phòng</h4>
+            <p>Từ 24/03/2026 đến 24/03/2026 • Trạng thái: chờ duyệt + đã duyệt</p>
+          </div>
+          <div class="rm-print-tag">Sẵn cho in nội bộ</div>
+        </div>
+
+        <div class="rm-group">
+          <div class="rm-group-title">Tầng 1</div>
+          <table class="rm-table">
+            <thead>
+              <tr>
+                <th>Phòng</th>
+                <th>Vật tư</th>
+                <th>SL</th>
+                <th>Trạng thái</th>
+                <th>Phiếu</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>P110</td>
+                <td>Kim luồn 22G</td>
+                <td>2 hộp</td>
+                <td>Chờ duyệt</td>
+                <td>REQ-240324-018</td>
+              </tr>
+              <tr>
+                <td>P110</td>
+                <td>Dây garo</td>
+                <td>4 cái</td>
+                <td>Chờ duyệt</td>
+                <td>REQ-240324-018</td>
+              </tr>
+              <tr>
+                <td>P108</td>
+                <td>Khẩu trang thủ thuật</td>
+                <td>3 hộp</td>
+                <td>Đã duyệt</td>
+                <td>REQ-240324-011</td>
+              </tr>
+              <tr>
+                <td>P111</td>
+                <td>Giấy in A5</td>
+                <td>2 ram</td>
+                <td>Chờ duyệt</td>
+                <td>REQ-240324-019</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="rm-group">
+          <div class="rm-group-title">Tầng 2</div>
+          <table class="rm-table">
+            <thead>
+              <tr>
+                <th>Phòng</th>
+                <th>Vật tư</th>
+                <th>SL</th>
+                <th>Trạng thái</th>
+                <th>Phiếu</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Xét Nghiệm</td>
+                <td>Tem barcode</td>
+                <td>6 cuộn</td>
+                <td>Đã duyệt</td>
+                <td>REQ-240324-007</td>
+              </tr>
+              <tr>
+                <td>P203</td>
+                <td>Bông y tế</td>
+                <td>8 gói</td>
+                <td>Chờ duyệt</td>
+                <td>REQ-240324-021</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <div class="rm-review-note">
+    <strong>Review focus</strong>
+    <p>
+      Kiểm tra xem bố cục tổng thể đã đúng kỳ vọng chưa: sơ đồ tầng có đủ trực quan để mở phòng,
+      drawer có đủ thông tin để thao tác nhanh, và màn hình in tổng hợp đã đúng kiểu sheet gộp mà bạn muốn hay chưa.
+    </p>
+  </div>
+</div>

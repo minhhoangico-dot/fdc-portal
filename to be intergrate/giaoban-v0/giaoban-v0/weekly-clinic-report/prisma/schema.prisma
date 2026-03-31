@@ -1,0 +1,85 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// =============================================
+// WEEKLY CLINIC REPORT TABLES (prefix: wcr_)
+// =============================================
+
+// Snapshot báo cáo tuần
+model WcrReportSnapshot {
+  id              String   @id @default(cuid())
+  week_start      DateTime
+  week_end        DateTime
+  year            Int
+  week_number     Int
+  report_data     Json     // Toàn bộ dữ liệu báo cáo dạng JSON
+  generated_at    DateTime @default(now())
+  
+  @@unique([year, week_number])
+  @@map("wcr_report_snapshots")
+}
+
+// Danh sách mã ICD bệnh truyền nhiễm - CÓ THỂ CẤU HÌNH
+model WcrInfectiousCode {
+  id              String   @id @default(cuid())
+  icd_code        String   // VD: J09, J10, J11
+  icd_pattern     String   // Pattern cho LIKE query (VD: 'J09%')
+  disease_name_vi String   // Tên tiếng Việt
+  disease_name_en String?  // Tên tiếng Anh (tùy chọn)
+  disease_group   String   // Nhóm: cum, rsv, rotavirus, tcm...
+  color_code      String?  // Màu hiển thị trên biểu đồ (hex)
+  is_active       Boolean  @default(true)
+  display_order   Int      @default(0)
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  @@map("wcr_infectious_codes")
+}
+
+// Mapping dịch vụ theo servicename
+model WcrServiceMapping {
+  id                String   @id @default(cuid())
+  category_key      String   @unique // kham_nhi_tw, xn_gui_ngoai...
+  category_name_vi  String   // Khám Nhi (Ths, BS BV Nhi TW)
+  display_group     String   // kham_benh, xet_nghiem, cdha, chuyen_khoa
+  match_type        String   // contains, starts_with, regex
+  match_value       String   // Pattern match (VD: "Nhi TW", "[G]")
+  is_active         Boolean  @default(true)
+  display_order     Int      @default(0)
+  
+  @@map("wcr_service_mappings")
+}
+
+// Cấu hình nhóm tuổi
+model WcrAgeGroup {
+  id              String   @id @default(cuid())
+  group_key       String   @unique // age_0_2, age_3_12...
+  group_name_vi   String   // 0-2 tuổi, 3-12 tuổi...
+  min_age         Int
+  max_age         Int      // 999 cho nhóm >50
+  display_order   Int
+  is_active       Boolean  @default(true)
+  
+  @@map("wcr_age_groups")
+}
+
+// Log báo cáo
+model WcrReportLog {
+  id              String   @id @default(cuid())
+  action_type     String   // GENERATE, ERROR
+  started_at      DateTime @default(now())
+  completed_at    DateTime?
+  status          String   // RUNNING, SUCCESS, FAILED
+  details         Json?    // Chi tiết (số record, thời gian...)
+  error_message   String?
+  
+  @@map("wcr_report_logs")
+}

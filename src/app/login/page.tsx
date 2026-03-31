@@ -4,6 +4,13 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Lock, Mail } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 
+function normalizeLoginEmail(value: string): string {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return '';
+  if (trimmed.includes('@')) return trimmed;
+  return `${trimmed}@fdc.vn`;
+}
+
 export default function LoginPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -30,13 +37,39 @@ export default function LoginPage() {
     setIsLoading(true);
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      email: normalizeLoginEmail(email),
       password,
     });
 
-    if (error) {
-      setError('Đăng nhập thất bại. Vui lòng kiểm tra lại email/mật khẩu.');
+    if (signInError) {
+      setError('Dang nhap that bai. Vui long kiem tra lai ten dang nhap/email va mat khau.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!data.user) {
+      setError('Khong the xac thuc tai khoan dang nhap.');
+      setIsLoading(false);
+      return;
+    }
+
+    const { data: mapping, error: mappingError } = await supabase
+      .from('fdc_user_mapping')
+      .select('is_active')
+      .eq('supabase_uid', data.user.id)
+      .maybeSingle();
+
+    if (mappingError || !mapping) {
+      await supabase.auth.signOut({ scope: 'local' });
+      setError('Tai khoan chua duoc cap quyen truy cap vao he thong.');
+      setIsLoading(false);
+      return;
+    }
+
+    if (mapping.is_active === false) {
+      await supabase.auth.signOut({ scope: 'local' });
+      setError('Tai khoan da bi vo hieu hoa. Vui long lien he quan tri vien.');
       setIsLoading(false);
     }
   };
@@ -50,10 +83,10 @@ export default function LoginPage() {
           </div>
         </div>
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Đăng nhập hệ thống
+          Dang nhap he thong
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Phòng khám Gia Đình
+          Phong kham Gia Dinh
         </p>
       </div>
 
@@ -64,7 +97,7 @@ export default function LoginPage() {
 
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email
+                Email hoac ten dang nhap
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -72,19 +105,19 @@ export default function LoginPage() {
                 </div>
                 <input
                   id="email"
-                  type="email"
+                  type="text"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="block w-full pl-10 sm:text-sm border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-2 border"
-                  placeholder="name@fdc.vn"
+                  placeholder="vd: pthue hoac pthue@fdc.vn"
                 />
               </div>
             </div>
 
             <div>
               <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Mật khẩu
+                Mat khau
               </label>
               <div className="mt-1 relative rounded-md shadow-sm">
                 <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -102,7 +135,7 @@ export default function LoginPage() {
             </div>
 
             <p className="text-sm text-gray-500">
-              Quên mật khẩu? Liên hệ quản trị viên để được cấp lại.
+              Quen mat khau? Lien he quan tri vien de duoc cap lai mat khau tam thoi.
             </p>
 
             <div>
@@ -111,7 +144,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
               >
-                {isLoading ? 'Đang xử lý...' : 'Đăng nhập'}
+                {isLoading ? 'Dang xu ly...' : 'Dang nhap'}
               </button>
             </div>
           </form>
@@ -120,4 +153,3 @@ export default function LoginPage() {
     </div>
   );
 }
-

@@ -22,6 +22,14 @@ interface DailyRow {
   patient_volume: number;
 }
 
+interface DailyConsumptionRow {
+  report_date: string;
+  account: string;
+  outward_amount: number;
+  outward_qty: number;
+  patient_visits: number | null;
+}
+
 function monthsAgo(n: number): string {
   const d = new Date();
   d.setDate(1);
@@ -85,10 +93,12 @@ export function useSupplyChart() {
       const cutoff = past.toISOString().split("T")[0];
 
       const { data, error } = await supabase
-        .from("fdc_supply_daily_summary")
-        .select("*")
+        .from("fdc_supply_consumption_daily")
+        .select("report_date, account, outward_amount, outward_qty, patient_visits")
         .gte("report_date", cutoff)
-        .order("report_date", { ascending: true });
+        .order("report_date", { ascending: true })
+        .order("account", { ascending: true })
+        .returns<DailyConsumptionRow[]>();
 
       if (error) {
         console.error("[useSupplyChart] daily fetch error:", error);
@@ -96,7 +106,33 @@ export function useSupplyChart() {
         return;
       }
 
-      setDailyData(data || []);
+      const aggregated = new Map<string, DailyRow>();
+
+      (data || []).forEach((row) => {
+        const key = `${row.report_date}:${row.account}`;
+        const existing = aggregated.get(key) || {
+          report_date: row.report_date,
+          account: row.account,
+          consumption_amount: 0,
+          consumption_qty: 0,
+          patient_volume: 0,
+        };
+
+        aggregated.set(key, {
+          report_date: row.report_date,
+          account: row.account,
+          consumption_amount:
+            existing.consumption_amount + Number(row.outward_amount || 0),
+          consumption_qty:
+            existing.consumption_qty + Number(row.outward_qty || 0),
+          patient_volume: Math.max(
+            existing.patient_volume,
+            Number(row.patient_visits || 0)
+          ),
+        });
+      });
+
+      setDailyData(Array.from(aggregated.values()));
     } catch (err) {
       console.error("[useSupplyChart] daily fetch unexpected error:", err);
       setDailyData([]);
@@ -121,7 +157,7 @@ export function useSupplyChart() {
       )
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_supply_daily_summary" },
+        { event: "*", schema: "public", table: "fdc_supply_consumption_daily" },
         () => {
           fetchDailySummary();
         }
@@ -160,10 +196,7 @@ export function useSupplyChart() {
         byDate.set(row.report_date, {
           amount: existing.amount + Number(row.consumption_amount || 0),
           qty: existing.qty + Number(row.consumption_qty || 0),
-          patients:
-            existing.patients || Number.isFinite(row.patient_volume)
-              ? Number(row.patient_volume || 0)
-              : existing.patients,
+          patients: Math.max(existing.patients, Number(row.patient_volume || 0)),
         });
       });
 
@@ -212,12 +245,6 @@ export function useSupplyChart() {
 
     filtered.forEach((r) => {
       if (accountFilter === "all" && r.account === "all") {
-        const existing = byMonth.get(r.report_month) || {
-          amount: 0,
-          amountLY: 0,
-          qty: 0,
-          patients: 0,
-        };
         byMonth.set(r.report_month, {
           amount: Number(r.consumption_amount || 0),
           amountLY: Number(r.consumption_amount_ly || 0),

@@ -91,6 +91,26 @@ export interface SupplyChartPoint {
   consumptionPerVisit: number;
 }
 
+// Supply voucher line (individual voucher line item from MISA)
+export interface SupplyVoucherLine {
+  id: string;
+  ref_no: string;
+  ref_date: string;
+  posted_date: string | null;
+  direction: "inward" | "outward";
+  account: string;
+  corresponding_account: string | null;
+  item_code: string;
+  item_name: string;
+  qty: number;
+  unit_price: number;
+  amount: number;
+  unit: string | null;
+  supplier_code: string | null;
+  supplier_name: string | null;
+  description: string | null;
+}
+
 // Supply inward types
 export interface SupplyInward {
   id: string;
