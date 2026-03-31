@@ -743,7 +743,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const linkRows = intakeIds.map((intakeId) => ({
         intake_id: intakeId,
         request_id: requestRow.id,
-        link_kind: 'formal_request',
+        link_type: 'consolidated',
       }));
       const { error: linkError } = await supabase.from('fdc_room_intake_links').insert(linkRows);
       if (linkError) throw linkError;
@@ -815,7 +815,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const { error: linkError } = await supabase.from('fdc_room_intake_links').insert({
         intake_id: intake.id,
         request_id: requestRow.id,
-        link_kind: 'formal_request',
+        link_type: 'promoted',
       });
 
       if (linkError) throw linkError;

@@ -4,7 +4,7 @@
 
 - Task ID: `room-management-full-system`
 - Owner: `implementer`
-- Status: `implementation-verified`
+- Status: `rolled-out`
 - Spec: `tasks/active/2026-03-31-room-management-full-system.md`
 
 ## Operating Checklist
@@ -24,8 +24,8 @@
 - [x] Design or architecture decision
 - [x] Implementation
 - [x] Verification
-- [ ] Review
-- [ ] Lessons and closeout
+- [x] Review
+- [x] Lessons and closeout
 
 ## 2026-03-31 Room Management Full-System
 
@@ -44,8 +44,12 @@
   - `cmd /c npx tsx --test test\unit\permissionMatrix.test.ts test\unit\navigation.test.ts test\unit\approvalsQueue.test.ts test\unit\roomWorkflowRouting.test.ts test\unit\roomWorkflowHelpers.test.ts test\unit\roomWorkflowState.test.ts test\unit\roomCatalog.test.ts test\unit\roomSummary.test.ts test\unit\roomMaintenance.test.ts test\unit\roomPrint.test.ts test\unit\roomState.test.ts`: passed, 17/17.
   - `cmd /c npm run build`: passed, Vite production build completed successfully after integrating requests, approvals, reviewer queues, and handoffs.
   - `cmd /c npm run lint`: still fails for pre-existing repository-wide TypeScript issues in `fdc-lan-bridge`, `supabase/functions`, `to be intergrate/`, legacy admin tests, and one unrelated inventory component; the room-workflow slice builds and its focused tests pass.
+  - Live Supabase rollout on `2026-03-31` via `POST /pg/query`: `fdc_role_catalog` contains `pharmacy_head`, `accounting_supervisor`, `lab_head`, `chief_accountant`, `internal_accountant`, and `hr_records`; production now has `fdc_room_intakes`, `fdc_room_intake_items`, `fdc_room_intake_links`, and `fdc_request_handoffs`; `fdc_can_view_request(uuid)` includes handoff visibility.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://d57623ee.fdc-portal.pages.dev`.
+  - Live bundle verification on `2026-03-31`: both `https://d57623ee.fdc-portal.pages.dev` and `https://portal.fdc-nhanvien.org` serve `assets/index-oD44grYl.js`; `/room-management`, `/approvals`, and `/requests` return `200`.
+  - Live asset content check on `2026-03-31`: `assets/index-oD44grYl.js` contains `Cong viec can xu ly`, `Room Management`, `Tong hop vat tu da chon`, and `Nguoi duoc chuyen xu ly sau phe duyet`.
 - Residual risk:
-  - SQL migration deployment, Supabase RLS smoke, and browser-based end-to-end verification are still pending.
+  - Authenticated browser-based end-to-end verification is still pending, especially for reviewer, `chief_accountant`, `internal_accountant`, and `hr_records` role flows.
 
 ## 2026-03-31 Room Management Frontend-First
 

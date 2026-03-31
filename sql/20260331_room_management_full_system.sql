@@ -153,56 +153,6 @@ BEGIN
   END IF;
 END $$;
 
-CREATE OR REPLACE FUNCTION public.fdc_can_view_request(p_request_id uuid)
-RETURNS boolean
-LANGUAGE sql
-STABLE
-SECURITY DEFINER
-SET search_path = ''
-AS $function$
-  SELECT EXISTS (
-    SELECT 1
-    FROM public.fdc_approval_requests req
-    JOIN public.fdc_user_mapping actor
-      ON actor.supabase_uid = auth.uid()
-    WHERE req.id = p_request_id
-      AND (
-        req.requester_id = actor.id
-        OR actor.role IN (
-          'super_admin',
-          'head_nurse',
-          'director',
-          'chairman',
-          'accountant',
-          'chief_accountant'
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM public.fdc_approval_steps step
-          WHERE step.request_id = req.id
-            AND step.approver_id = actor.id
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM public.fdc_delegations delegation
-          JOIN public.fdc_approval_steps step
-            ON step.approver_id = delegation.delegator_id
-          WHERE step.request_id = req.id
-            AND step.status = 'pending'
-            AND delegation.delegate_id = actor.id
-            AND current_date BETWEEN delegation.start_date AND delegation.end_date
-            AND req.request_type = ANY (delegation.request_types)
-        )
-        OR EXISTS (
-          SELECT 1
-          FROM public.fdc_request_handoffs handoff
-          WHERE handoff.request_id = req.id
-            AND handoff.assignee_id = actor.id
-        )
-      )
-  )
-$function$;
-
 CREATE TABLE IF NOT EXISTS public.fdc_room_catalog (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   room_key TEXT NOT NULL UNIQUE,
@@ -272,8 +222,18 @@ CREATE TABLE IF NOT EXISTS public.fdc_request_handoffs (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_room_catalog_review_group
-  ON public.fdc_room_catalog(review_group);
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'fdc_room_catalog'
+      AND column_name = 'review_group'
+  ) THEN
+    EXECUTE 'CREATE INDEX IF NOT EXISTS idx_room_catalog_review_group ON public.fdc_room_catalog(review_group)';
+  END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS idx_room_intakes_requester_id
   ON public.fdc_room_intakes(requester_id);
@@ -289,6 +249,56 @@ CREATE INDEX IF NOT EXISTS idx_request_handoffs_request_id
 
 CREATE INDEX IF NOT EXISTS idx_request_handoffs_assignee_id
   ON public.fdc_request_handoffs(assignee_id, status);
+
+CREATE OR REPLACE FUNCTION public.fdc_can_view_request(p_request_id uuid)
+RETURNS boolean
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $function$
+  SELECT EXISTS (
+    SELECT 1
+    FROM public.fdc_approval_requests req
+    JOIN public.fdc_user_mapping actor
+      ON actor.supabase_uid = auth.uid()
+    WHERE req.id = p_request_id
+      AND (
+        req.requester_id = actor.id
+        OR actor.role IN (
+          'super_admin',
+          'head_nurse',
+          'director',
+          'chairman',
+          'accountant',
+          'chief_accountant'
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.fdc_approval_steps step
+          WHERE step.request_id = req.id
+            AND step.approver_id = actor.id
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.fdc_delegations delegation
+          JOIN public.fdc_approval_steps step
+            ON step.approver_id = delegation.delegator_id
+          WHERE step.request_id = req.id
+            AND step.status = 'pending'
+            AND delegation.delegate_id = actor.id
+            AND current_date BETWEEN delegation.start_date AND delegation.end_date
+            AND req.request_type = ANY (delegation.request_types)
+        )
+        OR EXISTS (
+          SELECT 1
+          FROM public.fdc_request_handoffs handoff
+          WHERE handoff.request_id = req.id
+            AND handoff.assignee_id = actor.id
+        )
+      )
+  )
+$function$;
 
 ALTER TABLE public.fdc_room_catalog ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.fdc_room_intakes ENABLE ROW LEVEL SECURITY;
@@ -385,6 +395,25 @@ CREATE POLICY "Users read intake links for visible requests"
 ON public.fdc_room_intake_links FOR SELECT
 TO authenticated
 USING (public.fdc_can_view_request(request_id));
+
+DROP POLICY IF EXISTS "Reviewers create room intake links" ON public.fdc_room_intake_links;
+CREATE POLICY "Reviewers create room intake links"
+ON public.fdc_room_intake_links FOR INSERT
+TO authenticated
+WITH CHECK (
+  EXISTS (
+    SELECT 1
+    FROM public.fdc_room_intakes intake
+    JOIN public.fdc_user_mapping actor
+      ON actor.supabase_uid = auth.uid()
+    WHERE intake.id = intake_id
+      AND (
+        intake.reviewer_role = actor.role
+        OR actor.role IN ('super_admin', 'chief_accountant')
+      )
+  )
+  AND public.fdc_can_view_request(request_id)
+);
 
 DROP POLICY IF EXISTS "Users read assigned handoffs" ON public.fdc_request_handoffs;
 CREATE POLICY "Users read assigned handoffs"

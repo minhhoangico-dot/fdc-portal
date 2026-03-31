@@ -67,7 +67,7 @@
 - [x] Review and refine the written spec with the user.
 - [x] Create the detailed implementation plan after spec approval.
 - [x] Implement the permission matrix, role expansion, room workflow backend, and workflow-integrated UI.
-- [ ] Verify and roll out the completed module safely.
+- [x] Verify and roll out the completed module safely.
 
 ## Verification Plan
 
@@ -81,12 +81,13 @@
   - Room Management now persists raw intakes in `fdc_room_intakes`, routes reviewer work by room review group, and uses `/requests` plus `/approvals` as the formal workflow surfaces.
   - Material consolidation now creates approved purchase requests with automatic downstream handoffs, while maintenance promotion creates a real `chief_accountant` approval gate with manual forward choice in request detail.
 - Residual risks:
-  - SQL migration and Supabase RLS are written but not applied or smoke-tested against production users in this session.
+  - The SQL migration and frontend deploy are now applied, but authenticated browser smoke for reviewer and downstream roles is still pending.
+  - Production already had a legacy `fdc_room_catalog` schema, so the migration intentionally avoided reshaping that table and only made the new review-group index conditional.
   - `npm run lint` still fails on unrelated legacy areas in `fdc-lan-bridge`, `supabase/functions`, `to be intergrate/`, and existing tests; the focused room-workflow/build checks pass.
 
 ## Closeout
 
-- Final status: implementation complete locally and verified with build + focused tests; rollout and production smoke are still pending
+- Final status: SQL applied to self-hosted Supabase, frontend deployed to Cloudflare Pages, and live domain verification completed; authenticated browser smoke is still pending
 - Follow-up tasks:
-  - Apply `sql/20260331_room_management_full_system.sql` to Supabase and verify the new roles, room tables, and RLS policies.
-  - Deploy the updated portal build and run end-to-end browser smoke for reviewer, chief accountant, internal accountant, and hr records flows.
+  - Run end-to-end browser smoke for reviewer, chief accountant, internal accountant, and hr records flows.
+  - Backfill or standardize `fdc_room_catalog` if future features start reading the database catalog directly instead of the static portal map.
