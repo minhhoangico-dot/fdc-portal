@@ -2,10 +2,10 @@
 
 ## Current Task
 
-- Task ID: `lab-dashboard-tat-test-name`
+- Task ID: `room-management-full-system`
 - Owner: `implementer`
-- Status: `done`
-- Spec: `tasks/active/2026-03-25-lab-dashboard-tat-test-name.md`
+- Status: `spec-written`
+- Spec: `tasks/active/2026-03-31-room-management-full-system.md`
 
 ## Operating Checklist
 
@@ -22,10 +22,52 @@
 
 - [x] Intake and scope
 - [x] Design or architecture decision
-- [x] Implementation
-- [x] Verification
-- [x] Review
-- [x] Lessons and closeout
+- [ ] Implementation
+- [ ] Verification
+- [ ] Review
+- [ ] Lessons and closeout
+
+## 2026-03-31 Room Management Full-System
+
+- Scope: replace the frontend-first Room Management mock flow with a real Supabase-backed workflow module, add room-origin request and maintenance routing into the existing portal request engine, introduce the new reviewer and finance roles, and move the portal onto a centralized permission matrix across all modules.
+- Checklist:
+  - [x] Explore the current room-management, requests, approvals, role, and navigation architecture
+  - [x] Confirm the approved workflow, role, and permission rules with the user
+  - [x] Save the full-system design spec
+  - [ ] Get user review on the written spec
+  - [ ] Write the implementation plan
+  - [ ] Implement schema, permission, and workflow changes
+  - [ ] Run verification and record evidence
+- Verification evidence:
+  - Design review against current portal architecture completed on `2026-03-31` using `src/lib/navigation.ts`, `src/lib/role-access.ts`, `src/types/roleCatalog.ts`, `src/viewmodels/useRequests.ts`, `src/viewmodels/useApprovals.ts`, `src/App.tsx`, and the related SQL migrations.
+- Residual risk:
+  - Implementation has not started yet; the current portal still uses the frontend-first Room Management mock flow and legacy hardcoded permission checks.
+
+## 2026-03-31 Room Management Frontend-First
+
+- Scope: replace the `Quản lý phòng` iframe preview with a working portal-native module that keeps the approved map layout and makes map, drawer, maintenance, supply, queue, and print flows usable on session-only mock state.
+- Checklist:
+  - [x] Save the frontend-first design spec and execution plan
+  - [x] Add failing helper/reducer coverage for room-management state and grouping logic
+  - [x] Port the room catalog, summary helpers, maintenance helpers, print helpers, and shared reducer into `src/`
+  - [x] Replace `/room-management` with the real map + drawer experience
+  - [x] Add `/room-management/maintenance` and `/room-management/print/materials`
+  - [x] Run targeted verification and record residual risks
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\roomCatalog.test.ts`: passed, 1/1.
+  - `cmd /c npx tsx --test test\unit\roomSummary.test.ts`: passed, 1/1.
+  - `cmd /c npx tsx --test test\unit\roomMaintenance.test.ts`: passed, 1/1.
+  - `cmd /c npx tsx --test test\unit\roomPrint.test.ts`: passed, 1/1.
+  - `cmd /c npx tsx --test test\unit\roomState.test.ts`: passed, 1/1.
+  - `cmd /c npx tsx --test test\unit\navigation.test.ts`: passed, 4/4.
+  - `cmd /c npm run build`: passed, Vite production build completed successfully; emitted `assets/index-as62Nw-_.js`.
+  - `cmd /c npm run lint`: failed for pre-existing repository-wide TypeScript issues in `fdc-lan-bridge`, `supabase/functions`, `to be intergrate/`, and unrelated legacy tests; no room-management paths appeared in the filtered lint output after the new room-management files landed.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://3c1e7061.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org`: passed; live HTML now references `assets/index-as62Nw-_.js`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/assets/index-as62Nw-_.js`: passed with status `200`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/room-management/maintenance`: passed with status `200`.
+- Residual risk:
+  - Browser smoke is still pending for `/room-management`, `/room-management/maintenance`, and `/room-management/print/materials`.
 
 ## 2026-03-25 Admin TV Surface Removal
 
@@ -337,6 +379,25 @@
   - `cmd /c npm run build`: passed, Vite production build completed successfully; the existing large-chunk warning remains.
 - Residual risk:
   - `/room-management` is currently a floorplan-preview landing page, not the full maintenance/request/print workflow from the approved room-management design.
+
+## 2026-03-31 Room Management Rollout
+
+- Scope: roll out the already-implemented room-management sidebar/page to production because the live portal is still serving an older bundle.
+- Checklist:
+  - [x] Confirm the missing live sidebar item is a deployment gap, not missing source code
+  - [x] Save the rollout task spec and verification plan
+  - [x] Run fresh local verification for the room-management navigation/build state
+  - [x] Deploy the current portal bundle to Cloudflare Pages
+  - [x] Verify the live portal serves the updated asset hash
+- Verification evidence:
+  - `cmd /c npx tsx --test test\unit\navigation.test.ts`: passed, 4/4 including the `/room-management` assertion.
+  - `cmd /c npm run build`: passed; emitted `assets/index-BZgJhm-U.js`.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://6d2e6743.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org`: passed; live HTML now references `assets/index-BZgJhm-U.js`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/assets/index-BZgJhm-U.js`: passed; bundle contains `/room-management`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/room-management`: passed with status `200`.
+- Residual risk:
+  - Users with an old service worker or cached tab may still need a hard refresh before the new sidebar item appears locally.
 
 ## 2026-03-23 Queue/TAT Live Fix
 

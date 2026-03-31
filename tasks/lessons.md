@@ -123,3 +123,27 @@ These are not corrections. They are durable starting points for new agents:
 - Preventive rule: When scaffolding any new portal module, wire the typed `ModuleKey`, `ROLE_MODULE_VISIBILITY`, `NAV_ITEMS`, and authenticated route in the same change; otherwise the shared navigation surfaces will hide the feature completely.
 - Trigger to re-read: Any future change that introduces a new portal route/module, especially under `src/lib/navigation.ts`, `src/types/roleCatalog.ts`, or `src/App.tsx`.
 - Verification to add next time: Add a navigation unit test that asserts the new route path appears for the intended roles, then run the portal build to confirm the route compiles.
+
+### 2026-03-31 - Live portal reports need a public asset-hash check before more coding
+
+- Context: After the room-management sidebar code and local verification were already in place, the user still reported that `Quản lý phòng` was missing on `https://portal.fdc-nhanvien.org`.
+- What went wrong: The first task stopped after local build/test evidence, but production was still serving the older frontend asset `index-CEz0pAN3.js`, so the public symptom persisted until a fresh Cloudflare Pages deploy happened.
+- Preventive rule: When a user reports a live portal UI mismatch after local verification, fetch the public HTML first and compare the served asset hash against the latest local build before changing code again; if the hash is stale, treat it as a rollout gap and deploy first.
+- Trigger to re-read: Any future report about a portal page/sidebar item that exists locally but is missing on `portal.fdc-nhanvien.org`.
+- Verification to add next time: Capture the deployment URL plus one `Invoke-WebRequest https://portal.fdc-nhanvien.org` check confirming the custom domain points at the new asset hash.
+
+### 2026-03-31 - Sidebar fixes do not count as module completion when the page is still a scaffold
+
+- Context: After the sidebar and rollout fixes landed, the user clarified that Room Management still did not work because all visible functions inside the module were non-functional.
+- What went wrong: The earlier closeout treated discoverability as the whole task, even though `/room-management` was still only an iframe preview plus static cards; the user actually needed a working module surface, not just a visible sidebar entry.
+- Preventive rule: When a user reports a missing feature surface, confirm whether they need navigation exposure only or a usable end-to-end module; if the page body is still a scaffold, do not mark the feature complete.
+- Trigger to re-read: Any future work where a route/sidebar item is added for a feature that already has placeholder UI or prototype assets.
+- Verification to add next time: Confirm each visible primary control on the feature page performs a real action before closing the task.
+
+### 2026-03-31 - "Complete the module" can expand into workflow and authorization redesign
+
+- Context: After approving the frontend-first Room Management rebuild, the user clarified that the next step was not just backend persistence; room material and maintenance flows had to plug into `/requests` and `/approvals`, introduce several new business roles, and use a brand-new permission matrix across the portal.
+- What went wrong: The natural assumption after a mock-to-real request would have been "swap session state for Supabase," but that would have missed the bigger system requirement: reviewer routing, finance approval semantics, downstream handoffs, and cross-module permission consistency.
+- Preventive rule: When a user says "complete the module" after a mock or prototype pass, explicitly test whether they mean persistence only, workflow integration, or a larger role/permission redesign before moving into implementation.
+- Trigger to re-read: Any future follow-up request that asks to make a mock module "complete," especially when the feature touches requests, approvals, or role-based access.
+- Verification to add next time: Before planning implementation, write down the required roles, approval gates, forward behavior, and portal modules affected, then confirm whether permissions are additive or require a new matrix.
