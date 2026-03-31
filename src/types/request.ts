@@ -19,6 +19,14 @@ export interface RequestMetadata {
   leaveType?: string;
   startDate?: string;
   endDate?: string;
+  workflowKind?: 'room_material' | 'room_maintenance';
+  roomId?: string;
+  roomCode?: string;
+  roomName?: string;
+  floor?: number;
+  reviewGroup?: string;
+  sourceIntakeIds?: string[];
+  originModule?: 'room_management';
 }
 
 export interface RequestAttachment {

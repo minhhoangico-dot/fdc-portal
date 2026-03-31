@@ -45,6 +45,18 @@ export const normalizeRequestMetadata = (
     leaveType: typeof metadata.leaveType === 'string' ? metadata.leaveType : undefined,
     startDate: typeof metadata.startDate === 'string' ? metadata.startDate : undefined,
     endDate: typeof metadata.endDate === 'string' ? metadata.endDate : undefined,
+    workflowKind: metadata.workflowKind === 'room_material' || metadata.workflowKind === 'room_maintenance'
+      ? metadata.workflowKind
+      : undefined,
+    roomId: typeof metadata.roomId === 'string' ? metadata.roomId : undefined,
+    roomCode: typeof metadata.roomCode === 'string' ? metadata.roomCode : undefined,
+    roomName: typeof metadata.roomName === 'string' ? metadata.roomName : undefined,
+    floor: typeof metadata.floor === 'number' ? metadata.floor : undefined,
+    reviewGroup: typeof metadata.reviewGroup === 'string' ? metadata.reviewGroup : undefined,
+    sourceIntakeIds: Array.isArray(metadata.sourceIntakeIds)
+      ? metadata.sourceIntakeIds.filter((value): value is string => typeof value === 'string')
+      : undefined,
+    originModule: metadata.originModule === 'room_management' ? 'room_management' : undefined,
   };
 };
 
