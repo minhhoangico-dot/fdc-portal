@@ -5,6 +5,12 @@ export type Role =
   | 'chairman'
   | 'dept_head'
   | 'accountant'
+  | 'pharmacy_head'
+  | 'accounting_supervisor'
+  | 'lab_head'
+  | 'chief_accountant'
+  | 'internal_accountant'
+  | 'hr_records'
   | 'staff'
   | 'doctor';
 

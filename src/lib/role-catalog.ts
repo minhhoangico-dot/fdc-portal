@@ -6,7 +6,7 @@
 import type { RoleCatalogItem } from '@/types/roleCatalog';
 import type { Role } from '@/types/user';
 
-const UTF8_MOJIBAKE_PATTERN = /(?:Ã.|Ä.|Æ.|Â.|â.|á(?:º|»))/;
+const UTF8_MOJIBAKE_PATTERN = /(?:Ãƒ.|Ã„.|Ã†.|Ã‚.|Ã¢.|Ã¡(?:Âº|Â»))/;
 
 function repairUtf8Mojibake(value: string): string {
   if (!UTF8_MOJIBAKE_PATTERN.test(value)) {
@@ -50,57 +50,99 @@ export const DEFAULT_ROLE_CATALOG: readonly RoleCatalogItem[] = [
   {
     roleKey: 'super_admin',
     displayName: 'KTT / Admin',
-    description: 'Toàn quyền cấu hình hệ thống và quản trị người dùng.',
+    description: 'Toan quyen cau hinh he thong va quan tri nguoi dung.',
     sortOrder: 1,
     isActive: true,
   },
   {
     roleKey: 'head_nurse',
-    displayName: 'Điều dưỡng trưởng',
-    description: 'Toàn quyền nghiệp vụ trên portal, ngoại trừ các chức năng quản trị hệ thống.',
+    displayName: 'Dieu duong truong',
+    description: 'Toan quyen nghiep vu tren portal, ngoai tru cac chuc nang quan tri he thong.',
     sortOrder: 2,
     isActive: true,
   },
   {
     roleKey: 'director',
-    displayName: 'Giám đốc',
-    description: 'Phê duyệt cấp giám đốc và theo dõi vận hành chung.',
+    displayName: 'Giam doc',
+    description: 'Phe duyet cap giam doc va theo doi van hanh chung.',
     sortOrder: 3,
     isActive: true,
   },
   {
     roleKey: 'chairman',
-    displayName: 'CT HĐQT',
-    description: 'Phê duyệt cấp chủ tịch hội đồng quản trị.',
+    displayName: 'CT HDQT',
+    description: 'Phe duyet cap chu tich hoi dong quan tri.',
     sortOrder: 4,
     isActive: true,
   },
   {
     roleKey: 'dept_head',
-    displayName: 'Trưởng phòng',
-    description: 'Quản lý phòng ban và phê duyệt cấp trưởng phòng.',
+    displayName: 'Truong phong',
+    description: 'Quan ly phong ban va phe duyet cap truong phong.',
     sortOrder: 5,
     isActive: true,
   },
   {
     roleKey: 'accountant',
-    displayName: 'Kế toán',
-    description: 'Xử lý nghiệp vụ tài chính và phê duyệt kế toán.',
+    displayName: 'Ke toan',
+    description: 'Xu ly nghiep vu tai chinh va phe duyet ke toan legacy.',
     sortOrder: 6,
     isActive: true,
   },
   {
-    roleKey: 'staff',
-    displayName: 'Nhân viên',
-    description: 'Sử dụng các chức năng cơ bản của portal.',
+    roleKey: 'pharmacy_head',
+    displayName: 'Truong phong duoc',
+    description: 'Phu trach nghiep vu nha thuoc va review de xuat tu khu nha thuoc.',
     sortOrder: 7,
     isActive: true,
   },
   {
-    roleKey: 'doctor',
-    displayName: 'Bác sĩ',
-    description: 'Nhân sự y tế với các chức năng nghiệp vụ cơ bản.',
+    roleKey: 'accounting_supervisor',
+    displayName: 'Phu trach ke toan',
+    description: 'Review de xuat phong 304 va nghiep vu phong ke toan.',
     sortOrder: 8,
+    isActive: true,
+  },
+  {
+    roleKey: 'lab_head',
+    displayName: 'Truong phong xet nghiem',
+    description: 'Phu trach dashboard xet nghiem va review de xuat khu xet nghiem.',
+    sortOrder: 9,
+    isActive: true,
+  },
+  {
+    roleKey: 'chief_accountant',
+    displayName: 'Ke toan truong',
+    description: 'Phe duyet tai chinh va chon nguoi nhan handoff tiep theo.',
+    sortOrder: 10,
+    isActive: true,
+  },
+  {
+    roleKey: 'internal_accountant',
+    displayName: 'Ke toan noi bo',
+    description: 'Xu ly handoff tai chinh sau khi request da duoc duyet.',
+    sortOrder: 11,
+    isActive: true,
+  },
+  {
+    roleKey: 'hr_records',
+    displayName: 'Nhan su ho so',
+    description: 'Xu ly handoff ho so va luu tru sau khi request da duoc duyet.',
+    sortOrder: 12,
+    isActive: true,
+  },
+  {
+    roleKey: 'staff',
+    displayName: 'Nhan vien',
+    description: 'Su dung cac chuc nang co ban cua portal.',
+    sortOrder: 13,
+    isActive: true,
+  },
+  {
+    roleKey: 'doctor',
+    displayName: 'Bac si',
+    description: 'Nhan su y te voi cac chuc nang nghiep vu co ban.',
+    sortOrder: 14,
     isActive: true,
   },
 ];

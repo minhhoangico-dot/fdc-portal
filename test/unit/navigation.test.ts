@@ -32,3 +32,21 @@ test('non-admin roles do not see the tv management nav item', () => {
 
   assert.equal(items.some((item) => item.path === '/tv-management'), false);
 });
+
+test('new business roles see only the modules granted by the permission matrix', () => {
+  const pharmacyHeadItems = getVisibleNavItems('pharmacy_head');
+  const hrRecordsItems = getVisibleNavItems('hr_records');
+  const chiefAccountantItems = getVisibleNavItems('chief_accountant');
+
+  assert.equal(pharmacyHeadItems.some((item) => item.path === '/pharmacy'), true);
+  assert.equal(pharmacyHeadItems.some((item) => item.path === '/room-management'), true);
+  assert.equal(pharmacyHeadItems.some((item) => item.path === '/admin'), false);
+
+  assert.equal(hrRecordsItems.some((item) => item.path === '/approvals'), true);
+  assert.equal(hrRecordsItems.some((item) => item.path === '/inventory'), false);
+  assert.equal(hrRecordsItems.some((item) => item.path === '/admin'), false);
+
+  assert.equal(chiefAccountantItems.some((item) => item.path === '/approvals'), true);
+  assert.equal(chiefAccountantItems.some((item) => item.path === '/inventory'), true);
+  assert.equal(chiefAccountantItems.some((item) => item.path === '/admin'), false);
+});
