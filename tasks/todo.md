@@ -2,10 +2,10 @@
 
 ## Current Task
 
-- Task ID: `room-management-full-system`
-- Owner: `implementer`
+- Task ID: `supply-item-history`
+- Owner: `data-worker`
 - Status: `rolled-out`
-- Spec: `tasks/active/2026-03-31-room-management-full-system.md`
+- Spec: `tasks/active/2026-04-01-supply-item-history.md`
 
 ## Operating Checklist
 
@@ -26,6 +26,25 @@
 - [x] Verification
 - [x] Review
 - [x] Lessons and closeout
+
+## 2026-04-01 Supply Item History
+
+- Scope: add the room-management supply item history backend table, RLS, conflict-update behavior, and live rollout verification on the self-hosted Supabase instance.
+- Checklist:
+  - [x] Explore the task spec, workflow files, and current room workflow implementation
+  - [x] Choose the backend path that preserves direct table `upsert` semantics
+  - [x] Save the focused task spec and implementation plan
+  - [x] Add the failing live verification script for schema and increment behavior
+  - [x] Add the SQL migration for table, indexes, trigger, and RLS
+  - [x] Apply the migration to Supabase
+  - [x] Re-run verification and record evidence
+- Verification evidence:
+  - `cmd /c npx ts-node scripts/verifySupplyItemHistoryMigration.ts --expect-missing` in `fdc-lan-bridge`: passed before rollout, confirming `public.fdc_supply_item_history` was absent.
+  - `cmd /c npx ts-node scripts/verifySupplyItemHistoryMigration.ts` in `fdc-lan-bridge`: failed before rollout with `fdc_supply_item_history columns not found.`
+  - Live rollout on `2026-04-01` via chunked `POST http://192.168.1.9:8000/pg/query` requests: created `public.fdc_supply_item_history`, the two indexes, the `fdc_supply_item_history_increment_use_count()` trigger function, the `trg_supply_item_history_increment_use_count` trigger, and the three authenticated RLS policies.
+  - `cmd /c npx ts-node scripts/verifySupplyItemHistoryMigration.ts` in `fdc-lan-bridge`: passed after rollout with `PASS: supply item history schema and behavior verified.`
+- Residual risk:
+  - Manual `UPDATE` statements against existing rows also increment `use_count`, which is intentional for the direct upsert path but should be remembered during ad-hoc SQL edits.
 
 ## 2026-03-31 Room Management Full-System
 
