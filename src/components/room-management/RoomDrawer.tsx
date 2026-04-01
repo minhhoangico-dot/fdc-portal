@@ -30,6 +30,7 @@ interface RoomDrawerProps {
   onTabChange: (tab: RoomDrawerTab) => void;
   onCreateMaintenance: (input: CreateMaintenanceReportInput) => void;
   onCreateSupply: (input: CreateSupplyRequestInput) => void;
+  autoOpenSupplyForm?: boolean;
 }
 
 const TABS: Array<{ id: RoomDrawerTab; label: string; icon: typeof Wrench }> = [
@@ -49,6 +50,7 @@ export function RoomDrawer({
   onTabChange,
   onCreateMaintenance,
   onCreateSupply,
+  autoOpenSupplyForm,
 }: RoomDrawerProps) {
   if (!room || !summary) {
     return null;
@@ -105,7 +107,7 @@ export function RoomDrawer({
             <MaintenanceTab room={room} reports={maintenanceReports} onCreate={onCreateMaintenance} />
           )}
           {activeTab === 'supply' && (
-            <SupplyTab room={room} requests={supplyRequests} onCreate={onCreateSupply} />
+            <SupplyTab room={room} requests={supplyRequests} onCreate={onCreateSupply} autoOpenForm={autoOpenSupplyForm} />
           )}
         </div>
       </aside>

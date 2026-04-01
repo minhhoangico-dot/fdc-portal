@@ -188,3 +188,21 @@ export interface CreateSupplyRequestInput {
     unit: string;
   }>;
 }
+
+export interface SupplyItemHistoryEntry {
+  id: string;
+  roomId: string;
+  itemName: string;
+  unit: string;
+  lastQty: number | null;
+  useCount: number;
+  lastUsedAt: string;
+}
+
+export interface SupplyItemSuggestion {
+  itemName: string;
+  unit: string;
+  lastQty: number | null;
+  useCount: number;
+  source: 'room' | 'global';
+}

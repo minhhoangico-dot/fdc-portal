@@ -25,6 +25,7 @@ interface FloorPlanCanvasProps {
   stats: RoomManagementStats;
   onSelectFloor: (floor: 1 | 2 | 3) => void;
   onSelectRoom: (roomId: string) => void;
+  onQuickSupply: (roomId: string) => void;
 }
 
 function renderWing(
@@ -32,6 +33,7 @@ function renderWing(
   selectedRoomId: string | null,
   roomSummaryMap: Record<string, RoomSummary>,
   onSelectRoom: (roomId: string) => void,
+  onQuickSupply: (roomId: string) => void,
 ) {
   return rooms.map((room) => (
     <RoomBlock
@@ -40,6 +42,7 @@ function renderWing(
       summary={roomSummaryMap[room.id]}
       selected={selectedRoomId === room.id}
       onSelect={onSelectRoom}
+      onQuickSupply={onQuickSupply}
     />
   ));
 }
@@ -54,6 +57,7 @@ export function FloorPlanCanvas({
   stats,
   onSelectFloor,
   onSelectRoom,
+  onQuickSupply,
 }: FloorPlanCanvasProps) {
   const activeFloor = floors.find((floor) => floor.floor === selectedFloor) ?? floors[0];
 
@@ -145,11 +149,11 @@ export function FloorPlanCanvas({
         <div className="mt-4 rounded-3xl border border-gray-200 bg-gray-50 p-4 md:p-6">
           {selectedLayout.kind === 'dual-wing' ? (
             <div className="grid grid-cols-[minmax(0,1fr)_58px_minmax(0,1fr)] gap-3 md:grid-cols-[minmax(0,1fr)_92px_minmax(0,1fr)] md:gap-5">
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 <div className="px-1 text-center text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
                   {selectedLayout.primaryWingLabel}
                 </div>
-                {renderWing(selectedFloorRooms.left, selectedRoomId, roomSummaryMap, onSelectRoom)}
+                {renderWing(selectedFloorRooms.left, selectedRoomId, roomSummaryMap, onSelectRoom, onQuickSupply)}
               </div>
 
               <div className="relative rounded-3xl border border-dashed border-gray-300 bg-white/70">
@@ -161,20 +165,20 @@ export function FloorPlanCanvas({
                 </div>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 <div className="px-1 text-center text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
                   {selectedLayout.secondaryWingLabel}
                 </div>
-                {renderWing(selectedFloorRooms.right, selectedRoomId, roomSummaryMap, onSelectRoom)}
+                {renderWing(selectedFloorRooms.right, selectedRoomId, roomSummaryMap, onSelectRoom, onQuickSupply)}
               </div>
             </div>
           ) : (
             <div className="grid grid-cols-[minmax(0,1fr)_58px] gap-3 md:grid-cols-[minmax(0,1fr)_92px] md:gap-5">
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 <div className="px-1 text-center text-xs font-semibold uppercase tracking-[0.2em] text-gray-400">
                   {selectedLayout.primaryWingLabel}
                 </div>
-                {renderWing(selectedFloorRooms.center, selectedRoomId, roomSummaryMap, onSelectRoom)}
+                {renderWing(selectedFloorRooms.center, selectedRoomId, roomSummaryMap, onSelectRoom, onQuickSupply)}
               </div>
 
               <div className="relative rounded-3xl border border-dashed border-gray-300 bg-white/70">

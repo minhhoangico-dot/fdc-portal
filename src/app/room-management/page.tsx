@@ -3,6 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import React from 'react';
 import { FloorPlanCanvas } from '@/components/room-management/FloorPlanCanvas';
 import { RoomDrawer } from '@/components/room-management/RoomDrawer';
 import { useRoomManagement } from '@/contexts/RoomManagementContext';
@@ -10,6 +11,13 @@ import { useRoomManagement } from '@/contexts/RoomManagementContext';
 export default function RoomManagementPage() {
   const roomManagement = useRoomManagement();
   const { selectedRoom, roomSummaryMap, recentActivity, state } = roomManagement;
+
+  const handleQuickSupply = React.useCallback(
+    (roomId: string) => {
+      roomManagement.selectRoom(roomId, 'supply');
+    },
+    [roomManagement],
+  );
 
   return (
     <>
@@ -23,6 +31,7 @@ export default function RoomManagementPage() {
         stats={roomManagement.stats}
         onSelectFloor={roomManagement.selectFloor}
         onSelectRoom={roomManagement.selectRoom}
+        onQuickSupply={handleQuickSupply}
       />
 
       <RoomDrawer
@@ -36,6 +45,7 @@ export default function RoomManagementPage() {
         onTabChange={roomManagement.setDrawerTab}
         onCreateMaintenance={roomManagement.createMaintenanceReport}
         onCreateSupply={roomManagement.createSupplyRequest}
+        autoOpenSupplyForm={state.activeDrawerTab === 'supply'}
       />
     </>
   );
