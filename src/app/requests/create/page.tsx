@@ -30,7 +30,7 @@ type ApprovalPreviewStep = {
 const buildFallbackApprovalSteps = (type: string, formData: any): ApprovalPreviewStep[] => {
   if (type === 'leave') {
     const leaveSteps: ApprovalPreviewStep[] = [
-      { id: 'preview-step-1', stepOrder: 1, approverRole: 'dept_head', status: 'pending' },
+      { id: 'preview-step-1', stepOrder: 1, approverRole: 'head_nurse', status: 'pending' },
     ];
 
     if (requiresDirectorApproval(formData.startDate, formData.endDate)) {
@@ -42,14 +42,14 @@ const buildFallbackApprovalSteps = (type: string, formData: any): ApprovalPrevie
 
   if (['purchase', 'payment', 'advance'].includes(type)) {
     return [
-      { id: 'preview-step-1', stepOrder: 1, approverRole: 'dept_head', status: 'pending' },
+      { id: 'preview-step-1', stepOrder: 1, approverRole: 'head_nurse', status: 'pending' },
       { id: 'preview-step-2', stepOrder: 2, approverRole: 'accountant', status: 'pending' },
       { id: 'preview-step-3', stepOrder: 3, approverRole: 'director', status: 'pending' },
     ];
   }
 
   if (type) {
-    return [{ id: 'preview-step-1', stepOrder: 1, approverRole: 'dept_head', status: 'pending' }];
+    return [{ id: 'preview-step-1', stepOrder: 1, approverRole: 'head_nurse', status: 'pending' }];
   }
 
   return [];
@@ -104,7 +104,7 @@ export default function CreateRequestPage() {
       return template.steps.map((step: any, idx: number) => ({
         id: `preview-template-step-${idx + 1}`,
         stepOrder: idx + 1,
-        approverRole: step.role || step.approver_role || step.approverRole || 'dept_head',
+        approverRole: step.role || step.approver_role || step.approverRole || 'head_nurse',
         status: 'pending',
       }));
     }

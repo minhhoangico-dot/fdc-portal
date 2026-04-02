@@ -1,18 +1,17 @@
 export type Role =
   | 'super_admin'
-  | 'head_nurse'
   | 'director'
   | 'chairman'
-  | 'dept_head'
-  | 'accountant'
-  | 'pharmacy_head'
-  | 'accounting_supervisor'
+  | 'head_nurse'
+  | 'business_head'
   | 'lab_head'
-  | 'chief_accountant'
+  | 'pharmacy_head'
+  | 'accountant'
   | 'internal_accountant'
-  | 'hr_records'
-  | 'staff'
-  | 'doctor';
+  | 'pharmacy_staff'
+  | 'lab_staff'
+  | 'business_staff'
+  | 'clinic_staff';
 
 export interface User {
   id: string;

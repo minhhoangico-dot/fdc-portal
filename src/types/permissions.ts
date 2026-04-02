@@ -6,7 +6,7 @@
 import type { ModuleKey } from '@/types/roleCatalog';
 import type { Role } from '@/types/user';
 
-export type PermissionModuleKey = ModuleKey | 'valuation' | 'lab_dashboard';
+export type PermissionModuleKey = ModuleKey | 'valuation' | 'lab_dashboard' | 'org_chart';
 
 export type PermissionAction =
   | 'dashboard.view'
@@ -37,6 +37,7 @@ export type PermissionAction =
   | 'tv_management.view'
   | 'portal.view'
   | 'admin.view'
-  | 'admin.manage';
+  | 'admin.manage'
+  | 'org_chart.view';
 
 export type PermissionMatrix = Record<PermissionAction, readonly Role[] | 'all'>;

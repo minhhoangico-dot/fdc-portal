@@ -39,7 +39,6 @@ BEGIN
         'dept_head',
         'accountant',
         'pharmacy_head',
-        'accounting_supervisor',
         'lab_head',
         'chief_accountant',
         'internal_accountant',
@@ -59,7 +58,6 @@ INSERT INTO public.fdc_role_catalog (
 )
 VALUES
   ('pharmacy_head', 'Truong phong duoc', 'Review va tong hop de xuat cho khu nha thuoc.', 7, true),
-  ('accounting_supervisor', 'Phu trach ke toan', 'Review va tong hop de xuat cho phong 304.', 8, true),
   ('lab_head', 'Truong phong xet nghiem', 'Review va tong hop de xuat cho khu xet nghiem.', 9, true),
   ('chief_accountant', 'Ke toan truong', 'Phe duyet tai chinh va forward thu cong khi can.', 10, true),
   ('internal_accountant', 'Ke toan noi bo', 'Nhan handoff xu ly tai chinh sau phe duyet.', 11, true),
@@ -100,7 +98,6 @@ BEGIN
           'dept_head',
           'accountant',
           'pharmacy_head',
-          'accounting_supervisor',
           'lab_head',
           'chief_accountant',
           'internal_accountant',
@@ -141,7 +138,6 @@ BEGIN
           'dept_head',
           'accountant',
           'pharmacy_head',
-          'accounting_supervisor',
           'lab_head',
           'chief_accountant',
           'internal_accountant',
@@ -180,7 +176,7 @@ CREATE TABLE IF NOT EXISTS public.fdc_room_intakes (
   priority TEXT NOT NULL DEFAULT 'normal' CHECK (priority IN ('low', 'normal', 'high', 'urgent')),
   review_group TEXT NOT NULL CHECK (review_group IN ('pharmacy', 'accounting_304', 'lab', 'general_care')),
   reviewer_role TEXT NOT NULL CHECK (
-    reviewer_role IN ('head_nurse', 'pharmacy_head', 'accounting_supervisor', 'lab_head')
+    reviewer_role IN ('head_nurse', 'pharmacy_head', 'accountant', 'lab_head')
   ),
   status TEXT NOT NULL DEFAULT 'submitted' CHECK (
     status IN ('submitted', 'in_review', 'consolidated', 'promoted', 'approved', 'rejected', 'cancelled')

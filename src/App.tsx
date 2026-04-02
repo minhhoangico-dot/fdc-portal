@@ -12,6 +12,7 @@ import InventoryPage from '@/app/inventory/page';
 import LabDashboardPage from '@/app/lab-dashboard/page';
 import LabDashboardTvPage from '@/app/lab-dashboard/tv/page';
 import LoginPage from '@/app/login/page';
+import OrgChartPage from '@/app/org-chart/page';
 import PharmacyPage from '@/app/pharmacy/page';
 import PortalPage from '@/app/portal/page';
 import RoomManagementMaintenancePage from '@/app/room-management/maintenance/page';
@@ -157,6 +158,14 @@ export default function App() {
                 element={
                   <RequireAuth moduleKey="inventory">
                     <ValuationPage />
+                  </RequireAuth>
+                }
+              />
+              <Route
+                path="/org-chart"
+                element={
+                  <RequireAuth moduleKey="org_chart">
+                    <OrgChartPage />
                   </RequireAuth>
                 }
               />

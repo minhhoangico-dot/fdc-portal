@@ -34,6 +34,7 @@ const MODULE_ACCESS_ACTIONS: Record<PermissionModuleKey, readonly PermissionActi
   admin: ['admin.view', 'admin.manage'],
   valuation: ['valuation.view'],
   lab_dashboard: ['lab_dashboard.view', 'lab_dashboard.operate'],
+  org_chart: ['org_chart.view'],
 };
 
 export function can(role: Role, action: PermissionAction): boolean {

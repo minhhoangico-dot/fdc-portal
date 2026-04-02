@@ -161,7 +161,7 @@ export function useDashboard() {
     attendanceSummary,
   };
 
-  if (user.role === 'dept_head') {
+  if (['business_head', 'pharmacy_head', 'lab_head', 'head_nurse'].includes(user.role)) {
     data.deptPendingApprovals = pendingApprovals.filter((request) => request.department === user.department);
   }
 

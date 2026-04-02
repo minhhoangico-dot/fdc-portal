@@ -15,10 +15,10 @@ test('super_admin sees a dedicated tv management nav item', () => {
 
 test('authenticated roles see the room management nav item', () => {
   const superAdminItems = getVisibleNavItems('super_admin');
-  const staffItems = getVisibleNavItems('staff');
+  const clinicStaffItems = getVisibleNavItems('clinic_staff');
 
   assert.equal(superAdminItems.some((item) => item.path === '/room-management'), true);
-  assert.equal(staffItems.some((item) => item.path === '/room-management'), true);
+  assert.equal(clinicStaffItems.some((item) => item.path === '/room-management'), true);
 });
 
 test('weekly report is no longer shown as a top-level nav item', () => {
@@ -33,20 +33,43 @@ test('non-admin roles do not see the tv management nav item', () => {
   assert.equal(items.some((item) => item.path === '/tv-management'), false);
 });
 
-test('new business roles see only the modules granted by the permission matrix', () => {
+test('department-specific roles see correct modules', () => {
   const pharmacyHeadItems = getVisibleNavItems('pharmacy_head');
-  const hrRecordsItems = getVisibleNavItems('hr_records');
-  const chiefAccountantItems = getVisibleNavItems('chief_accountant');
+  const internalAccountantItems = getVisibleNavItems('internal_accountant');
+  const businessHeadItems = getVisibleNavItems('business_head');
 
   assert.equal(pharmacyHeadItems.some((item) => item.path === '/pharmacy'), true);
   assert.equal(pharmacyHeadItems.some((item) => item.path === '/room-management'), true);
   assert.equal(pharmacyHeadItems.some((item) => item.path === '/admin'), false);
 
-  assert.equal(hrRecordsItems.some((item) => item.path === '/approvals'), true);
-  assert.equal(hrRecordsItems.some((item) => item.path === '/inventory'), false);
-  assert.equal(hrRecordsItems.some((item) => item.path === '/admin'), false);
+  assert.equal(internalAccountantItems.some((item) => item.path === '/approvals'), true);
+  assert.equal(internalAccountantItems.some((item) => item.path === '/inventory'), true);
+  assert.equal(internalAccountantItems.some((item) => item.path === '/admin'), false);
 
-  assert.equal(chiefAccountantItems.some((item) => item.path === '/approvals'), true);
-  assert.equal(chiefAccountantItems.some((item) => item.path === '/inventory'), true);
-  assert.equal(chiefAccountantItems.some((item) => item.path === '/admin'), false);
+  assert.equal(businessHeadItems.some((item) => item.path === '/approvals'), true);
+  assert.equal(businessHeadItems.some((item) => item.path === '/admin'), false);
+});
+
+test('department staff roles see limited modules', () => {
+  const pharmacyStaffItems = getVisibleNavItems('pharmacy_staff');
+  const labStaffItems = getVisibleNavItems('lab_staff');
+  const businessStaffItems = getVisibleNavItems('business_staff');
+
+  assert.equal(pharmacyStaffItems.some((item) => item.path === '/pharmacy'), true);
+  assert.equal(pharmacyStaffItems.some((item) => item.path === '/inventory'), true);
+  assert.equal(pharmacyStaffItems.some((item) => item.path === '/approvals'), false);
+
+  assert.equal(labStaffItems.some((item) => item.path === '/pharmacy'), false);
+  assert.equal(labStaffItems.some((item) => item.path === '/admin'), false);
+
+  assert.equal(businessStaffItems.some((item) => item.path === '/pharmacy'), false);
+  assert.equal(businessStaffItems.some((item) => item.path === '/inventory'), false);
+});
+
+test('all roles see the org chart nav item', () => {
+  const clinicStaffItems = getVisibleNavItems('clinic_staff');
+  const superAdminItems = getVisibleNavItems('super_admin');
+
+  assert.equal(clinicStaffItems.some((item) => item.path === '/org-chart'), true);
+  assert.equal(superAdminItems.some((item) => item.path === '/org-chart'), true);
 });

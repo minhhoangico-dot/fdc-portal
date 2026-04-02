@@ -48,7 +48,7 @@ export interface MaterialConsolidationPayload {
 
 export type RoomReviewerRole = Extract<
   Role,
-  'head_nurse' | 'pharmacy_head' | 'accounting_supervisor' | 'lab_head'
+  'head_nurse' | 'pharmacy_head' | 'accountant' | 'lab_head'
 >;
 
 export interface RoomWorkflowIntakeItem {

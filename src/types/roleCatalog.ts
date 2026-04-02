@@ -15,7 +15,8 @@ export type ModuleKey =
   | 'weekly_report'
   | 'tv_management'
   | 'portal'
-  | 'admin';
+  | 'admin'
+  | 'org_chart';
 
 export type RoleModuleVisibility = 'all' | readonly Role[];
 

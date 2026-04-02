@@ -8,6 +8,7 @@ import {
   Building2,
   CheckCircle,
   FileText,
+  GitBranch,
   Home,
   Monitor,
   Package,
@@ -45,6 +46,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Quản lý TV',
     icon: Monitor,
   },
+  { key: 'org_chart', path: '/org-chart', label: 'Sơ đồ tổ chức', icon: GitBranch },
   { key: 'portal', path: '/portal', label: 'Cá nhân', icon: User },
   { key: 'admin', path: '/admin', label: 'Quản trị', icon: Settings },
 ];

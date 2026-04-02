@@ -53,6 +53,8 @@ export default function AdminPage() {
     handleDeleteApprovalStep,
     handleSaveApprovalConfig,
     handleAddApprovalType,
+    savingApprovalConfigId,
+    approvalSaveMessage,
     misaKeywords,
     misaScanResults,
     toggleKeywordActive,
@@ -154,6 +156,8 @@ export default function AdminPage() {
             onDeleteStep={handleDeleteApprovalStep}
             onSaveConfig={handleSaveApprovalConfig}
             onAddType={handleAddApprovalType}
+            savingConfigId={savingApprovalConfigId}
+            saveMessage={approvalSaveMessage}
           />
         )}
 

@@ -64,14 +64,14 @@ interface RoomIntakeItemRow {
 interface HandoffTarget {
   id: string;
   name: string;
-  role: Extract<Role, 'internal_accountant' | 'hr_records'>;
+  role: Extract<Role, 'internal_accountant'>;
   department?: string;
   avatarUrl?: string | null;
 }
 
 interface ApprovalActionOptions {
   handoffAssigneeId?: string;
-  handoffAssigneeRole?: Extract<Role, 'internal_accountant' | 'hr_records'>;
+  handoffAssigneeRole?: Extract<Role, 'internal_accountant'>;
 }
 
 const ROOM_REVIEW_STATUSES = ['submitted', 'in_review'] as const;
@@ -282,7 +282,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
     supabase
       .from('fdc_user_mapping')
       .select('id, full_name, role, department_name, avatar_url')
-      .in('role', ['internal_accountant', 'hr_records'])
+      .in('role', ['internal_accountant'])
       .eq('is_active', true)
       .order('full_name', { ascending: true })
       .then(({ data, error }) => {
@@ -416,7 +416,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       request: Request,
       sourceStepId: string | undefined,
       assigneeId: string,
-      assigneeRole: Extract<Role, 'internal_accountant' | 'hr_records'>,
+      assigneeRole: Extract<Role, 'internal_accountant'>,
       note?: string,
     ) => {
       if (!user) return;
@@ -609,7 +609,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
     await fetchApprovals();
   };
 
-  const resolveRoleTarget = useCallback(async (role: Extract<Role, 'chief_accountant' | 'internal_accountant' | 'hr_records'>) => {
+  const resolveRoleTarget = useCallback(async (role: Extract<Role, 'super_admin' | 'internal_accountant'>) => {
     const { data, error } = await supabase
       .from('fdc_user_mapping')
       .select('id, full_name, role')
@@ -662,7 +662,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
         items: aggregatedItems,
       } satisfies MaterialConsolidationInput);
 
-      const chiefAccountant = await resolveRoleTarget('chief_accountant');
+      const chiefAccountant = await resolveRoleTarget('super_admin');
       const { data: requestRow, error: requestError } = await supabase
         .from('fdc_approval_requests')
         .insert({
@@ -690,7 +690,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const { error: stepError } = await supabase.from('fdc_approval_steps').insert({
         request_id: requestRow.id,
         step_order: 1,
-        approver_role: 'chief_accountant',
+        approver_role: 'super_admin',
         approver_id: chiefAccountant.id,
         status: 'approved',
         acted_at: new Date().toISOString(),
@@ -702,13 +702,13 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const { data: downstreamTargets, error: targetsError } = await supabase
         .from('fdc_user_mapping')
         .select('id, role')
-        .in('role', ['internal_accountant', 'hr_records'])
+        .in('role', ['internal_accountant'])
         .eq('is_active', true)
         .order('full_name', { ascending: true });
 
       if (targetsError) throw targetsError;
 
-      const selectedTargets = new Map<string, { id: string; role: Extract<Role, 'internal_accountant' | 'hr_records'> }>();
+      const selectedTargets = new Map<string, { id: string; role: Extract<Role, 'internal_accountant'> }>();
       for (const target of downstreamTargets || []) {
         if (!selectedTargets.has(target.role)) {
           selectedTargets.set(target.role, { id: target.id, role: target.role });
@@ -771,7 +771,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const intake = reviewerIntakes.find((item) => item.id === intakeId);
       if (!intake || intake.intakeType !== 'maintenance') return null;
 
-      const chiefAccountant = await resolveRoleTarget('chief_accountant');
+      const chiefAccountant = await resolveRoleTarget('super_admin');
       const metadata: RoomWorkflowMetadata = {
         workflowKind: 'room_maintenance',
         roomId: intake.roomKey,
@@ -805,7 +805,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const { error: stepError } = await supabase.from('fdc_approval_steps').insert({
         request_id: requestRow.id,
         step_order: 1,
-        approver_role: 'chief_accountant',
+        approver_role: 'super_admin',
         approver_id: chiefAccountant.id,
         status: 'pending',
       });

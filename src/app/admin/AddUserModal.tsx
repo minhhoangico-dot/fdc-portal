@@ -26,7 +26,7 @@ export function AddUserModal({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [department, setDepartment] = useState("");
-  const [role, setRole] = useState<Role>("staff");
+  const [role, setRole] = useState<Role>("clinic_staff");
   const [hikvisionEmployeeId, setHikvisionEmployeeId] = useState("");
   const [isCheckingHik, setIsCheckingHik] = useState(false);
   const [hikStatus, setHikStatus] = useState<string | null>(null);

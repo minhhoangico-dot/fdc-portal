@@ -25,7 +25,7 @@ test('approval queue separates pending approvals, reviewer intakes, and downstre
           {
             id: 'step-1',
             stepOrder: 1,
-            approverRole: 'chief_accountant',
+            approverRole: 'super_admin',
             approverId: 'u-chief',
             status: 'pending',
           },
@@ -72,7 +72,7 @@ test('approval queue separates pending approvals, reviewer intakes, and downstre
         id: 'handoff-1',
         requestId: 'req-1',
         assigneeId: 'u-hr',
-        assigneeRole: 'hr_records',
+        assigneeRole: 'internal_accountant',
         assigneeName: 'Tran Thi B',
         status: 'pending',
         createdAt: '2026-03-31T10:00:00Z',
@@ -105,7 +105,7 @@ test('approval queue flags chief accountant maintenance approvals that require m
           {
             id: 'step-2',
             stepOrder: 1,
-            approverRole: 'chief_accountant',
+            approverRole: 'super_admin',
             approverId: 'u-chief',
             status: 'pending',
           },

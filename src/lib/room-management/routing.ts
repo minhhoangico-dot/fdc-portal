@@ -35,7 +35,7 @@ export function getReviewerRoleForGroup(group: RoomReviewGroup): RoomReviewerRol
     case 'pharmacy':
       return 'pharmacy_head';
     case 'accounting_304':
-      return 'accounting_supervisor';
+      return 'accountant';
     case 'lab':
       return 'lab_head';
     case 'general_care':

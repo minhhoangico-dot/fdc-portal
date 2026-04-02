@@ -1,39 +1,31 @@
 import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useRoleCatalog } from "@/contexts/RoleCatalogContext";
+import type {
+  ApprovalConfigDraft,
+  ApprovalConfigStepField,
+} from "@/lib/approval-config";
 import { REQUEST_TYPES } from "@/lib/constants";
 
-interface ApprovalStep {
-  id: string;
-  role: string;
-  sla_hours?: number;
-  slaHours?: number;
-  auto_approve?: boolean;
-  autoApprove?: boolean;
-  can_escalate?: boolean;
-  canEscalate?: boolean;
-}
-
-interface ApprovalConfig {
-  id: string;
-  requestType: string;
-  steps: ApprovalStep[];
-}
-
 interface ApprovalTabProps {
-  approvalConfigs: ApprovalConfig[];
-  selectedConfig: ApprovalConfig | null;
-  onSelectConfig: (config: ApprovalConfig) => void;
+  approvalConfigs: ApprovalConfigDraft[];
+  selectedConfig: ApprovalConfigDraft | null;
+  onSelectConfig: (config: ApprovalConfigDraft) => void;
   onUpdateStep: (
     configId: string,
     stepIndex: number,
-    field: "role" | "sla_hours" | "auto_approve" | "can_escalate",
-    value: any,
+    field: ApprovalConfigStepField,
+    value: string | number | boolean,
   ) => void;
   onAddStep: (configId: string) => void;
   onDeleteStep: (configId: string, stepIndex: number) => void;
   onSaveConfig: (configId: string) => void;
   onAddType: (requestType: string) => void;
+  savingConfigId?: string | null;
+  saveMessage?: {
+    type: "success" | "error";
+    text: string;
+  } | null;
 }
 
 export function ApprovalTab({
@@ -45,6 +37,8 @@ export function ApprovalTab({
   onDeleteStep,
   onSaveConfig,
   onAddType,
+  savingConfigId,
+  saveMessage,
 }: ApprovalTabProps) {
   const { getAssignableRoles, getRoleLabel } = useRoleCatalog();
 
@@ -83,12 +77,24 @@ export function ApprovalTab({
       <div className="flex-1 p-6">
         {selectedConfig ? (
           <>
+            {saveMessage && (
+              <div
+                className={`mb-4 rounded-xl border px-4 py-3 text-sm ${
+                  saveMessage.type === "success"
+                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                    : "border-rose-200 bg-rose-50 text-rose-700"
+                }`}
+              >
+                {saveMessage.text}
+              </div>
+            )}
             <div className="mb-6 flex items-center justify-between">
               <h2 className="text-lg font-bold text-gray-900">
                 Quy trình: {getRequestTypeLabel(selectedConfig.requestType)}
               </h2>
               <button
-                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+                disabled={savingConfigId === selectedConfig.id}
+                className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
                 onClick={() => onSaveConfig(selectedConfig.id)}
               >
                 Lưu thay đổi
@@ -112,9 +118,7 @@ export function ApprovalTab({
                       <div className="rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm">
                         {getRoleLabel(step.role)}
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">
-                        {step.sla_hours || step.slaHours}h
-                      </div>
+                      <div className="mt-1 text-xs text-gray-500">{step.sla_hours}h</div>
                     </div>
                   </React.Fragment>
                 ))}
@@ -167,7 +171,7 @@ export function ApprovalTab({
                         </label>
                         <input
                           type="number"
-                          value={step.sla_hours || step.slaHours}
+                          value={step.sla_hours}
                           className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
                           onChange={(event) =>
                             onUpdateStep(
@@ -182,7 +186,7 @@ export function ApprovalTab({
                       <div className="mt-6 flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={step.auto_approve ?? step.autoApprove}
+                          checked={step.auto_approve}
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           onChange={(event) =>
                             onUpdateStep(
@@ -198,7 +202,7 @@ export function ApprovalTab({
                       <div className="mt-6 flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={step.can_escalate ?? step.canEscalate}
+                          checked={step.can_escalate}
                           className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                           onChange={(event) =>
                             onUpdateStep(

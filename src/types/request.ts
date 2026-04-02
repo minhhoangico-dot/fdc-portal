@@ -48,7 +48,7 @@ export interface RequestHandoff {
   requestId: string;
   sourceStepId?: string;
   assigneeId: string;
-  assigneeRole: Extract<Role, 'internal_accountant' | 'hr_records'>;
+  assigneeRole: Extract<Role, 'internal_accountant'>;
   assigneeName?: string | null;
   assignedById?: string;
   assignedByName?: string | null;

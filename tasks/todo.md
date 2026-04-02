@@ -2,10 +2,10 @@
 
 ## Current Task
 
-- Task ID: `supply-item-history`
+- Task ID: `role-schema-rebuild-backend`
 - Owner: `data-worker`
 - Status: `rolled-out`
-- Spec: `tasks/active/2026-04-01-supply-item-history.md`
+- Spec: `tasks/active/2026-04-01-role-schema-rebuild-backend.md`
 
 ## Operating Checklist
 
@@ -27,6 +27,22 @@
 - [x] Review
 - [x] Lessons and closeout
 
+## 2026-04-02 Approval Config Save
+
+- Scope: fix the admin approval-config flow so step edits do not race each other or get overwritten by a stale explicit save.
+- Checklist:
+  - [x] Refresh workflow context and capture the focused task spec
+  - [x] Add the failing regression test for stale approval-config saves
+  - [x] Refactor the admin approval-config flow to use a draft + explicit save
+  - [x] Run targeted verification and record evidence
+- Verification evidence:
+  - `cmd /c npx tsx --test test\\unit\\approvalConfigState.test.ts`: failed first because `src/lib/approval-config` did not exist, then passed after the draft/save helper and regression tests landed.
+  - `cmd /c npm run build`: passed after rewiring the admin approval-config flow; emitted `dist/assets/index-BLBpW_lM.js`.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://0823eb76.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/` and `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/admin?tab=approval`: both returned `200` and referenced `assets/index-BLBpW_lM.js`.
+- Residual risk:
+  - Browser-driven smoke for `/admin?tab=approval` will still be useful after the targeted test/build pass because this fix changes async editing behavior in the live form.
+
 ## 2026-04-01 Supply Item History
 
 - Scope: add the room-management supply item history backend table, RLS, conflict-update behavior, and live rollout verification on the self-hosted Supabase instance.
@@ -45,6 +61,68 @@
   - `cmd /c npx ts-node scripts/verifySupplyItemHistoryMigration.ts` in `fdc-lan-bridge`: passed after rollout with `PASS: supply item history schema and behavior verified.`
 - Residual risk:
   - Manual `UPDATE` statements against existing rows also increment `use_count`, which is intentional for the direct upsert path but should be remembered during ad-hoc SQL edits.
+
+## 2026-04-01 User Prune
+
+- Scope: keep only `minh@fdc.vn` and `pthue@fdc.vn` as live sign-in users, while preserving any historical rows in `fdc_user_mapping` that cannot be hard-deleted because of foreign-key references.
+- Checklist:
+  - [x] Refresh workflow context and save the focused task spec
+  - [x] Inspect live auth, mapping, and foreign-key usage
+  - [x] Remove or deactivate non-kept users according to live constraints
+  - [x] Re-run verification and record evidence
+- Verification evidence:
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: listed live Supabase Auth users and confirmed the pre-change auth set was `huong@fdc.vn`, `lan@fdc.vn`, `minh@fdc.vn`, `nam@fdc.vn`, `pthue@fdc.vn`, `thao@fdc.vn`, `tuan@fdc.vn`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: queried `public.fdc_user_mapping` and confirmed the same seven mapped emails before deletion.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: queried `information_schema` foreign keys and the live reference counts; all five non-kept users had zero rows in every table referencing `fdc_user_mapping`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: deleted five non-kept auth users with `auth.admin.deleteUser(...)`, then deleted five matching `fdc_user_mapping` rows via `POST /pg/query`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: post-change auth verification returned only `minh@fdc.vn` and `pthue@fdc.vn`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: post-change `public.fdc_user_mapping` verification returned only `minh@fdc.vn` and `pthue@fdc.vn`, both `is_active = true`.
+- Residual risk:
+  - The removed users are gone from live Auth and mapping tables; restoring them later would require manual recreation.
+
+## 2026-04-01 Accounting Supervisor Removal
+
+- Scope: remove `accounting_supervisor` from portal code and the live Supabase schema, and transfer all of its reviewer behavior to `accountant`.
+- Checklist:
+  - [x] Capture the task spec, design, and implementation plan
+  - [x] Add failing tests for the new `accountant` routing and removed-role behavior
+  - [x] Remove `accounting_supervisor` from the app code
+  - [x] Add and apply the live cleanup migration
+  - [x] Re-run verification and record evidence
+- Verification evidence:
+  - Pre-change live inspection via `@' ... '@ | node -` in `fdc-lan-bridge`: `fdc_role_catalog` still contains `accounting_supervisor`, but `fdc_user_mapping`, `fdc_approval_steps`, and `fdc_room_intakes` currently have zero rows using that role.
+  - `cmd /c npx tsx --test test\\unit\\permissionMatrix.test.ts test\\unit\\roomWorkflowRouting.test.ts test\\unit\\accountingSupervisorRemoval.test.ts`: failed first with `accountant` lacking room-review rights, `accounting_304` still resolving to `accounting_supervisor`, and stale role-catalog rows still being accepted; passed after the app-side role removal.
+  - `cmd /c npm run build`: passed after removing the role from app types, permissions, routing, and role catalog defaults; emitted `dist/assets/index-DQKtLWZF.js`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: applied `sql/20260401_remove_accounting_supervisor.sql` to the live Supabase `POST /pg/query` endpoint successfully.
+  - Post-change live inspection via `@' ... '@ | node -` in `fdc-lan-bridge`: `fdc_role_catalog` now returns only `accountant`, `chief_accountant`, and `internal_accountant`; `fdc_user_mapping`, `fdc_approval_steps`, and `fdc_room_intakes` return no rows with `accounting_supervisor`.
+  - Post-change constraint inspection via `@' ... '@ | node -` in `fdc-lan-bridge`: `chk_fdc_role_catalog_role_key`, `chk_fdc_user_mapping_role`, `chk_fdc_approval_steps_approver_role`, and `chk_fdc_room_intakes_reviewer_role` all list `accountant` and no longer list `accounting_supervisor`.
+  - `Get-ChildItem ... src ... | Select-String -Pattern \"accounting_supervisor\"`: returned no matches, confirming runtime source cleanup.
+- Residual risk:
+  - The portal bundle was rebuilt locally, but no frontend deployment was run in this task; production UI will reflect the code removal only after the next deploy.
+
+## 2026-04-01 Role Schema Rebuild Backend
+
+- Scope: add the backend SQL migration that replaces the legacy 13-role schema with the new 13-role model used by the completed frontend, including data rewrites, role-catalog metadata, template JSON cleanup, and role-related DB checks.
+- Checklist:
+  - [x] Refresh workflow context and confirm the role migration map against the new frontend role set
+  - [x] Add a failing migration-contract test for the SQL deliverable
+  - [x] Create `sql/20260401_role_schema_rebuild.sql`
+  - [x] Run targeted local verification on the migration content
+  - [x] Apply the migration to Supabase
+  - [x] Run the live verification queries from the task spec
+  - [x] Rebuild and deploy the current portal bundle after the backend rollout
+- Verification evidence:
+  - `cmd /c npx tsx --test test\\unit\\roleSchemaMigration.test.ts`: failed first because `sql/20260401_role_schema_rebuild.sql` did not exist.
+  - `cmd /c npx tsx --test test\\unit\\roleSchemaMigration.test.ts`: passed after adding the migration; the test asserts the legacy role rewrites, role-catalog updates, refreshed role constraints, request-handoff constraint cleanup, and the updated request-visibility helper.
+  - `cmd /c npx tsx --test test\\unit\\permissionMatrix.test.ts test\\unit\\navigation.test.ts test\\unit\\approvalsQueue.test.ts test\\unit\\roomWorkflowRouting.test.ts test\\unit\\roleCatalog.test.ts test\\unit\\accountingSupervisorRemoval.test.ts test\\unit\\roleSchemaMigration.test.ts`: first failed on the existing `roleCatalog` mojibake detector, then passed `22/22` after broadening the UTF-8 mojibake pattern in `src/lib/role-catalog.ts`.
+  - `cmd /c npm run build`: passed; emitted `dist/assets/index-CLjQeTWA.js` and `dist/assets/index-DSn_N9CU.css`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: applied all 8 SQL chunks from `sql/20260401_role_schema_rebuild.sql` to `POST /pg/query` successfully.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: post-change verification returned no old roles in `fdc_user_mapping` or `fdc_approval_steps`, 13 active role-catalog rows in the expected order, refreshed role constraints on `fdc_role_catalog`, `fdc_user_mapping`, `fdc_approval_steps`, `fdc_request_handoffs`, no stale role keys inside `fdc_approval_templates.steps`, and no `chief_accountant` references inside `fdc_can_view_request` or `fdc_can_act_on_step`.
+  - `cmd /c npx wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://74465313.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://74465313.fdc-portal.pages.dev/` and `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/`: both returned HTML referencing `assets/index-CLjQeTWA.js`.
+  - `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/approvals` and `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/org-chart`: both returned `200`.
+- Residual risk:
+  - Operators with an already-open portal tab may need a hard refresh or service-worker refresh before the new role/navigation bundle is visible locally.
 
 ## 2026-03-31 Room Management Full-System
 

@@ -146,7 +146,7 @@ export function useRequests() {
 
           if (!finalApproverId && step.approverRole) {
             let query = supabase.from('fdc_user_mapping').select('id').eq('role', step.approverRole);
-            if (step.approverRole === 'dept_head') {
+            if (step.approverRole === 'business_head') {
               query = query.eq('department_name', user.department || 'Chung');
             }
 

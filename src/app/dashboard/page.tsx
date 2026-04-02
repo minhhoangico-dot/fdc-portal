@@ -141,7 +141,7 @@ export default function DashboardPage() {
           )}
 
           {/* DEPT HEAD Widgets */}
-          {user.role === 'dept_head' && deptPendingApprovals && (
+          {['business_head', 'pharmacy_head', 'lab_head', 'head_nurse'].includes(user.role) && deptPendingApprovals && (
             <div className="bg-white rounded-xl border border-gray-200 p-5">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-lg font-semibold text-gray-900">Chờ duyệt khoa/phòng ({deptPendingApprovals.length})</h2>

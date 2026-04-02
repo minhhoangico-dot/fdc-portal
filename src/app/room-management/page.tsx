@@ -5,14 +5,17 @@
 
 import { ClipboardList, Layers3, Wrench } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ROOM_CATALOG } from '@/lib/room-management/catalog';
-import { RoomDetailPanel } from '@/components/room-management/RoomDetailPanel';
-import { RoomSidebar } from '@/components/room-management/RoomSidebar';
+import { FloorPlanCanvas } from '@/components/room-management/FloorPlanCanvas';
+import { RoomDrawer } from '@/components/room-management/RoomDrawer';
 import { useRoomManagement } from '@/contexts/RoomManagementContext';
 
 export default function RoomManagementPage() {
   const ctx = useRoomManagement();
   const { selectedRoom, roomSummaryMap, state } = ctx;
+
+  const handleQuickSupply = (roomId: string) => {
+    ctx.selectRoom(roomId, 'supply');
+  };
 
   return (
     <div className="space-y-4">
@@ -25,7 +28,9 @@ export default function RoomManagementPage() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-gray-900">Quản lý phòng</h1>
-              <p className="text-sm text-gray-500">Chọn phòng bên trái, đề xuất vật tư bên phải.</p>
+              <p className="text-sm text-gray-500">
+                Sơ đồ trực quan theo tầng. Nhấn phòng để xem chi tiết & đề xuất vật tư.
+              </p>
             </div>
           </div>
 
@@ -64,41 +69,37 @@ export default function RoomManagementPage() {
         </div>
       </section>
 
-      {/* ── Master-Detail Layout ────────────────────────────── */}
-      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
-        {/* Left: Room List */}
-        <div className="lg:sticky lg:top-4 lg:max-h-[calc(100vh-8rem)] lg:self-start">
-          <RoomSidebar
-            floors={ctx.floors}
-            rooms={ROOM_CATALOG}
-            selectedFloor={state.selectedFloor}
-            selectedRoomId={state.selectedRoomId}
-            roomSummaryMap={roomSummaryMap}
-            onSelectFloor={ctx.selectFloor}
-            onSelectRoom={ctx.selectRoom}
-          />
-        </div>
+      {/* ── Floor Plan ──────────────────────────────────────── */}
+      <FloorPlanCanvas
+        floors={ctx.floors}
+        selectedFloor={state.selectedFloor}
+        selectedLayout={ctx.selectedLayout}
+        selectedFloorRooms={ctx.selectedFloorRooms}
+        selectedRoomId={state.selectedRoomId}
+        roomSummaryMap={roomSummaryMap}
+        onSelectFloor={ctx.selectFloor}
+        onSelectRoom={(roomId) => ctx.selectRoom(roomId)}
+        onQuickSupply={handleQuickSupply}
+      />
 
-        {/* Right: Detail Panel */}
-        <div className="min-w-0">
-          {selectedRoom && roomSummaryMap[selectedRoom.id] ? (
-            <RoomDetailPanel
-              room={selectedRoom}
-              summary={roomSummaryMap[selectedRoom.id]}
-              supplyRequests={state.supplyRequests.filter((r) => r.roomId === selectedRoom.id)}
-              maintenanceReports={state.maintenanceReports.filter((r) => r.roomId === selectedRoom.id)}
-              onCreateSupply={ctx.createSupplyRequest}
-              onCreateMaintenance={ctx.createMaintenanceReport}
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-gray-50 py-20 text-center">
-              <ClipboardList className="h-10 w-10 text-gray-300" />
-              <p className="mt-3 text-sm font-medium text-gray-500">Chọn một phòng để bắt đầu đề xuất vật tư</p>
-              <p className="mt-1 text-xs text-gray-400">Danh sách phòng theo từng tầng nằm bên trái</p>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* ── Room Detail Drawer ──────────────────────────────── */}
+      <RoomDrawer
+        room={selectedRoom}
+        activeTab={state.activeDrawerTab}
+        summary={selectedRoom ? (roomSummaryMap[selectedRoom.id] ?? null) : null}
+        activity={ctx.recentActivity}
+        maintenanceReports={state.maintenanceReports.filter(
+          (r) => selectedRoom && r.roomId === selectedRoom.id,
+        )}
+        supplyRequests={state.supplyRequests.filter(
+          (r) => selectedRoom && r.roomId === selectedRoom.id,
+        )}
+        onClose={ctx.closeRoom}
+        onTabChange={ctx.setDrawerTab}
+        onCreateMaintenance={ctx.createMaintenanceReport}
+        onCreateSupply={ctx.createSupplyRequest}
+        autoOpenSupplyForm={state.activeDrawerTab === 'supply'}
+      />
     </div>
   );
 }

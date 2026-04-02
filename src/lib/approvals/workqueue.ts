@@ -33,7 +33,7 @@ export function requiresManualForwardChoice(request: Request): boolean {
 
   return Boolean(
     request.metadata?.workflowKind === 'room_maintenance' &&
-      pendingStep?.approverRole === 'chief_accountant' &&
+      pendingStep?.approverRole === 'super_admin' &&
       (request.status === 'pending' || request.status === 'escalated'),
   );
 }

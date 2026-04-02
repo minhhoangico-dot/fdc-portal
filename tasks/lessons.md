@@ -147,3 +147,11 @@ These are not corrections. They are durable starting points for new agents:
 - Preventive rule: When a user says "complete the module" after a mock or prototype pass, explicitly test whether they mean persistence only, workflow integration, or a larger role/permission redesign before moving into implementation.
 - Trigger to re-read: Any future follow-up request that asks to make a mock module "complete," especially when the feature touches requests, approvals, or role-based access.
 - Verification to add next time: Before planning implementation, write down the required roles, approval gates, forward behavior, and portal modules affected, then confirm whether permissions are additive or require a new matrix.
+
+### 2026-04-02 - JSON-backed admin forms should draft locally and save once
+
+- Context: The user reported that changes in the admin approval-configuration tab would not stay saved.
+- What went wrong: `useAdmin` pushed the whole `fdc_approval_templates.steps` array to Supabase on every field edit, using the state snapshot captured at the start of each async handler. Multiple quick edits or an immediate click on `Luu thay doi` could therefore send an older copy of the array after a newer one and overwrite the latest changes.
+- Preventive rule: For admin forms that edit a composite JSON payload, keep edits in local draft state and persist only the latest draft from an explicit save action. Avoid whole-document writes from per-field async handlers unless the writes are serialized against the newest draft.
+- Trigger to re-read: Any future change to `src/viewmodels/useAdmin.ts`, approval-template editors, or other admin screens that update JSON blobs such as `steps`, `settings`, or `metadata`.
+- Verification to add next time: Add a regression test that applies multiple sequential local edits before building the save payload, then run the targeted test plus `npm run build`.

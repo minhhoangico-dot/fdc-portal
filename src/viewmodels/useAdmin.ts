@@ -1,5 +1,15 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import {
+  addApprovalConfigStep,
+  buildApprovalConfigSavePayload,
+  deleteApprovalConfigStep,
+  normalizeApprovalConfig,
+  selectApprovalConfig,
+  type ApprovalConfigDraft,
+  type ApprovalConfigStepField,
+  updateApprovalConfigStep,
+} from "@/lib/approval-config";
 import { supabase } from "@/lib/supabase";
 import { BRIDGE_HEALTH_ROW_ID, isBridgeHeartbeatStale } from "@/lib/bridge";
 import { User, Role } from "@/types/user";
@@ -16,6 +26,11 @@ interface UseAdminOptions {
 }
 
 const EMPTY_PRELOADS: AdminPreload[] = [];
+
+type ApprovalSaveMessage = {
+  type: "success" | "error";
+  text: string;
+};
 
 export function useAdmin(options: UseAdminOptions = {}) {
   const { user: currentUser } = useAuth();
@@ -194,102 +209,131 @@ export function useAdmin(options: UseAdminOptions = {}) {
   };
 
   // Approval Config state
-  const [approvalConfigs, setApprovalConfigs] = useState<any[]>([]);
-  const [selectedConfig, setSelectedConfig] = useState<any>(null);
+  const [approvalConfigs, setApprovalConfigs] = useState<ApprovalConfigDraft[]>([]);
+  const approvalConfigsRef = useRef<ApprovalConfigDraft[]>([]);
+  const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
+  const [savingApprovalConfigId, setSavingApprovalConfigId] = useState<string | null>(null);
+  const [approvalSaveMessage, setApprovalSaveMessage] = useState<ApprovalSaveMessage | null>(
+    null,
+  );
+
+  const commitApprovalConfigs = useCallback(
+    (
+      nextConfigsOrUpdater:
+        | ApprovalConfigDraft[]
+        | ((currentConfigs: ApprovalConfigDraft[]) => ApprovalConfigDraft[]),
+    ) => {
+      setApprovalConfigs((currentConfigs) => {
+        const nextConfigs =
+          typeof nextConfigsOrUpdater === "function"
+            ? nextConfigsOrUpdater(currentConfigs)
+            : nextConfigsOrUpdater;
+        approvalConfigsRef.current = nextConfigs;
+        return nextConfigs;
+      });
+    },
+    [],
+  );
+
+  const selectedConfig = useMemo(
+    () => selectApprovalConfig(approvalConfigs, selectedConfigId),
+    [approvalConfigs, selectedConfigId],
+  );
+
+  const setSelectedConfig = useCallback((config: ApprovalConfigDraft | null) => {
+    setSelectedConfigId(config?.id ?? null);
+  }, []);
 
   const fetchApprovalConfigs = useCallback(async () => {
     if (!enabled) return;
 
-    const { data } = await supabase.from("fdc_approval_templates").select("*");
-    if (data) {
-      const mapped = data.map((c) => ({
-        id: c.id,
-        requestType: c.request_type,
-        name: c.name,
-        isActive: c.is_active,
-        steps: c.steps || [],
-      }));
-      setApprovalConfigs(mapped);
-      if (mapped.length > 0 && !selectedConfig) setSelectedConfig(mapped[0]);
+    const { data, error } = await supabase.from("fdc_approval_templates").select("*");
+    if (error) {
+      console.error("Failed to fetch approval configs:", error);
+      return;
     }
-  }, [enabled, selectedConfig]);
 
-  const persistApprovalSteps = async (configId: string, steps: any[]) => {
-    await supabase
-      .from("fdc_approval_templates")
-      .update({ steps })
-      .eq("id", configId);
-  };
+    const mapped = (data ?? []).map((config) =>
+      normalizeApprovalConfig({
+        id: config.id,
+        request_type: config.request_type,
+        name: config.name,
+        is_active: config.is_active,
+        steps: config.steps || [],
+      }),
+    );
+
+    commitApprovalConfigs(mapped);
+    setApprovalSaveMessage(null);
+    setSelectedConfigId((currentConfigId) => {
+      if (mapped.length === 0) {
+        return null;
+      }
+
+      return mapped.some((config) => config.id === currentConfigId)
+        ? currentConfigId
+        : mapped[0].id;
+    });
+  }, [enabled, commitApprovalConfigs]);
 
   const handleUpdateApprovalStep = async (
     configId: string,
     stepIndex: number,
-    field: "role" | "sla_hours" | "auto_approve" | "can_escalate",
-    value: any,
+    field: ApprovalConfigStepField,
+    value: string | number | boolean,
   ) => {
-    const current = approvalConfigs.find((c) => c.id === configId);
-    if (!current) return;
-    const nextSteps = current.steps.map((s: any, idx: number) =>
-      idx === stepIndex ? { ...s, [field]: value } : s,
+    commitApprovalConfigs((currentConfigs) =>
+      updateApprovalConfigStep(currentConfigs, configId, stepIndex, field, value),
     );
-    await persistApprovalSteps(configId, nextSteps);
-    const nextConfigs = approvalConfigs.map((c) =>
-      c.id === configId ? { ...c, steps: nextSteps } : c,
-    );
-    setApprovalConfigs(nextConfigs);
-    if (selectedConfig?.id === configId) {
-      setSelectedConfig({ ...current, steps: nextSteps });
-    }
+    setApprovalSaveMessage(null);
   };
 
   const handleAddApprovalStep = async (configId: string) => {
-    const current = approvalConfigs.find((c) => c.id === configId);
-    if (!current) return;
-    const nextSteps = [
-      ...current.steps,
-      {
-        id: `temp-${Date.now()}`,
-        role: "dept_head",
-        sla_hours: 24,
-        auto_approve: false,
-        can_escalate: false,
-      },
-    ];
-    await persistApprovalSteps(configId, nextSteps);
-    const nextConfigs = approvalConfigs.map((c) =>
-      c.id === configId ? { ...c, steps: nextSteps } : c,
+    commitApprovalConfigs((currentConfigs) =>
+      addApprovalConfigStep(currentConfigs, configId),
     );
-    setApprovalConfigs(nextConfigs);
-    if (selectedConfig?.id === configId) {
-      setSelectedConfig({ ...current, steps: nextSteps });
-    }
+    setApprovalSaveMessage(null);
   };
 
   const handleDeleteApprovalStep = async (configId: string, stepIndex: number) => {
-    const current = approvalConfigs.find((c) => c.id === configId);
-    if (!current) return;
-    const nextSteps = current.steps.filter((_s: any, idx: number) => idx !== stepIndex);
-    await persistApprovalSteps(configId, nextSteps);
-    const nextConfigs = approvalConfigs.map((c) =>
-      c.id === configId ? { ...c, steps: nextSteps } : c,
+    commitApprovalConfigs((currentConfigs) =>
+      deleteApprovalConfigStep(currentConfigs, configId, stepIndex),
     );
-    setApprovalConfigs(nextConfigs);
-    if (selectedConfig?.id === configId) {
-      setSelectedConfig({ ...current, steps: nextSteps });
-    }
+    setApprovalSaveMessage(null);
   };
 
   const handleSaveApprovalConfig = async (configId: string) => {
-    const current = approvalConfigs.find((c) => c.id === configId);
-    if (!current) return;
-    await supabase
-      .from("fdc_approval_templates")
-      .update({
-        name: current.name,
-        is_active: current.isActive,
-        steps: current.steps,
-      })
-      .eq("id", configId);
+    setSavingApprovalConfigId(configId);
+    setApprovalSaveMessage(null);
+
+    try {
+      const payload = buildApprovalConfigSavePayload(
+        approvalConfigsRef.current,
+        configId,
+      );
+
+      const { error } = await supabase
+        .from("fdc_approval_templates")
+        .update(payload)
+        .eq("id", configId);
+
+      if (error) {
+        throw error;
+      }
+
+      setApprovalSaveMessage({
+        type: "success",
+        text: "Da luu thay doi cau hinh phe duyet.",
+      });
+    } catch (error) {
+      console.error("Failed to save approval config:", error);
+      setApprovalSaveMessage({
+        type: "error",
+        text: "Khong the luu cau hinh phe duyet. Vui long thu lai.",
+      });
+    } finally {
+      setSavingApprovalConfigId(null);
+    }
   };
 
   const handleAddApprovalType = async (requestType: string) => {
@@ -303,17 +347,28 @@ export function useAdmin(options: UseAdminOptions = {}) {
       })
       .select("*")
       .single();
-    if (error || !data) return;
-    const mapped = {
+    if (error || !data) {
+      console.error("Failed to add approval type:", error);
+      setApprovalSaveMessage({
+        type: "error",
+        text: "Khong the tao loai cau hinh phe duyet moi.",
+      });
+      return;
+    }
+
+    const mapped = normalizeApprovalConfig({
       id: data.id,
-      requestType: data.request_type,
+      request_type: data.request_type,
       name: data.name,
-      isActive: data.is_active,
+      is_active: data.is_active,
       steps: data.steps || [],
-    };
-    const nextConfigs = [...approvalConfigs, mapped];
-    setApprovalConfigs(nextConfigs);
-    setSelectedConfig(mapped);
+    });
+    commitApprovalConfigs((currentConfigs) => [...currentConfigs, mapped]);
+    setSelectedConfigId(mapped.id);
+    setApprovalSaveMessage({
+      type: "success",
+      text: "Da tao loai cau hinh moi. Hay cap nhat cac buoc roi bam Luu thay doi.",
+    });
   };
 
   // MISA Keywords state
@@ -598,6 +653,9 @@ export function useAdmin(options: UseAdminOptions = {}) {
   useEffect(() => {
     if (enabled) return;
 
+    commitApprovalConfigs([]);
+    setSelectedConfigId(null);
+    setApprovalSaveMessage(null);
     setUsers([]);
     setBridgeHealth({
       status: "offline",
@@ -607,7 +665,7 @@ export function useAdmin(options: UseAdminOptions = {}) {
       queueDepth: 0,
     });
     setSyncHistory([]);
-  }, [enabled]);
+  }, [enabled, commitApprovalConfigs]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -703,6 +761,8 @@ export function useAdmin(options: UseAdminOptions = {}) {
     handleDeleteApprovalStep,
     handleSaveApprovalConfig,
     handleAddApprovalType,
+    savingApprovalConfigId,
+    approvalSaveMessage,
 
     // MISA
     misaKeywords,

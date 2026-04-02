@@ -134,7 +134,7 @@ export function usePortal() {
     const approvalSteps: any[] = [
       {
         stepOrder: 1,
-        approverRole: "dept_head",
+        approverRole: "head_nurse",
         status: "pending",
       },
     ];
