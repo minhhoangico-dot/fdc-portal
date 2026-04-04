@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useInventory } from "@/viewmodels/useInventory";
+import { useSupplyInventory } from "@/viewmodels/useSupplyInventory";
 import {
   Search, AlertTriangle, X, BarChart2, List,
   ClipboardCheck, CheckCircle2, Activity, ArrowUpDown,
@@ -45,7 +45,7 @@ export default function InventoryPage() {
     isLoadingSnapshotHistory,
     lastSyncDate,
     error,
-  } = useInventory("inventory");
+  } = useSupplyInventory();
 
   const [activeTab, setActiveTab] = useState<TabType>("overview");
 

@@ -1,7 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { useInventory } from "@/viewmodels/useInventory";
-import { InventoryAnomaly } from "@/types/inventory";
+import { anomalyMatchesInventoryItem } from "@/lib/inventory-identity";
+import { usePharmacyInventory } from "@/viewmodels/usePharmacyInventory";
+import { InventoryAnomaly, InventoryItem } from "@/types/inventory";
 import {
   Search,
   AlertTriangle,
@@ -81,7 +82,7 @@ export default function PharmacyPage() {
     lastSyncDate,
     error,
     stats,
-  } = useInventory('pharmacy');
+  } = usePharmacyInventory();
 
   const hasListChartFilters =
     filterWarehouse !== "all" ||
@@ -128,6 +129,15 @@ export default function PharmacyPage() {
     }
     return map;
   }, [activeAnomalies]) as Record<string, InventoryAnomaly[]>;
+  const selectedItemAnomalies = React.useMemo(() => {
+    if (!selectedItem) {
+      return [];
+    }
+
+    return anomalies.filter((anomaly) =>
+      anomalyMatchesInventoryItem(anomaly, selectedItem),
+    );
+  }, [anomalies, selectedItem]);
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
@@ -171,8 +181,10 @@ export default function PharmacyPage() {
     }
   };
 
-  const getStatusBadge = (status: string, itemName: string) => {
-    const hasAnomaly = activeAnomalies.some(a => a.materialId === itemName);
+  const getStatusBadge = (item: InventoryItem) => {
+    const hasAnomaly = activeAnomalies.some((anomaly) =>
+      anomalyMatchesInventoryItem(anomaly, item),
+    );
 
     if (hasAnomaly) {
       return (
@@ -182,7 +194,7 @@ export default function PharmacyPage() {
       );
     }
 
-    switch (status) {
+    switch (item.status) {
       case "in_stock":
         return (
           <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-emerald-100 text-emerald-700 border border-emerald-200">
@@ -671,7 +683,7 @@ export default function PharmacyPage() {
                       </div>
                     </td>
                     <td className="px-4 py-3 text-center">
-                      {getStatusBadge(item.status, item.name)}
+                      {getStatusBadge(item)}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <div className="font-medium text-gray-900">{item.currentStock}</div>
@@ -740,7 +752,9 @@ export default function PharmacyPage() {
                           <button
                             onClick={() => {
                               // Find item in inventory and open side panel
-                              const found = filteredInventory.find(i => i.name === anomaly.materialId);
+                              const found = filteredInventory.find((item) =>
+                                anomalyMatchesInventoryItem(anomaly, item),
+                              );
                               if (found) {
                                 setSelectedItem(found);
                                 setActiveTab("list");
@@ -840,7 +854,7 @@ export default function PharmacyPage() {
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-sm text-gray-500 mb-1">Trạng thái</p>
                   <div className="mt-1">
-                    {getStatusBadge(selectedItem.status, selectedItem.name)}
+                    {getStatusBadge(selectedItem)}
                   </div>
                 </div>
               </div>
@@ -907,13 +921,11 @@ export default function PharmacyPage() {
               )}
 
               {/* Anomaly History for this item */}
-              {anomalies.filter(a => a.materialId === selectedItem.name).length > 0 && (
+              {selectedItemAnomalies.length > 0 && (
                 <div>
                   <h3 className="text-sm font-bold text-gray-900 mb-3">Cảnh báo</h3>
                   <div className="space-y-2">
-                    {anomalies
-                      .filter(a => a.materialId === selectedItem.name)
-                      .map((anomaly) => (
+                    {selectedItemAnomalies.map((anomaly) => (
                         <div key={anomaly.id} className="flex gap-3 p-3 rounded-xl border border-gray-100 bg-white">
                           <div className={`mt-0.5 w-2 h-2 rounded-full shrink-0 ${anomaly.acknowledged ? "bg-gray-300" : "bg-orange-500"}`} />
                           <div className="flex-1">
