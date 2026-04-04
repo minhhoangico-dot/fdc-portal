@@ -2,16 +2,28 @@ export type InventoryCategory = string;
 export type Warehouse = string;
 export type AnomalyRule = 'low_stock' | 'near_expiry' | 'expired' | 'zero_stock' | 'stock_spike';
 export type AnomalySeverity = 'low' | 'medium' | 'high' | 'critical';
+export type InventoryStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
+export type InventoryFilterStatus =
+  | 'all'
+  | 'in_stock'
+  | 'low_stock'
+  | 'out_of_stock'
+  | 'anomaly'
+  | 'near_expiry';
+export type InventorySortKey = 'name' | 'stock' | 'value';
+export type InventorySortDir = 'asc' | 'desc';
 
 export interface InventoryItem {
   id: string;
   name: string;
   sku: string;
+  sourceId?: string;
+  inventoryKey?: string;
   category: InventoryCategory;
   warehouse: Warehouse;
   currentStock: number;
   unit: string;
-  status: 'in_stock' | 'low_stock' | 'out_of_stock';
+  status: InventoryStatus;
   lastUpdated: string;
   batchNumber?: string;
   expiryDate?: string;
@@ -22,6 +34,7 @@ export interface InventoryItem {
 export interface InventoryAnomaly {
   id: string;
   materialId: string;
+  inventoryKey?: string | null;
   rule: AnomalyRule;
   severity: AnomalySeverity;
   description: string;

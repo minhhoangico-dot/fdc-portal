@@ -10,7 +10,7 @@ import { formatDate } from '@/lib/utils';
 import { useAdmin } from '@/viewmodels/useAdmin';
 import { useApprovals } from '@/viewmodels/useApprovals';
 import { useAttendance } from '@/viewmodels/useAttendance';
-import { useInventory } from '@/viewmodels/useInventory';
+import { useInventoryDashboardSummary } from '@/viewmodels/useInventoryDashboardSummary';
 import { useRequests } from '@/viewmodels/useRequests';
 import type { RequestType } from '@/types/request';
 
@@ -34,7 +34,7 @@ export function useDashboard() {
         : [];
 
   const { pendingApprovals } = useApprovals({ enabled: approvalEnabled });
-  const { anomalies } = useInventory('all', { enabled: inventoryEnabled });
+  const { anomalyCount } = useInventoryDashboardSummary({ enabled: inventoryEnabled });
   const { attendanceSummary } = useAttendance();
   const { users, bridgeHealth, syncHistory } = useAdmin({
     enabled: adminEnabled,
@@ -172,7 +172,7 @@ export function useDashboard() {
     }, {} as Record<RequestType, number>);
 
     data.systemPendingByType = systemPendingByType;
-    data.anomalyCount = anomalies.filter((item) => !item.acknowledged).length;
+    data.anomalyCount = anomalyCount;
     data.stats = {
       totalRequests: systemRequestsThisMonth.length,
       approvalRate:
