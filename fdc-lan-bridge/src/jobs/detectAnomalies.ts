@@ -1,4 +1,11 @@
 import { supabase } from "../db/supabase";
+import {
+  buildInventoryItemKey,
+  detectModuleType,
+  fetchThresholdConfigs,
+  resolveThresholds,
+  type AnomalyRule,
+} from "../lib/anomalyThresholds";
 import { toHoChiMinhDate } from "../lib/date";
 import { logger } from "../lib/logger";
 import { logSync } from "../lib/syncLog";
@@ -15,6 +22,9 @@ export async function detectAnomaliesJob(): Promise<void> {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const cutoffDate = toHoChiMinhDate(thirtyDaysAgo);
+
+    // Load configurable thresholds from Supabase
+    const thresholdMap = await fetchThresholdConfigs();
 
     const { data: rawSnapshots, error: snapError } = await supabase
       .from("fdc_inventory_snapshots")
@@ -54,6 +64,13 @@ export async function detectAnomaliesJob(): Promise<void> {
       const todaySnap = (history as any[]).find((s) => s.snapshot_date === todayDate);
       if (!todaySnap) continue;
 
+      // Determine module type and resolve thresholds
+      const moduleType = detectModuleType(todaySnap.his_medicineid);
+      const category = todaySnap.category || "__default__";
+      const config = resolveThresholds(thresholdMap, moduleType, category);
+      const itemKey = buildInventoryItemKey(todaySnap.his_medicineid, todaySnap.warehouse);
+
+      // Calculate average daily usage from 30-day history
       let totalUsage = 0;
       let daysWithData = 0;
       for (let i = 1; i < (history as any[]).length; i++) {
@@ -67,28 +84,31 @@ export async function detectAnomaliesJob(): Promise<void> {
 
       const avgDailyUsage = daysWithData > 0 ? totalUsage / daysWithData : 0;
 
-      const detectedRules: any[] = [];
+      const detectedRules: { rule: AnomalyRule; severity: string; description: string }[] = [];
+
+      // --- Expiry rules ---
       let daysToExpiry = Infinity;
       if (todaySnap.expiry_date) {
         const expiry = new Date(todaySnap.expiry_date).getTime();
         daysToExpiry = (expiry - Date.now()) / (1000 * 3600 * 24);
       }
 
-      if (daysToExpiry < 0) {
+      if (config.enabledRules.has("expired") && daysToExpiry < 0) {
         detectedRules.push({
           rule: "expired",
           severity: "critical",
           description: `Thuốc đã hết hạn từ ${Math.abs(Math.floor(daysToExpiry))} ngày trước.`,
         });
-      } else if (daysToExpiry <= 90) {
+      } else if (config.enabledRules.has("near_expiry") && daysToExpiry <= config.nearExpiryDays) {
         detectedRules.push({
           rule: "near_expiry",
-          severity: daysToExpiry <= 30 ? "high" : "medium",
+          severity: daysToExpiry <= config.nearExpiryHighDays ? "high" : "medium",
           description: `Thuốc sắp hết hạn trong ${Math.ceil(daysToExpiry)} ngày.`,
         });
       }
 
-      if (todaySnap.current_stock === 0) {
+      // --- Zero stock rule ---
+      if (config.enabledRules.has("zero_stock") && todaySnap.current_stock === 0) {
         const yesterdaySnap = (history as any[]).find((s) => {
           const d = new Date(todayDate);
           d.setDate(d.getDate() - 1);
@@ -101,23 +121,32 @@ export async function detectAnomaliesJob(): Promise<void> {
             description: `Kho vừa hết hàng hôm nay (hôm qua còn ${yesterdaySnap.current_stock}).`,
           });
         }
-      } else if (avgDailyUsage > 0 && todaySnap.current_stock <= avgDailyUsage * 7) {
+      }
+
+      // --- Low stock rule ---
+      if (
+        config.enabledRules.has("low_stock") &&
+        todaySnap.current_stock > 0 &&
+        avgDailyUsage > 0 &&
+        todaySnap.current_stock <= avgDailyUsage * config.lowStockDays
+      ) {
         const daysLeft = Math.floor(todaySnap.current_stock / avgDailyUsage);
         detectedRules.push({
           rule: "low_stock",
-          severity: daysLeft <= 3 ? "high" : "medium",
+          severity: daysLeft <= config.lowStockHighDays ? "high" : "medium",
           description: `Tồn kho thấp, dự kiến chỉ đủ dùng trong ${daysLeft} ngày (Tiêu thụ trung bình ${avgDailyUsage.toFixed(
             1,
           )}/ngày).`,
         });
       }
 
-      if ((history as any[]).length >= 2) {
+      // --- Stock spike rule ---
+      if (config.enabledRules.has("stock_spike") && (history as any[]).length >= 2) {
         const yesterdaySnap = (history as any[])[(history as any[]).length - 2];
         if (todaySnap.snapshot_date === todayDate && yesterdaySnap.snapshot_date !== todayDate) {
           const todayUsage = yesterdaySnap.current_stock - todaySnap.current_stock;
-          if (avgDailyUsage >= 2 && todayUsage > 0) {
-            if (todayUsage > avgDailyUsage * 1.5 && todayUsage >= 10) {
+          if (avgDailyUsage >= config.spikeMinAvgUsage && todayUsage > 0) {
+            if (todayUsage > avgDailyUsage * config.spikeMultiplier && todayUsage >= config.spikeMinUsage) {
               detectedRules.push({
                 rule: "stock_spike",
                 severity: "medium",
@@ -130,8 +159,9 @@ export async function detectAnomaliesJob(): Promise<void> {
         }
       }
 
+      // --- Match & dedup against existing active anomalies ---
       const existingAnomaliesForItem = currentActiveAnomalies.filter(
-        (a) => a.material_name === todaySnap.name,
+        (a) => a.material_name === todaySnap.name && (a.module_type === moduleType || !a.module_type),
       );
 
       for (const existing of existingAnomaliesForItem) {
@@ -144,6 +174,8 @@ export async function detectAnomaliesJob(): Promise<void> {
         if (!existingAnomaliesForItem.some((e) => e.rule_id === detected.rule)) {
           newAnomaliesToInsert.push({
             material_name: todaySnap.name,
+            inventory_item_key: itemKey,
+            module_type: moduleType,
             rule_id: detected.rule,
             severity: detected.severity,
             description: detected.description,
@@ -205,4 +237,3 @@ export async function detectAnomaliesJob(): Promise<void> {
     );
   }
 }
-

@@ -10,17 +10,21 @@ export const countActiveInventoryAnomalies = (
   anomalies: InventoryAnomaly[],
   inventory: InventoryItem[],
 ): number => {
-  const counted = new Set<string>();
+  let count = 0;
 
   for (const anomaly of anomalies) {
-    if (anomaly.acknowledged || counted.has(anomaly.id)) {
-      continue;
-    }
+    if (anomaly.acknowledged) continue;
 
-    if (inventory.some((item) => anomalyMatchesInventoryItem(anomaly, item))) {
-      counted.add(anomaly.id);
+    // Anomalies with module_type are already scoped by the query filter
+    if (anomaly.moduleType) {
+      count++;
+    } else {
+      // Legacy rows without module_type: fall back to item matching
+      if (inventory.some((item) => anomalyMatchesInventoryItem(anomaly, item))) {
+        count++;
+      }
     }
   }
 
-  return counted.size;
+  return count;
 };

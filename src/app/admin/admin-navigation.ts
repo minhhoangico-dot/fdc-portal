@@ -12,6 +12,7 @@ export const ADMIN_TABS: ReadonlyArray<{ id: AdminTab; label: string }> = [
   { id: 'health', label: 'Hệ thống' },
   { id: 'audit', label: 'Nhật ký' },
   { id: 'roles', label: 'Vai trò' },
+  { id: 'anomaly_thresholds', label: 'Ngưỡng cảnh báo' },
 ];
 
 export function isAdminTab(value: string | null): value is AdminTab {

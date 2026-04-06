@@ -143,6 +143,7 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
     const { data, error } = await supabase
       .from("fdc_analytics_anomalies")
       .select("*")
+      .or("module_type.eq.pharmacy,module_type.is.null")
       .order("detected_at", { ascending: false });
 
     if (error) {

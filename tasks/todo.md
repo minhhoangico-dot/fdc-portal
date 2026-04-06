@@ -27,6 +27,22 @@
 - [x] Review
 - [x] Lessons and closeout
 
+## 2026-04-06 Anomaly Dynamic Thresholds
+
+- Scope: apply the live Supabase migration for dynamic anomaly-threshold configuration and verify the new anomaly schema fields used by the bridge and admin UI.
+- Checklist:
+  - [x] Refresh workflow context and confirm the self-hosted rollout path
+  - [x] Verify `POST /pg/query` connectivity against the writable self-hosted Supabase endpoint
+  - [x] Apply `sql/20260406_anomaly_dynamic_thresholds.sql` in sequential chunks
+  - [x] Run post-rollout verification queries and record residual risks
+- Verification evidence:
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: `POST http://192.168.1.9:8000/pg/query` returned `200` with `[{"ok":1}]` for `select 1 as ok`.
+  - `@' ... '@ | node -` in `fdc-lan-bridge`: applied all 4 SQL chunks from `sql/20260406_anomaly_dynamic_thresholds.sql` successfully.
+  - Post-rollout verification via `@' ... '@ | node -` in `fdc-lan-bridge`: `public.fdc_anomaly_thresholds` exists, `public.fdc_analytics_anomalies` now has `module_type` and `inventory_item_key`, 10 default `__default__` threshold rows exist, `fdc_analytics_anomalies` has `214` rows with `0` null `module_type` values, and `2` legacy rows still have null `inventory_item_key`.
+  - Live inspection via `@' ... '@ | node -` in `fdc-lan-bridge`: the 2 null-key rows are acknowledged `pharmacy` `near_expiry` anomalies from `2026-03-11` (`Paracetamol 1g/100ml` and `Test HIV - Standard ( 25 test/hộp )`).
+- Residual risk:
+  - Existing acknowledged legacy anomalies without `inventory_item_key` still depend on name fallback in the portal; new anomalies created after this rollout will populate the key directly.
+
 ## 2026-04-02 Approval Config Save
 
 - Scope: fix the admin approval-config flow so step edits do not race each other or get overwritten by a stale explicit save.

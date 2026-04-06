@@ -153,6 +153,7 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     const { data, error } = await supabase
       .from("fdc_analytics_anomalies")
       .select("*")
+      .or("module_type.eq.supply,module_type.is.null")
       .order("detected_at", { ascending: false });
 
     if (error) {
@@ -621,6 +622,7 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
   };
 
   return {
+    inventory,
     searchQuery,
     setSearchQuery,
     filterWarehouse,

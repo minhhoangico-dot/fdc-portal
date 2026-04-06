@@ -33,11 +33,11 @@ export function startScheduler(): void {
     logger.info("Running scheduled syncInventoryJob (Medicine)...");
     await syncInventoryJob();
 
-    logger.info("Running scheduled detectAnomaliesJob...");
-    await detectAnomaliesJob();
-
     logger.info("Running scheduled syncMisaSuppliesJob (Supplies)...");
     await syncMisaSuppliesJob();
+
+    logger.info("Running scheduled detectAnomaliesJob...");
+    await detectAnomaliesJob();
 
     logger.info("Running scheduled syncPatientVolumeJob...");
     void syncPatientVolumeJob();

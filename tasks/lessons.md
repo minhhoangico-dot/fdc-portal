@@ -63,9 +63,9 @@ These are not corrections. They are durable starting points for new agents:
 ### 2026-03-24 - Keep lab dashboard reagent unit fallbacks aligned with inventory mapping
 
 - Context: The user reported that `Tồn kho thuốc cho khoa xét nghiệm` showed a different unit than the `Quản lý Kho Thuốc` list for the same `Khoa Xét Nghiệm` snapshot rows.
-- What went wrong: `fdc-lan-bridge/src/labDashboard/service.ts` defaulted blank `fdc_inventory_snapshots.unit` values to `hộp`, while `src/viewmodels/useInventory.ts` defaulted the same field to `Cái`, so the same stock row rendered with different units across the portal.
+- What went wrong: `fdc-lan-bridge/src/labDashboard/service.ts` defaulted blank `fdc_inventory_snapshots.unit` values to `hộp`, while the portal inventory mapping in `src/lib/inventory-identity.ts` defaulted the same field to `Cái`, so the same stock row rendered with different units across the portal.
 - Preventive rule: Whenever lab dashboard reagent data is sourced from `fdc_inventory_snapshots`, keep the fallback unit semantics aligned with the inventory module and cover the bridge with a test that asserts both lab-only warehouse scoping and blank-unit fallback.
-- Trigger to re-read: Any future change to reagent mapping in `fdc-lan-bridge/src/labDashboard/service.ts` or inventory item unit mapping in `src/viewmodels/useInventory.ts`.
+- Trigger to re-read: Any future change to reagent mapping in `fdc-lan-bridge/src/labDashboard/service.ts` or inventory item unit mapping in `src/lib/inventory-identity.ts`.
 - Verification to add next time: Run `cmd /c npx jest test/unit/labDashboardService.test.ts --runInBand` plus the full `fdc-lan-bridge` test/build after changing reagent inventory behavior.
 
 ### 2026-03-24 - Waiting lab queue must use paid treatment state, not servicedata payment flags

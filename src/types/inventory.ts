@@ -31,10 +31,13 @@ export interface InventoryItem {
   medicineCode?: string;
 }
 
+export type AnomalyModuleType = 'pharmacy' | 'supply';
+
 export interface InventoryAnomaly {
   id: string;
   materialId: string;
   inventoryKey?: string | null;
+  moduleType?: AnomalyModuleType | null;
   rule: AnomalyRule;
   severity: AnomalySeverity;
   description: string;
@@ -94,6 +97,7 @@ export interface StocktakeItem {
 
 // Supply chart types
 export type SupplyTimeRange = '1M' | '3M' | '6M' | '1Y';
+export type SupplyAccountFilter = 'all' | '1521' | '1522' | '1523';
 
 export interface SupplyChartPoint {
   period: string;
@@ -102,6 +106,24 @@ export interface SupplyChartPoint {
   patientVolume: number;
   consumptionQty: number;
   consumptionPerVisit: number;
+}
+
+export interface SupplyMonthlyStatRow {
+  report_month: string;
+  account: string;
+  consumption_amount: number;
+  consumption_qty: number;
+  consumption_amount_ly: number;
+  consumption_qty_ly: number;
+  patient_volume: number;
+}
+
+export interface SupplyDailyConsumptionRow {
+  report_date: string;
+  account: string;
+  outward_amount: number;
+  outward_qty: number;
+  patient_visits: number | null;
 }
 
 // Supply voucher line (individual voucher line item from MISA)

@@ -6,6 +6,7 @@
 import React from "react";
 import {
   Activity,
+  AlertTriangle,
   Key,
   Settings,
   Shield,
@@ -22,6 +23,7 @@ import { AuditTab } from "./AuditTab";
 import { DelegationModal } from "./DelegationModal";
 import { HealthTab } from "./HealthTab";
 import { MisaTab } from "./MisaTab";
+import { AnomalyThresholdsTab } from "./AnomalyThresholdsTab";
 import { RolesTab } from "./RolesTab";
 import { UsersTab } from "./UsersTab";
 
@@ -104,6 +106,7 @@ export default function AdminPage() {
     health: <Activity className="h-4 w-4" />,
     audit: <Shield className="h-4 w-4" />,
     roles: <UserCog className="h-4 w-4" />,
+    anomaly_thresholds: <AlertTriangle className="h-4 w-4" />,
   };
 
   return (
@@ -194,6 +197,8 @@ export default function AdminPage() {
         )}
 
         {activeTab === "roles" && <RolesTab />}
+
+        {activeTab === "anomaly_thresholds" && <AnomalyThresholdsTab />}
       </div>
 
       <DelegationModal

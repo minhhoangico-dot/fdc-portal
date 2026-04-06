@@ -27,6 +27,7 @@ type TabType = "overview" | "list" | "consumption" | "import-export" | "stocktak
 
 export default function InventoryPage() {
   const {
+    inventory,
     searchQuery, setSearchQuery,
     filterCategory, setFilterCategory,
     filterStatus, setFilterStatus,
@@ -120,6 +121,8 @@ export default function InventoryPage() {
       {activeTab === "overview" && (
         <OverviewTab
           stats={stats}
+          inventory={inventory}
+          anomalies={anomalies}
           snapshotHistory={snapshotHistory}
           isLoadingSnapshotHistory={isLoadingSnapshotHistory}
           topMaterials={topMaterials}

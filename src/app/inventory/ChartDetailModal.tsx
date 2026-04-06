@@ -1,19 +1,45 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React from "react";
 import { X } from "lucide-react";
 
 type Cell = string | number | null | undefined;
 
+type SummaryTone = "default" | "positive" | "warning" | "danger";
+
+interface SummaryRow {
+  label: string;
+  value: string;
+  tone?: SummaryTone;
+}
+
 export interface ChartDetailModalProps {
   title: string;
   dataSource: string;
+  dataNote?: string;
+  summaryRows?: SummaryRow[];
+  filters?: React.ReactNode;
   columns: string[];
   rows: Cell[][];
   onClose: () => void;
 }
 
+const SUMMARY_TONE_CLASSES: Record<SummaryTone, string> = {
+  default: "text-gray-900 bg-gray-50 border-gray-100",
+  positive: "text-emerald-700 bg-emerald-50 border-emerald-100",
+  warning: "text-amber-700 bg-amber-50 border-amber-100",
+  danger: "text-rose-700 bg-rose-50 border-rose-100",
+};
+
 export default function ChartDetailModal({
   title,
   dataSource,
+  dataNote,
+  summaryRows = [],
+  filters,
   columns,
   rows,
   onClose,
@@ -45,15 +71,41 @@ export default function ChartDetailModal({
         </div>
 
         <div className="flex-1 overflow-auto">
+          {filters ? (
+            <div className="px-4 py-3 border-b border-gray-100 bg-white">{filters}</div>
+          ) : null}
+
+          {summaryRows.length > 0 ? (
+            <div className="px-4 py-4 border-b border-gray-100 bg-gray-50/40">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {summaryRows.map((row) => (
+                  <div
+                    key={`${row.label}:${row.value}`}
+                    className={`rounded-xl border px-4 py-3 ${SUMMARY_TONE_CLASSES[row.tone || "default"]}`}
+                  >
+                    <div className="text-xs font-medium text-gray-500">{row.label}</div>
+                    <div className="mt-1 text-sm font-semibold">{row.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+
+          {dataNote ? (
+            <div className="px-4 py-3 border-b border-gray-100 bg-indigo-50/60 text-sm text-gray-600">
+              {dataNote}
+            </div>
+          ) : null}
+
           <table className="w-full text-left border-collapse">
             <thead className="bg-white sticky top-0 z-10 border-b border-gray-100">
               <tr>
-                {columns.map((c) => (
+                {columns.map((column) => (
                   <th
-                    key={c}
+                    key={column}
                     className="px-4 py-3 text-xs font-medium text-gray-500 uppercase whitespace-nowrap"
                   >
-                    {c}
+                    {column}
                   </th>
                 ))}
               </tr>
@@ -69,11 +121,11 @@ export default function ChartDetailModal({
                   </td>
                 </tr>
               ) : (
-                rows.map((r, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50">
-                    {r.map((cell, cIdx) => (
+                rows.map((row, rowIndex) => (
+                  <tr key={rowIndex} className="hover:bg-gray-50">
+                    {row.map((cell, cellIndex) => (
                       <td
-                        key={cIdx}
+                        key={cellIndex}
                         className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap"
                       >
                         {cell ?? "-"}
@@ -89,4 +141,3 @@ export default function ChartDetailModal({
     </>
   );
 }
-

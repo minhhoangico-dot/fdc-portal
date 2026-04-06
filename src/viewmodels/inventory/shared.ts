@@ -92,6 +92,7 @@ export const mapInventoryAnomaly = (item: any): InventoryAnomaly => ({
   id: item.id,
   materialId: item.material_name,
   inventoryKey: item.inventory_item_key || null,
+  moduleType: item.module_type || null,
   rule: (item.rule_id as InventoryAnomaly["rule"]) || "low_stock",
   severity: (item.severity as InventoryAnomaly["severity"]) || "medium",
   description: item.description || "",
