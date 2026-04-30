@@ -150,6 +150,7 @@ describe('lab dashboard source provenance builders', () => {
     {
       kind: 'tat',
       serviceDataId: 103,
+      testName: 'CBC',
       patientCode: 'BN103',
       subgroupKey: 'mien-dich',
       subgroupName: 'Miễn dịch',
@@ -163,6 +164,7 @@ describe('lab dashboard source provenance builders', () => {
     {
       kind: 'tat',
       serviceDataId: 102,
+      testName: 'Glucose',
       patientCode: 'BN102',
       subgroupKey: 'hoa-sinh',
       subgroupName: 'Hóa sinh',
@@ -176,6 +178,7 @@ describe('lab dashboard source provenance builders', () => {
     {
       kind: 'tat',
       serviceDataId: 104,
+      testName: 'Creatinine',
       patientCode: 'BN104',
       subgroupKey: 'hoa-sinh',
       subgroupName: 'Hóa sinh',

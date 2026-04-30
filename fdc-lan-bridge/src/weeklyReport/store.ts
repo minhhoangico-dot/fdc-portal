@@ -19,6 +19,13 @@ const INFECTIOUS_CODE_TABLE = "fdc_weekly_report_infectious_codes";
 const SERVICE_MAPPING_TABLE = "fdc_weekly_report_service_mappings";
 const LOG_TABLE = "fdc_weekly_report_logs";
 
+const SNAPSHOT_COLUMNS = "id, year, week_number, week_start, week_end, report_data, generated_at";
+const LOG_COLUMNS = "id, action_type, started_at, completed_at, status, details, error_message";
+const INFECTIOUS_CODE_COLUMNS =
+  "id, icd_code, icd_pattern, disease_name_vi, disease_name_en, disease_group, color_code, is_active, display_order, created_at, updated_at";
+const SERVICE_MAPPING_COLUMNS =
+  "id, category_key, category_name_vi, display_group, match_type, match_value, is_active, display_order";
+
 interface SnapshotRow {
   id: string;
   year: number;
@@ -35,7 +42,7 @@ export async function getWeeklyReportSnapshot(
 ): Promise<SnapshotRow | null> {
   const { data, error } = await supabase
     .from(SNAPSHOT_TABLE)
-    .select("*")
+    .select(SNAPSHOT_COLUMNS)
     .eq("year", year)
     .eq("week_number", weekNumber)
     .maybeSingle();
@@ -131,7 +138,7 @@ export async function completeWeeklyReportLog(
 export async function getLatestWeeklyReportLog(): Promise<WeeklyReportLog | null> {
   const { data, error } = await supabase
     .from(LOG_TABLE)
-    .select("*")
+    .select(LOG_COLUMNS)
     .order("started_at", { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -151,7 +158,7 @@ export async function getLatestWeeklyReportLog(): Promise<WeeklyReportLog | null
 export async function listWeeklyReportInfectiousCodes(): Promise<WeeklyReportInfectiousCode[]> {
   const { data, error } = await supabase
     .from(INFECTIOUS_CODE_TABLE)
-    .select("*")
+    .select(INFECTIOUS_CODE_COLUMNS)
     .order("display_order", { ascending: true });
 
   if (error) {
@@ -181,7 +188,7 @@ export async function createWeeklyReportInfectiousCode(
       is_active: payload.is_active ?? true,
       display_order: payload.display_order ?? 99,
     })
-    .select("*")
+    .select(INFECTIOUS_CODE_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -200,7 +207,7 @@ export async function updateWeeklyReportInfectiousCode(
     .from(INFECTIOUS_CODE_TABLE)
     .update(payload)
     .eq("id", id)
-    .select("*")
+    .select(INFECTIOUS_CODE_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -223,7 +230,7 @@ export async function deleteWeeklyReportInfectiousCode(id: string): Promise<void
 export async function listWeeklyReportServiceMappings(): Promise<WeeklyReportServiceMapping[]> {
   const { data, error } = await supabase
     .from(SERVICE_MAPPING_TABLE)
-    .select("*")
+    .select(SERVICE_MAPPING_COLUMNS)
     .order("display_group", { ascending: true })
     .order("display_order", { ascending: true });
 
@@ -253,7 +260,7 @@ export async function createWeeklyReportServiceMapping(
       is_active: payload.is_active ?? true,
       display_order: payload.display_order ?? 99,
     })
-    .select("*")
+    .select(SERVICE_MAPPING_COLUMNS)
     .single();
 
   if (error || !data) {
@@ -272,7 +279,7 @@ export async function updateWeeklyReportServiceMapping(
     .from(SERVICE_MAPPING_TABLE)
     .update(payload)
     .eq("id", id)
-    .select("*")
+    .select(SERVICE_MAPPING_COLUMNS)
     .single();
 
   if (error || !data) {
