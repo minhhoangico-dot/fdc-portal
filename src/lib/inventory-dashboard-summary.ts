@@ -11,9 +11,13 @@ export const countActiveInventoryAnomalies = (
   inventory: InventoryItem[],
 ): number => {
   let count = 0;
+  const seen = new Set<string>();
 
   for (const anomaly of anomalies) {
     if (anomaly.acknowledged) continue;
+    if (seen.has(anomaly.id)) continue;
+
+    seen.add(anomaly.id);
 
     // Anomalies with module_type are already scoped by the query filter
     if (anomaly.moduleType) {
