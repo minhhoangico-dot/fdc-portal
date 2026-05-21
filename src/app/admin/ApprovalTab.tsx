@@ -2,8 +2,11 @@ import React from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useRoleCatalog } from "@/contexts/RoleCatalogContext";
 import type {
+  ApprovalConfigApprovalStepDraft,
   ApprovalConfigDraft,
+  ApprovalConfigNotificationStepDraft,
   ApprovalConfigStepField,
+  ApprovalStepDraft,
 } from "@/lib/approval-config";
 import { REQUEST_TYPES } from "@/lib/constants";
 
@@ -27,6 +30,14 @@ interface ApprovalTabProps {
     text: string;
   } | null;
 }
+
+const isApprovalStep = (
+  step: ApprovalStepDraft,
+): step is ApprovalConfigApprovalStepDraft => step.stepType === "approval";
+
+const isNotificationStep = (
+  step: ApprovalStepDraft,
+): step is ApprovalConfigNotificationStepDraft => step.stepType === "notification";
 
 export function ApprovalTab({
   approvalConfigs,
@@ -109,19 +120,26 @@ export function ApprovalTab({
                     Bắt <br /> đầu
                   </div>
                 </div>
-                {selectedConfig.steps.map((step, index) => (
-                  <React.Fragment key={step.id ?? index}>
-                    <div className="relative h-0.5 w-8 bg-gray-300">
-                      <div className="absolute right-0 top-1/2 h-2 w-2 translate-x-1/2 -translate-y-1/2 rotate-45 border-r-2 border-t-2 border-gray-300" />
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm">
-                        {getRoleLabel(step.role)}
+                {selectedConfig.steps.map((step, index) => {
+                  const stepLabel = isApprovalStep(step)
+                    ? getRoleLabel(step.role)
+                    : `Thông báo: ${getRoleLabel(step.recipientRole ?? step.recipientName ?? "recipient")}`;
+                  const stepMeta = isApprovalStep(step) ? `${step.sla_hours}h` : "notification";
+
+                  return (
+                    <React.Fragment key={step.id ?? index}>
+                      <div className="relative h-0.5 w-8 bg-gray-300">
+                        <div className="absolute right-0 top-1/2 h-2 w-2 translate-x-1/2 -translate-y-1/2 rotate-45 border-r-2 border-t-2 border-gray-300" />
                       </div>
-                      <div className="mt-1 text-xs text-gray-500">{step.sla_hours}h</div>
-                    </div>
-                  </React.Fragment>
-                ))}
+                      <div className="flex flex-col items-center">
+                        <div className="rounded-lg border border-indigo-200 bg-white px-4 py-2 text-sm font-medium text-indigo-700 shadow-sm">
+                          {stepLabel}
+                        </div>
+                        <div className="mt-1 text-xs text-gray-500">{stepMeta}</div>
+                      </div>
+                    </React.Fragment>
+                  );
+                })}
                 <div className="relative h-0.5 w-8 bg-gray-300">
                   <div className="absolute right-0 top-1/2 h-2 w-2 translate-x-1/2 -translate-y-1/2 rotate-45 border-r-2 border-t-2 border-gray-300" />
                 </div>
@@ -136,6 +154,108 @@ export function ApprovalTab({
             <div className="space-y-4">
               <h3 className="text-sm font-medium text-gray-900">Các bước phê duyệt</h3>
               {selectedConfig.steps.map((step, index) => {
+                if (isNotificationStep(step)) {
+                  const recipientRoleOptions = getAssignableRoles(step.recipientRole);
+
+                  return (
+                    <div
+                      key={step.id ?? index}
+                      className="flex items-start gap-4 rounded-xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm"
+                    >
+                      <div className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-100 text-xs font-bold text-amber-700">
+                        {index + 1}
+                      </div>
+                      <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-gray-500">
+                            Loại bước
+                          </label>
+                          <select
+                            value={step.stepType}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            onChange={(event) =>
+                              onUpdateStep(selectedConfig.id, index, "stepType", event.target.value)
+                            }
+                          >
+                            <option value="approval">Phê duyệt</option>
+                            <option value="notification">Thông báo</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-medium text-gray-500">
+                            Người nhận
+                          </label>
+                          <select
+                            value={step.recipientType}
+                            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                            onChange={(event) =>
+                              onUpdateStep(selectedConfig.id, index, "recipientType", event.target.value)
+                            }
+                          >
+                            <option value="role">Theo vai trò</option>
+                            <option value="user">Người dùng cụ thể</option>
+                          </select>
+                        </div>
+                        {step.recipientType === "role" ? (
+                          <div>
+                            <label className="mb-1 block text-xs font-medium text-gray-500">
+                              Vai trò nhận
+                            </label>
+                            <select
+                              value={step.recipientRole ?? ""}
+                              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                              onChange={(event) =>
+                                onUpdateStep(selectedConfig.id, index, "recipientRole", event.target.value)
+                              }
+                            >
+                              {recipientRoleOptions.map((roleOption) => (
+                                <option key={roleOption.roleKey} value={roleOption.roleKey}>
+                                  {roleOption.displayName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        ) : (
+                          <>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-500">
+                                ID người nhận
+                              </label>
+                              <input
+                                value={step.recipientId ?? ""}
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                onChange={(event) =>
+                                  onUpdateStep(selectedConfig.id, index, "recipientId", event.target.value)
+                                }
+                              />
+                            </div>
+                            <div>
+                              <label className="mb-1 block text-xs font-medium text-gray-500">
+                                Tên hiển thị
+                              </label>
+                              <input
+                                value={step.recipientName ?? ""}
+                                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                onChange={(event) =>
+                                  onUpdateStep(selectedConfig.id, index, "recipientName", event.target.value)
+                                }
+                              />
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <button
+                          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-600"
+                          onClick={() => onDeleteStep(selectedConfig.id, index)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                }
+
                 const roleOptions = getAssignableRoles(step.role);
 
                 return (

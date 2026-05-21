@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useRoleCatalog } from '@/contexts/RoleCatalogContext';
 import { useRequests } from '@/viewmodels/useRequests';
 import { RequestMetadata, RequestType } from '@/types/request';
+import type { Role } from '@/types/user';
 import { REQUEST_TYPES, COST_CENTERS } from '@/lib/constants';
 import { FileText, Package, DollarSign, CreditCard, Calendar, ChevronRight, ArrowLeft, Check, Plus, Trash2, AlertTriangle, Paperclip } from 'lucide-react';
 import { cn, formatVND } from '@/lib/utils';
@@ -23,7 +24,7 @@ const TYPE_CARDS = [
 type ApprovalPreviewStep = {
   id: string;
   stepOrder: number;
-  approverRole: string;
+  approverRole: Role;
   status: 'pending';
 };
 
@@ -104,7 +105,7 @@ export default function CreateRequestPage() {
       return template.steps.map((step: any, idx: number) => ({
         id: `preview-template-step-${idx + 1}`,
         stepOrder: idx + 1,
-        approverRole: step.role || step.approver_role || step.approverRole || 'head_nurse',
+        approverRole: (step.role || step.approver_role || step.approverRole || 'head_nurse') as Role,
         status: 'pending',
       }));
     }

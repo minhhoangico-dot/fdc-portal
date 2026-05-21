@@ -66,6 +66,16 @@ export type SupplyInventoryKpiModalState =
       };
     };
 
+type SupplyInventoryKpiFilterDefaults = {
+  category?: string;
+  status?: InventoryStatus | "all";
+  severity?: AnomalySeverity | "all";
+  visibility?: "active" | "all";
+  warehouse?: string;
+  timeRange?: SupplyTimeRange;
+  accountFilter?: SupplyAccountFilter;
+};
+
 interface BuildSupplyInventoryKpiDetailContext {
   inventory: InventoryItem[];
   anomalies: InventoryAnomaly[];
@@ -143,7 +153,7 @@ const buildGroupedSummaryRows = (
 
 export function getDefaultSupplyInventoryKpiModalState(
   kind: SupplyInventoryKpiModalState["kind"],
-  defaults?: Partial<SupplyInventoryKpiModalState["filters"]>,
+  defaults?: SupplyInventoryKpiFilterDefaults,
 ): SupplyInventoryKpiModalState {
   switch (kind) {
     case "total-items":

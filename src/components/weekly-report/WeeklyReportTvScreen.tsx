@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasFullPortalAdminAccess } from '@/lib/role-access';
 import { WEEKLY_REPORT_MANAGEMENT_PATH } from '@/lib/weekly-report';
 import { InfectiousDiseaseCard } from '@/components/weekly-report/InfectiousDiseaseCard';
 import { ServiceStatsCard } from '@/components/weekly-report/ServiceStatsCard';
@@ -115,7 +116,7 @@ export function WeeklyReportTvScreen() {
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            {user?.role === 'super_admin' && (
+            {user && hasFullPortalAdminAccess(user.role) && (
               <Link
                 to={WEEKLY_REPORT_MANAGEMENT_PATH}
                 className="flex h-7 w-7 items-center justify-center rounded text-slate-500"

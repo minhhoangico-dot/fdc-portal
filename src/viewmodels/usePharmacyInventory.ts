@@ -5,8 +5,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { anomalyMatchesInventoryItem, mapInventorySnapshotToItem } from "@/lib/inventory-identity";
+import {
+  anomalyMatchesInventoryItem,
+  buildInventoryItemKey,
+  mapInventorySnapshotToItem,
+} from "@/lib/inventory-identity";
+import {
+  buildPharmacyTopMaterials,
+  matchesPharmacyInventoryFilterStatus,
+} from "@/lib/pharmacyInventoryPresentation";
 import { supabase } from "@/lib/supabase";
+import { subscribeToPostgresChanges } from "@/lib/supabase-realtime";
 import type {
   InventoryAnomaly,
   InventoryFilterStatus,
@@ -29,6 +38,13 @@ import {
 } from "@/viewmodels/inventory/shared";
 
 const PAGE_SIZE = 1000;
+const ID_BATCH_SIZE = 100;
+const MAX_FALLBACK_ROWS = 50_000;
+
+type PharmacyHistoryTarget = {
+  sourceId: string;
+  warehouse: string;
+};
 
 export function usePharmacyInventory(options: UseInventoryOptions = {}) {
   const enabled = options.enabled ?? true;
@@ -54,6 +70,47 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
 
   const [sortKey, setSortKey] = useState<InventorySortKey>("value");
   const [sortDir, setSortDir] = useState<InventorySortDir>("desc");
+
+  const inventoryHistoryTargets = useMemo(() => {
+    const seen = new Set<string>();
+
+    return inventory.reduce<PharmacyHistoryTarget[]>((targets, item) => {
+      if (!matchesInventorySearchQuery(item, searchQuery)) {
+        return targets;
+      }
+
+      if (filterWarehouse !== "all" && item.warehouse !== filterWarehouse) {
+        return targets;
+      }
+
+      if (filterCategory !== "all" && item.category !== filterCategory) {
+        return targets;
+      }
+
+      const anomaliesForItem = anomalies.filter((anomaly) =>
+        anomalyMatchesInventoryItem(anomaly, item),
+      );
+
+      if (!matchesPharmacyInventoryFilterStatus(item, anomaliesForItem, filterStatus)) {
+        return targets;
+      }
+
+      const sourceId = item.sourceId || item.sku;
+      const dedupeKey =
+        buildInventoryItemKey(sourceId, item.warehouse) || `${sourceId}::${item.warehouse}`;
+
+      if (!sourceId || seen.has(dedupeKey)) {
+        return targets;
+      }
+
+      seen.add(dedupeKey);
+      targets.push({
+        sourceId,
+        warehouse: item.warehouse,
+      });
+      return targets;
+    }, []);
+  }, [anomalies, filterCategory, filterStatus, filterWarehouse, inventory, searchQuery]);
 
   const fetchInventory = useCallback(async () => {
     if (!enabled) return;
@@ -216,32 +273,94 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
     }
 
     try {
-      const { data, error } = await supabase.rpc("get_pharmacy_inventory_history", {
-        p_warehouse: filterWarehouse !== "all" ? filterWarehouse : null,
-        p_category: filterCategory !== "all" ? filterCategory : null,
-        p_search: searchQuery.trim() ? searchQuery.trim() : null,
-        p_status: filterStatus !== "all" ? filterStatus : null,
-      });
-
-      if (error) {
-        console.error("[usePharmacyInventory] fetchFilteredSnapshotHistory error:", error);
-        setError("Không thể tải lịch sử tồn kho");
+      if (inventoryHistoryTargets.length === 0) {
         setFilteredSnapshotHistory([]);
+        hasLoadedFilteredSnapshotHistory.current = true;
         return;
       }
 
+      const cutoffDate = getOneYearCutoffDate();
+      const byDate = new Map<string, { totalStock: number; totalValue: number }>();
+      const targetIdsByWarehouse = new Map<string, string[]>();
+      let totalRows = 0;
+
+      for (const target of inventoryHistoryTargets) {
+        const sourceIds = targetIdsByWarehouse.get(target.warehouse) ?? [];
+        sourceIds.push(target.sourceId);
+        targetIdsByWarehouse.set(target.warehouse, sourceIds);
+      }
+
+      for (const [warehouse, sourceIds] of targetIdsByWarehouse.entries()) {
+        for (let batchStart = 0; batchStart < sourceIds.length; batchStart += ID_BATCH_SIZE) {
+          if (totalRows >= MAX_FALLBACK_ROWS) {
+            break;
+          }
+
+          const idBatch = sourceIds.slice(batchStart, batchStart + ID_BATCH_SIZE);
+          let from = 0;
+          let hasMore = true;
+
+          while (hasMore) {
+            const { data, error } = await supabase
+              .from("fdc_inventory_snapshots")
+              .select("snapshot_date, current_stock, unit_price")
+              .eq("warehouse", warehouse)
+              .gte("snapshot_date", cutoffDate)
+              .in("his_medicineid", idBatch)
+              .not("his_medicineid", "is", null)
+              .not("his_medicineid", "like", "misa_%")
+              .order("snapshot_date", { ascending: true })
+              .range(from, from + PAGE_SIZE - 1);
+
+            if (error) {
+              console.error("[usePharmacyInventory] fetchFilteredSnapshotHistory error:", error);
+              setError("Không thể tải lịch sử tồn kho");
+              setFilteredSnapshotHistory([]);
+              return;
+            }
+
+            const batch = data || [];
+            for (const row of batch) {
+              const date = row.snapshot_date as string;
+              const stock = Number(row.current_stock) || 0;
+              const unitPrice = Number(row.unit_price) || 0;
+              const current = byDate.get(date) ?? { totalStock: 0, totalValue: 0 };
+
+              current.totalStock += stock;
+              current.totalValue += stock * unitPrice;
+              byDate.set(date, current);
+            }
+
+            totalRows += batch.length;
+            from += PAGE_SIZE;
+            hasMore = batch.length === PAGE_SIZE && totalRows < MAX_FALLBACK_ROWS;
+          }
+        }
+      }
+
       setFilteredSnapshotHistory(
-        (data || []).map((row: any) => ({
-          date: row.snapshot_date,
-          totalStock: Number(row.total_stock) || 0,
-          totalValue: Number(row.total_value) || 0,
-        })),
+        compactSnapshotHistoryByWeek(
+          Array.from(byDate.entries())
+            .sort(([left], [right]) => left.localeCompare(right))
+            .map(([date, total]) => ({
+              date,
+              totalStock: total.totalStock,
+              totalValue: total.totalValue,
+            })),
+        ),
       );
       hasLoadedFilteredSnapshotHistory.current = true;
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
     }
-  }, [enabled, filterWarehouse, filterCategory, filterStatus, searchQuery]);
+  }, [
+    enabled,
+    filterCategory,
+    filterStatus,
+    filterWarehouse,
+    inventoryHistoryTargets,
+    searchQuery,
+  ]);
 
   const fetchItemSnapshots = useCallback(
     async (item: InventoryItem) => {
@@ -261,9 +380,7 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
         .not("his_medicineid", "like", "misa_%")
         .order("snapshot_date", { ascending: true });
 
-      query = item.sourceId
-        ? query.eq("his_medicineid", item.sourceId)
-        : query.eq("name", item.name);
+      query = item.sourceId ? query.eq("his_medicineid", item.sourceId) : query.eq("name", item.name);
 
       const { data, error } = await query;
 
@@ -310,33 +427,35 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
 
     let snapshotTimeout: NodeJS.Timeout | null = null;
 
-    const channel = supabase
-      .channel("public:fdc_pharmacy_inventory")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_inventory_snapshots" },
-        fetchInventory,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_inventory_daily_value" },
+    const cleanups = [
+      subscribeToPostgresChanges(
+        supabase,
+        "public:fdc_pharmacy_inventory:snapshots",
+        [{ table: "fdc_inventory_snapshots" }],
+        () => fetchInventory(),
+      ),
+      subscribeToPostgresChanges(
+        supabase,
+        "public:fdc_pharmacy_inventory:daily-value",
+        [{ table: "fdc_inventory_daily_value" }],
         () => {
           if (snapshotTimeout) clearTimeout(snapshotTimeout);
           snapshotTimeout = setTimeout(() => {
-            fetchSnapshotHistory();
-            fetchFilteredSnapshotHistory();
+            void fetchSnapshotHistory();
+            void fetchFilteredSnapshotHistory();
           }, 1000);
         },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_analytics_anomalies" },
-        fetchAnomalies,
-      )
-      .subscribe();
+      ),
+      subscribeToPostgresChanges(
+        supabase,
+        "public:fdc_pharmacy_inventory:anomalies",
+        [{ table: "fdc_analytics_anomalies" }],
+        () => fetchAnomalies(),
+      ),
+    ];
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanups.forEach((cleanup) => cleanup());
       if (snapshotTimeout) clearTimeout(snapshotTimeout);
     };
   }, [enabled, fetchInventory, fetchAnomalies, fetchSnapshotHistory, fetchFilteredSnapshotHistory]);
@@ -362,10 +481,7 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
       if (latestSnapshotDate) {
         mergedByDate.set(latestSnapshotDate, {
           date: latestSnapshotDate,
-          totalStock: inventory.reduce(
-            (sum, item) => sum + (Number(item.currentStock) || 0),
-            0,
-          ),
+          totalStock: inventory.reduce((sum, item) => sum + (Number(item.currentStock) || 0), 0),
           totalValue: inventory.reduce((sum, item) => sum + getInventoryValue(item), 0),
         });
       }
@@ -396,19 +512,12 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
       if (filterWarehouse !== "all" && item.warehouse !== filterWarehouse) return false;
       if (filterCategory !== "all" && item.category !== filterCategory) return false;
 
-      if (filterStatus !== "all") {
-        if (filterStatus === "anomaly") {
-          const hasAnomaly = filteredAnomalies.some(
-            (anomaly) =>
-              !anomaly.acknowledged &&
-              anomalyMatchesInventoryItem(anomaly, item),
-          );
-          if (!hasAnomaly) return false;
-        } else if (filterStatus === "near_expiry") {
-          if (!hasNearExpiry(item)) return false;
-        } else if (item.status !== filterStatus) {
-          return false;
-        }
+      const anomaliesForItem = filteredAnomalies.filter((anomaly) =>
+        anomalyMatchesInventoryItem(anomaly, item),
+      );
+
+      if (!matchesPharmacyInventoryFilterStatus(item, anomaliesForItem, filterStatus)) {
+        return false;
       }
 
       return true;
@@ -478,39 +587,7 @@ export function usePharmacyInventory(options: UseInventoryOptions = {}) {
     return sortedInventory.reduce((sum, item) => sum + getInventoryValue(item), 0);
   }, [sortedInventory]);
 
-  const topMaterials: TopMaterial[] = useMemo(() => {
-    const byName = new Map<string, TopMaterial>();
-
-    const normalizeName = (name: string) =>
-      name
-        .replace(/[-–]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim()
-        .toLowerCase();
-
-    inventory.forEach((item) => {
-      const key = normalizeName(item.name);
-      const value = getInventoryValue(item);
-      const existing = byName.get(key);
-
-      if (existing) {
-        existing.value += value;
-        existing.stock += item.currentStock;
-      } else {
-        byName.set(key, {
-          materialId: item.sku,
-          name: item.name,
-          value,
-          unit: item.unit,
-          stock: item.currentStock,
-        });
-      }
-    });
-
-    return Array.from(byName.values())
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
-  }, [inventory]);
+  const topMaterials: TopMaterial[] = useMemo(() => buildPharmacyTopMaterials(inventory), [inventory]);
 
   const acknowledgeAnomaly = async (id: string) => {
     const { error } = await supabase

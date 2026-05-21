@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Request, RequestStatus } from '@/types/request';
 import { can } from '@/lib/permissions/access';
 import { supabase } from '@/lib/supabase';
+import { subscribeToPostgresChanges } from '@/lib/supabase-realtime';
 import { mapRequestRecord } from '@/lib/request-helpers';
 import { resolveEffectiveApproverId } from '@/lib/delegations';
 
@@ -56,22 +57,16 @@ export function useRequests() {
 
     fetchRequests();
 
-    const channel = supabase
-      .channel('public:fdc_approval_requests')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_approval_requests' }, () => {
-        fetchRequests();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_approval_steps' }, () => {
-        fetchRequests();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_request_attachments' }, () => {
-        fetchRequests();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeToPostgresChanges(
+      supabase,
+      'public:fdc_approval_requests',
+      [
+        { table: 'fdc_approval_requests' },
+        { table: 'fdc_approval_steps' },
+        { table: 'fdc_request_attachments' },
+      ],
+      fetchRequests,
+    );
   }, [user]);
 
   const filteredRequests = useMemo(() => {

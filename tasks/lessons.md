@@ -28,6 +28,38 @@ These are not corrections. They are durable starting points for new agents:
 - Trigger to re-read:
 - Verification to add next time:
 
+### 2026-04-30 - Final verification must reconcile planned artifacts with the live tree and use one bridge URL helper
+
+- Context: The codebase-optimization closeout initially stayed blocked because the task docs claimed Agent 04 files were missing and local `/lab-dashboard/tv` smoke was still treated as a bridge CORS problem.
+- What went wrong: Final verification trusted stale task assumptions instead of re-checking the actual workspace and browser path. The helper extraction had already landed, but some bridge callers still bypassed the shared URL resolver, so local smoke coverage lagged behind the real code.
+- Preventive rule: Before marking a task blocked on “missing” implementation artifacts, verify the files that actually exist in the worktree and reconcile the plan with any reused existing modules. For portal bridge traffic, route browser-side bridge URLs through one shared helper so dev proxy behavior and production-origin behavior stay aligned.
+- Trigger to re-read: Any final verification pass that updates task status, or any change to `src/lib/bridge-client.ts` and bridge-calling viewmodels.
+- Verification to add next time: Run a path check for planned files, then run `npm run check:auth-smoke` against a live app URL and require `/lab-dashboard/tv` to receive `200` responses for both `/tv-access/check` and `/lab-dashboard/current`.
+
+### 2026-04-06 - Warehouse-compat fixes must not revive name-based anomaly matches
+
+- Context: While fixing supply inventory rows to split MISA stock by real warehouse, the first compatibility patch let legacy anomaly keys for `Khối Vật Tư` match the new per-warehouse rows.
+- What went wrong: `src/lib/inventory-identity.ts` still fell back to `materialId === item.name` even when both anomaly and item already had explicit `inventoryKey` values that did not match, so keyed anomalies could incorrectly attach to same-name rows in another warehouse.
+- Preventive rule: If an anomaly row has an `inventoryKey`, treat key matching as authoritative. Only use the material-name fallback for legacy rows with no key at all, and keep any warehouse-compat bridge scoped to the intended legacy key pattern.
+- Trigger to re-read: Any future change to `src/lib/inventory-identity.ts`, `src/lib/inventory-dashboard-summary.ts`, or supply/pharmacy anomaly compatibility logic.
+- Verification to add next time: Add one regression test where two same-name inventory rows have different keys and assert that a keyed anomaly only matches the intended row, plus one compatibility test for the specific legacy warehouse alias.
+
+### 2026-04-06 - Live inventory uniqueness must be verified before storing one logical item in multiple rows
+
+- Context: The first live rollout of the MISA warehouse split passed local tests and builds, but the bridge's manual `syncMisaSupplies` failed immediately on the production host.
+- What went wrong: The local code assumed `fdc_inventory_snapshots` could safely use `(his_medicineid, warehouse, snapshot_date)` as the effective identity, but the live database still enforced a unique constraint on `(his_medicineid, snapshot_date)`, so storing the same MISA code twice on one day caused a duplicate-key failure.
+- Preventive rule: Before deploying any bridge change that multiplies rows per logical source item, verify the live unique constraints or perform a canary manual sync on the host. If the database still keys on the old identifier, move the new cardinality into the stored ID shape itself or ship the schema migration first.
+- Trigger to re-read: Any future change to `fdc-lan-bridge/src/jobs/syncMisaSupplies.ts`, `fdc-lan-bridge/src/jobs/syncInventory.ts`, or other sync jobs that change row identity/upsert behavior in Supabase.
+- Verification to add next time: Run a host-side manual sync immediately after deployment and inspect both the bridge logs and one concrete Supabase row sample before calling the rollout complete.
+
+### 2026-04-06 - Snapshot filters must preserve the rows required by downstream anomaly rules
+
+- Context: Pharmacy anomaly detection already had a `zero_stock` rule, but operators never saw it trigger in the portal.
+- What went wrong: `fdc-lan-bridge/src/jobs/syncInventory.ts` only synced positive-stock pharmacy rows and `fdc-lan-bridge/src/lib/pharmacyInventorySync.ts` also dropped zero-stock historical rows, so the anomaly job never received a `current_stock = 0` snapshot to evaluate.
+- Preventive rule: Before adding or relying on an inventory anomaly rule, verify that the upstream snapshot sync keeps the exact row shape the rule needs. If the rule depends on zero or transitional states, preserve those rows selectively instead of filtering them out for convenience.
+- Trigger to re-read: Any future change to pharmacy/supply snapshot SQL, backfill builders, or anomaly rules in `fdc-lan-bridge/src/jobs/syncInventory.ts`, `fdc-lan-bridge/src/lib/pharmacyInventorySync.ts`, or `fdc-lan-bridge/src/jobs/detectAnomalies.ts`.
+- Verification to add next time: Add one regression test that proves the needed transitional row survives into snapshots, and one anomaly test that proves the downstream rule now fires on that row.
+
 ### 2026-03-25 - Bridge rollouts must build before restart and verify raw HTTP output
 
 - Context: While fixing the missing `Tên test` values on live `/lab-dashboard/details`, the local repo, bridge tests, and rebuilt host `dist` files all looked correct, but the live endpoint still returned TAT rows without `testName`.
@@ -155,3 +187,27 @@ These are not corrections. They are durable starting points for new agents:
 - Preventive rule: For admin forms that edit a composite JSON payload, keep edits in local draft state and persist only the latest draft from an explicit save action. Avoid whole-document writes from per-field async handlers unless the writes are serialized against the newest draft.
 - Trigger to re-read: Any future change to `src/viewmodels/useAdmin.ts`, approval-template editors, or other admin screens that update JSON blobs such as `steps`, `settings`, or `metadata`.
 - Verification to add next time: Add a regression test that applies multiple sequential local edits before building the save payload, then run the targeted test plus `npm run build`.
+
+### 2026-04-07 - Fresh verification must follow the last code edit, not an earlier checkpoint
+
+- Context: The pharmacy inventory fix had already passed targeted tests and builds, but one last rewrite of `src/viewmodels/usePharmacyInventory.ts` was still needed to remove the filtered-history RPC dependency and clean up the file.
+- What went wrong: Earlier verification evidence was no longer sufficient once the file changed again; relying on the previous green build would have missed the newly introduced import/runtime risks in the rewritten viewmodel.
+- Preventive rule: Any time a file is materially rewritten after a green checkpoint, treat all prior verification for that area as stale and rerun the full proving commands before claiming completion or deploying.
+- Trigger to re-read: Any future task where a “final cleanup” or “small follow-up edit” lands after tests/build already passed once.
+- Verification to add next time: Re-run the exact targeted tests and both relevant builds immediately after the last patch, then only use that newest evidence in the closeout.
+
+### 2026-04-09 - Split portal full-access from onsite bypass rules
+
+- Context: The user wanted `head_nurse` to behave like `super_admin` across the portal, but still be blocked by onsite checks on `/admin`, `/tv-management`, and TV display routes.
+- What went wrong: Treating every `super_admin` check as one concept would have either left `head_nurse` short of module/UI parity or accidentally given `head_nurse` the same onsite bypass and escalation semantics as the real `super_admin`.
+- Preventive rule: When a non-`super_admin` role needs near-admin parity, model portal full-access and onsite bypass as separate helpers, then update UI/runtime shortcut checks to use the right helper while leaving persisted business ownership literals unchanged.
+- Trigger to re-read: Any future change to `src/lib/role-access.ts`, `src/lib/permissions/access.ts`, `src/lib/onsite-access.ts`, route guards in `src/App.tsx`, or role-based shortcut checks in dashboards/admin views.
+- Verification to add next time: Add one regression test for permission/module parity and one regression test proving the same role still fails onsite bypass where intended.
+
+### 2026-04-13 - Weekly report summary matching must mirror detail ILIKE behavior
+
+- Context: Tuần 15 của TV weekly report hiển thị `Khám sức khỏe = 0` dù HIS có 38 lượt `Khám Sức khỏe (Khám)` trong cùng khoảng thời gian.
+- What went wrong: `fdc-lan-bridge/src/weeklyReport/queries.ts` dùng `String.includes()` và `startsWith()` phân biệt hoa-thường trong `getExaminationStats`, trong khi detail query cho cùng mapping lại dùng `ILIKE`; mapping `kham_suc_khoe` lưu `match_value = "sức khỏe"` chữ thường nên summary rơi toàn bộ dữ liệu mixed-case.
+- Preventive rule: Bất kỳ logic weekly report nào áp dụng `contains` hoặc `starts_with` từ `fdc_weekly_report_service_mappings` phải dùng so khớp không phân biệt hoa-thường, và summary/detail phải giữ cùng ngữ nghĩa match cho cùng một mapping.
+- Trigger to re-read: Any future change to `fdc-lan-bridge/src/weeklyReport/queries.ts`, weekly report examination mappings, or bridge code that compares HIS `servicename` values in JavaScript.
+- Verification to add next time: Add one regression test with a mixed-case Vietnamese service name and verify the summary count matches the live HIS/detail row count for the same mapping.

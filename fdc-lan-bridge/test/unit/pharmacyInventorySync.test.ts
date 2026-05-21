@@ -126,4 +126,59 @@ describe("pharmacyInventorySync", () => {
       },
     ]);
   });
+
+  it("keeps the zero-stock day when same-day export drains the lot", () => {
+    const rows = buildMissingPharmacySnapshots({
+      baselineSnapshots: [
+        {
+          his_medicineid: "S100",
+          medicine_code: "TH001",
+          name: "Thuoc A",
+          category: "Khac",
+          warehouse: "Kho Thuoc",
+          current_stock: 2,
+          unit: "Vien",
+          batch_number: "LO1",
+          expiry_date: "2026-12-31",
+          unit_price: 1000,
+        },
+      ],
+      metadataByHisMedicineId: new Map([
+        [
+          "S100",
+          {
+            his_medicineid: "S100",
+            medicine_code: "TH001",
+            name: "Thuoc A",
+            category: "Khac",
+            warehouse: "Kho Thuoc",
+            unit: "Vien",
+            batch_number: "LO1",
+            expiry_date: "2026-12-31",
+            unit_price: 1000,
+          },
+        ],
+      ]),
+      importDeltas: [],
+      exportDeltas: [
+        {
+          snapshot_date: "2026-03-13",
+          his_medicineid: "S100",
+          quantity: 2,
+        },
+      ],
+      startDate: "2026-03-13",
+      endDate: "2026-03-13",
+    });
+
+    expect(rows).toEqual([
+      expect.objectContaining({
+        his_medicineid: "S100",
+        snapshot_date: "2026-03-13",
+        current_stock: 0,
+        approved_export: 2,
+        status: "out_of_stock",
+      }),
+    ]);
+  });
 });

@@ -269,6 +269,76 @@ export interface HikvisionEvent {
   attendanceStatus: string;
 }
 
+export interface HikvisionEmployee {
+  employeeNo: string;
+  name: string;
+  cardNo: string;
+  userType: string;
+  valid: boolean;
+}
+
+async function searchEmployees(
+  position = 0,
+  maxResults = 30,
+): Promise<any> {
+  const body = {
+    UserInfoSearchCond: {
+      searchID: `search_${Date.now()}`,
+      searchResultPosition: position,
+      maxResults,
+    },
+  };
+  const response = await request(
+    "/ISAPI/AccessControl/UserInfo/Search?format=json",
+    {
+      method: "POST",
+      body: JSON.stringify(body),
+    },
+  );
+  return response.json();
+}
+
+export async function getAllEmployees(): Promise<HikvisionEmployee[]> {
+  const employees: HikvisionEmployee[] = [];
+  let position = 0;
+  const batchSize = 30;
+  let hasMore = true;
+
+  logger.info("Fetching Hikvision employee roster");
+
+  while (hasMore) {
+    const result = await searchEmployees(position, batchSize);
+    const info = result.UserInfoSearch || {};
+
+    if (info.UserInfo && Array.isArray(info.UserInfo)) {
+      for (const user of info.UserInfo) {
+        employees.push({
+          employeeNo: user.employeeNo || "",
+          name: user.name || "",
+          cardNo:
+            user.numOfCard > 0 && user.Valid ? user.Valid.cardNo || "" : "",
+          userType: user.userType || "normal",
+          valid: Boolean(user.Valid),
+        });
+      }
+    }
+
+    const total = info.totalMatches || 0;
+    const numReceived = info.numOfMatches || 0;
+    position += batchSize;
+
+    if (position >= total && total > 0) {
+      hasMore = false;
+    } else if (numReceived === 0) {
+      hasMore = false;
+    } else if (numReceived < batchSize && total === 0) {
+      hasMore = false;
+    }
+  }
+
+  return employees;
+}
+
 export async function getAllEvents(
   startDate: Date,
   endDate: Date,

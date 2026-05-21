@@ -5,6 +5,7 @@
 
 import { Calendar, CheckCircle, Clock, FileText, MapPinned, Package, RefreshCw, Settings, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { hasFullPortalAdminAccess } from '@/lib/role-access';
 import { can, canAccessModule } from '@/lib/permissions/access';
 import { formatDate } from '@/lib/utils';
 import { useAdmin } from '@/viewmodels/useAdmin';
@@ -27,7 +28,7 @@ export function useDashboard() {
   const inventoryEnabled = Boolean(user && canAccessModule(user.role, 'inventory'));
   const adminEnabled = Boolean(user && canAccessModule(user.role, 'admin'));
   const adminPreload: Array<'users' | 'approval' | 'misa' | 'sync' | 'audit'> =
-    user?.role === 'super_admin'
+    user && hasFullPortalAdminAccess(user.role)
       ? ['sync']
       : user?.role === 'director' || user?.role === 'chairman'
         ? ['users']
@@ -131,7 +132,7 @@ export function useDashboard() {
       icon: RefreshCw,
       path: '/admin',
       color: 'bg-cyan-100 text-cyan-700',
-      visible: user.role === 'super_admin',
+      visible: hasFullPortalAdminAccess(user.role),
     },
     {
       label: 'Tong quan nhan su',
@@ -165,7 +166,7 @@ export function useDashboard() {
     data.deptPendingApprovals = pendingApprovals.filter((request) => request.department === user.department);
   }
 
-  if (user.role === 'super_admin' || user.role === 'head_nurse') {
+  if (hasFullPortalAdminAccess(user.role)) {
     const systemPendingByType = pendingApprovals.reduce((acc, request) => {
       acc[request.type] = (acc[request.type] || 0) + 1;
       return acc;
@@ -182,7 +183,7 @@ export function useDashboard() {
       avgTimeHours,
     };
 
-    if (user.role === 'super_admin') {
+    if (hasFullPortalAdminAccess(user.role)) {
       data.bridgeHealth = bridgeHealth;
 
       const misaSyncRuns = syncHistory

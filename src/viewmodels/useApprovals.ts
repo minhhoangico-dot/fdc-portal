@@ -5,15 +5,18 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { assertNonEmptySelection, normalizeSelectionIds } from '@/lib/approval-actions';
 import {
   buildApprovalWorkQueue,
   requiresManualForwardChoice,
 } from '@/lib/approvals/workqueue';
+import { hasFullPortalAdminAccess } from '@/lib/role-access';
 import { can } from '@/lib/permissions/access';
 import { ActiveDelegation, findActiveDelegation, resolveEffectiveApproverId } from '@/lib/delegations';
 import { aggregateRoomIntakeItems, buildMaterialConsolidationPayload, mapRoomIntakeToWorkflowIntake } from '@/lib/room-management/workflow';
 import { mapRequestRecord } from '@/lib/request-helpers';
 import { supabase } from '@/lib/supabase';
+import { subscribeToPostgresChanges } from '@/lib/supabase-realtime';
 import type { ApprovalStep } from '@/types/approval';
 import type { Request, RequestHandoff } from '@/types/request';
 import type {
@@ -228,31 +231,19 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
 
     void fetchApprovals();
 
-    const channel = supabase
-      .channel('public:fdc_approvals')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_approval_requests' }, () => {
-        void fetchApprovals();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_approval_steps' }, () => {
-        void fetchApprovals();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_request_attachments' }, () => {
-        void fetchApprovals();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_request_handoffs' }, () => {
-        void fetchApprovals();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_room_intakes' }, () => {
-        void fetchApprovals();
-      })
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'fdc_room_intake_items' }, () => {
-        void fetchApprovals();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeToPostgresChanges(
+      supabase,
+      'public:fdc_approvals',
+      [
+        { table: 'fdc_approval_requests' },
+        { table: 'fdc_approval_steps' },
+        { table: 'fdc_request_attachments' },
+        { table: 'fdc_request_handoffs' },
+        { table: 'fdc_room_intakes' },
+        { table: 'fdc_room_intake_items' },
+      ],
+      () => fetchApprovals(),
+    );
   }, [enabled, fetchApprovals]);
 
   useEffect(() => {
@@ -314,7 +305,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
       const currentStep = getPendingStep(request);
       if (!currentStep) return false;
 
-      if (user.role === 'super_admin') return true;
+      if (hasFullPortalAdminAccess(user.role)) return true;
       if (currentStep.approverId === user.id) return true;
       if (!currentStep.approverId && currentStep.approverRole === user.role) return true;
 
@@ -330,7 +321,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
         !currentStep ||
         !user ||
         currentStep.approverId === user.id ||
-        user.role === 'super_admin'
+        hasFullPortalAdminAccess(user.role)
       ) {
         return null;
       }
@@ -629,7 +620,10 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
     async (intakeIds: string[]) => {
       if (!user) return null;
 
-      const selectedIntakes = reviewerIntakes.filter((intake) => intakeIds.includes(intake.id));
+      const selectedIntakeIds = normalizeSelectionIds(intakeIds);
+      const selectedIntakes = reviewerIntakes.filter((intake) =>
+        selectedIntakeIds.includes(intake.id),
+      );
       if (selectedIntakes.length === 0) return null;
 
       const reviewGroup = selectedIntakes[0].reviewGroup;
@@ -658,7 +652,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
         roomName: primaryRoom.roomName,
         floor: primaryRoom.floor,
         reviewGroup,
-        intakeIds,
+        intakeIds: selectedIntakeIds,
         items: aggregatedItems,
       } satisfies MaterialConsolidationInput);
 
@@ -740,7 +734,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
         );
       }
 
-      const linkRows = intakeIds.map((intakeId) => ({
+      const linkRows = selectedIntakeIds.map((intakeId) => ({
         intake_id: intakeId,
         request_id: requestRow.id,
         link_type: 'consolidated',
@@ -754,7 +748,7 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
           status: 'consolidated',
           updated_at: new Date().toISOString(),
         })
-        .in('id', intakeIds);
+        .in('id', selectedIntakeIds);
 
       if (updateError) throw updateError;
 
@@ -871,7 +865,8 @@ export function useApprovals(options: UseApprovalsOptions = {}) {
 
   const batchApprove = useCallback(
     (ids: string[], note?: string) => {
-      return Promise.all(ids.map((id) => approveRequest(id, note)));
+      const selectedIds = assertNonEmptySelection(normalizeSelectionIds(ids));
+      return Promise.all(selectedIds.map((id) => approveRequest(id, note)));
     },
     [approveRequest],
   );

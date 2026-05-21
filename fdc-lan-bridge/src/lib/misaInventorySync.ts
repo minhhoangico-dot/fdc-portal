@@ -7,6 +7,7 @@ export interface MisaInventorySnapshotSeed {
   name: string;
   category?: string | null;
   warehouse: string;
+  stock_id?: string | null;
   unit?: string | null;
   current_stock: number;
   total_value: number;
@@ -18,12 +19,15 @@ export interface MisaInventorySnapshotMeta {
   name: string;
   category?: string | null;
   warehouse: string;
+  stock_id?: string | null;
   unit?: string | null;
 }
 
 export interface MisaInventoryDelta {
   snapshot_date: string;
   his_medicineid: string;
+  warehouse: string;
+  stock_id?: string | null;
   delta_stock: number;
   delta_value: number;
 }
@@ -33,9 +37,18 @@ interface MisaInventoryState extends MisaInventorySnapshotMeta {
   totalValue: number;
 }
 
+const buildMisaStateKey = (
+  hisMedicineId: string,
+  _stockId?: string | null,
+  _warehouse?: string | null,
+): string => hisMedicineId;
+
 const normalizeMeta = (
   meta: MisaInventorySnapshotMeta,
-): Omit<InventorySnapshotWriteRow, "snapshot_date" | "current_stock" | "approved_export" | "status" | "unit_price"> => ({
+): Omit<
+  InventorySnapshotWriteRow,
+  "snapshot_date" | "current_stock" | "approved_export" | "status" | "unit_price"
+> => ({
   his_medicineid: meta.his_medicineid,
   medicine_code: meta.medicine_code ?? null,
   name: meta.name,
@@ -49,23 +62,25 @@ const normalizeMeta = (
 const toDeltaMapByDate = (
   deltas: MisaInventoryDelta[],
 ): Map<string, Map<string, { deltaStock: number; deltaValue: number }>> => {
-  const byDate = new Map<
-    string,
-    Map<string, { deltaStock: number; deltaValue: number }>
-  >();
+  const byDate = new Map<string, Map<string, { deltaStock: number; deltaValue: number }>>();
 
   for (const delta of deltas) {
     const dateMap =
       byDate.get(delta.snapshot_date) ??
       new Map<string, { deltaStock: number; deltaValue: number }>();
-    const current = dateMap.get(delta.his_medicineid) ?? {
+    const stateKey = buildMisaStateKey(
+      delta.his_medicineid,
+      delta.stock_id,
+      delta.warehouse,
+    );
+    const current = dateMap.get(stateKey) ?? {
       deltaStock: 0,
       deltaValue: 0,
     };
 
     current.deltaStock += Number(delta.delta_stock) || 0;
     current.deltaValue += Number(delta.delta_value) || 0;
-    dateMap.set(delta.his_medicineid, current);
+    dateMap.set(stateKey, current);
     byDate.set(delta.snapshot_date, dateMap);
   }
 
@@ -74,12 +89,12 @@ const toDeltaMapByDate = (
 
 export function buildMisaInventorySnapshotsFromDeltas(params: {
   seeds: MisaInventorySnapshotSeed[];
-  metadataByHisMedicineId: Map<string, MisaInventorySnapshotMeta>;
+  metadataByStateKey: Map<string, MisaInventorySnapshotMeta>;
   deltas: MisaInventoryDelta[];
   startDate: string;
   endDate: string;
 }): InventorySnapshotWriteRow[] {
-  const { seeds, metadataByHisMedicineId, deltas, startDate, endDate } = params;
+  const { seeds, metadataByStateKey, deltas, startDate, endDate } = params;
 
   if (startDate > endDate) {
     return [];
@@ -87,12 +102,13 @@ export function buildMisaInventorySnapshotsFromDeltas(params: {
 
   const state = new Map<string, MisaInventoryState>();
   for (const seed of seeds) {
-    state.set(seed.his_medicineid, {
+    state.set(buildMisaStateKey(seed.his_medicineid, seed.stock_id, seed.warehouse), {
       his_medicineid: seed.his_medicineid,
       medicine_code: seed.medicine_code ?? null,
       name: seed.name,
       category: seed.category ?? "Khac",
       warehouse: seed.warehouse,
+      stock_id: seed.stock_id ?? null,
       unit: seed.unit ?? "Cai",
       currentStock: Number(seed.current_stock) || 0,
       totalValue: Number(seed.total_value) || 0,
@@ -107,8 +123,8 @@ export function buildMisaInventorySnapshotsFromDeltas(params: {
       deltasByDate.get(date) ??
       new Map<string, { deltaStock: number; deltaValue: number }>();
 
-    for (const [hisMedicineId, delta] of dateDeltas.entries()) {
-      const existing = state.get(hisMedicineId);
+    for (const [stateKey, delta] of dateDeltas.entries()) {
+      const existing = state.get(stateKey);
       if (existing) {
         existing.currentStock += delta.deltaStock;
         existing.totalValue += delta.deltaValue;
@@ -119,16 +135,17 @@ export function buildMisaInventorySnapshotsFromDeltas(params: {
         continue;
       }
 
-      const metadata = metadataByHisMedicineId.get(hisMedicineId);
+      const metadata = metadataByStateKey.get(stateKey);
       if (!metadata) {
         continue;
       }
 
       const initialStock = Number(delta.deltaStock) || 0;
       const initialValue = Number(delta.deltaValue) || 0;
-      state.set(hisMedicineId, {
+      state.set(stateKey, {
         ...metadata,
         category: metadata.category ?? "Khac",
+        stock_id: metadata.stock_id ?? null,
         unit: metadata.unit ?? "Cai",
         currentStock: initialStock > 0 ? initialStock : 0,
         totalValue: initialStock > 0 ? initialValue : 0,

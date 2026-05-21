@@ -83,6 +83,11 @@ const normalizeSnapshotMeta = (
   unit_price: Number(meta.unit_price) || 0,
 });
 
+const getSnapshotStatus = (
+  currentStock: number,
+): InventorySnapshotWriteRow["status"] =>
+  currentStock > 0 ? "in_stock" : "out_of_stock";
+
 export function buildMissingPharmacySnapshots(params: {
   baselineSnapshots: PharmacySnapshotSeed[];
   metadataByHisMedicineId: Map<string, PharmacySnapshotMeta>;
@@ -162,7 +167,9 @@ export function buildMissingPharmacySnapshots(params: {
     }
 
     for (const lot of state.values()) {
-      if (lot.currentStock <= 0) {
+      const approvedExport = dailyExports.get(lot.his_medicineid) ?? 0;
+
+      if (lot.currentStock <= 0 && approvedExport <= 0) {
         continue;
       }
 
@@ -170,8 +177,8 @@ export function buildMissingPharmacySnapshots(params: {
         ...normalizeSnapshotMeta(lot),
         snapshot_date: date,
         current_stock: Number(lot.currentStock) || 0,
-        approved_export: dailyExports.get(lot.his_medicineid) ?? 0,
-        status: "in_stock",
+        approved_export: approvedExport,
+        status: getSnapshotStatus(Number(lot.currentStock) || 0),
       });
     }
   }

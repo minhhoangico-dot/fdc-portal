@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDashboard } from '@/viewmodels/useDashboard';
+import { hasFullPortalAdminAccess } from '@/lib/role-access';
 import { Link } from 'react-router-dom';
 import { REQUEST_TYPES, REQUEST_STATUS } from '@/lib/constants';
 import { formatTimeAgo, cn } from '@/lib/utils';
@@ -106,7 +107,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Full-access operational widgets */}
-          {(user.role === 'super_admin' || user.role === 'head_nurse') && (
+          {hasFullPortalAdminAccess(user.role) && (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -248,7 +249,7 @@ export default function DashboardPage() {
           </div>
 
           {/* KTT / SUPER_ADMIN Side Widgets */}
-          {user.role === 'super_admin' && (
+          {hasFullPortalAdminAccess(user.role) && (
             <>
               <div className="bg-white rounded-xl border border-gray-200 p-5">
                 <h2 className="text-lg font-semibold text-gray-900 mb-4">Trạng thái hệ thống</h2>

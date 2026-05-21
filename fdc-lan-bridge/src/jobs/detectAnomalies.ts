@@ -10,6 +10,23 @@ import { toHoChiMinhDate } from "../lib/date";
 import { logger } from "../lib/logger";
 import { logSync } from "../lib/syncLog";
 
+const matchesActiveAnomalyForItem = (
+  anomaly: any,
+  moduleType: "pharmacy" | "supply",
+  itemKey: string | null,
+  itemName: string,
+): boolean => {
+  if (anomaly.module_type && anomaly.module_type !== moduleType) {
+    return false;
+  }
+
+  if (anomaly.inventory_item_key) {
+    return anomaly.inventory_item_key === itemKey;
+  }
+
+  return anomaly.material_name === itemName;
+};
+
 export async function detectAnomaliesJob(): Promise<void> {
   const startTime = Date.now();
   let anomaliesCreated = 0;
@@ -161,7 +178,7 @@ export async function detectAnomaliesJob(): Promise<void> {
 
       // --- Match & dedup against existing active anomalies ---
       const existingAnomaliesForItem = currentActiveAnomalies.filter(
-        (a) => a.material_name === todaySnap.name && (a.module_type === moduleType || !a.module_type),
+        (a) => matchesActiveAnomalyForItem(a, moduleType, itemKey, todaySnap.name),
       );
 
       for (const existing of existingAnomaliesForItem) {

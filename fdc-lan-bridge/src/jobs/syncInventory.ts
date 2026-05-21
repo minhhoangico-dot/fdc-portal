@@ -82,7 +82,7 @@ const PHARMACY_CURRENT_SNAPSHOT_QUERY = `
       AND medicine_export_status = 1
     GROUP BY medicineid_org
   ) e ON s.medicineid = e.medicineid
-  WHERE s.soluongtonkho > 0
+  WHERE (s.soluongtonkho > 0 OR COALESCE(e.day_export, 0) > 0)
     AND s.departmentid <> 6
     AND (s.roomid IS NULL OR s.roomid NOT IN (69, 108))
 `;
@@ -164,21 +164,25 @@ type HisInventoryDeltaRow = {
 const toPharmacySnapshotWriteRow = (
   item: CurrentSnapshotRow,
   snapshotDate: string,
-): InventorySnapshotWriteRow => ({
-  his_medicineid: item.his_medicineid,
-  medicine_code: item.medicine_code ?? null,
-  name: item.name,
-  category: "Khac",
-  warehouse: item.warehouse_name || "Kho Tong",
-  current_stock: Number(item.current_stock) || 0,
-  approved_export: Number(item.approved_export) || 0,
-  unit: item.unit || "Cai",
-  status: "in_stock",
-  snapshot_date: snapshotDate,
-  batch_number: item.batch_number ?? null,
-  expiry_date: item.expiry_date ?? null,
-  unit_price: Number(item.unit_price) || 0,
-});
+): InventorySnapshotWriteRow => {
+  const currentStock = Number(item.current_stock) || 0;
+
+  return {
+    his_medicineid: item.his_medicineid,
+    medicine_code: item.medicine_code ?? null,
+    name: item.name,
+    category: "Khac",
+    warehouse: item.warehouse_name || "Kho Tong",
+    current_stock: currentStock,
+    approved_export: Number(item.approved_export) || 0,
+    unit: item.unit || "Cai",
+    status: currentStock > 0 ? "in_stock" : "out_of_stock",
+    snapshot_date: snapshotDate,
+    batch_number: item.batch_number ?? null,
+    expiry_date: item.expiry_date ?? null,
+    unit_price: Number(item.unit_price) || 0,
+  };
+};
 
 const pharmacySnapshotSelect = (columns: string) =>
   supabase

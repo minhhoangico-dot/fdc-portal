@@ -59,6 +59,8 @@ export interface ItemSnapshot {
 export interface TopMaterial {
   materialId: string;
   name: string;
+  warehouse?: string;
+  chartLabel?: string;
   value: number;
   unit: string;
   stock: number;

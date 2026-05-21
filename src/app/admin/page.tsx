@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { hasFullPortalAdminAccess } from "@/lib/role-access";
 import { AdminTab, useAdmin } from "@/viewmodels/useAdmin";
 import { ADMIN_TABS, getAdminLegacyTabRedirect, isAdminTab } from "./admin-navigation";
 import { AddUserModal } from "./AddUserModal";
@@ -91,7 +92,7 @@ export default function AdminPage() {
     }
   }, [navigate, searchParams, setActiveTab]);
 
-  if (!user || user.role !== "super_admin") {
+  if (!user || !hasFullPortalAdminAccess(user.role)) {
     return (
       <div className="flex h-96 items-center justify-center">
         <p className="text-lg text-gray-500">Bạn không có quyền truy cập trang này.</p>

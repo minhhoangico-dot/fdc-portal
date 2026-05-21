@@ -10,6 +10,7 @@ import {
   type ApprovalConfigStepField,
   updateApprovalConfigStep,
 } from "@/lib/approval-config";
+import { buildBridgeUrl } from "@/lib/bridge-client";
 import { supabase } from "@/lib/supabase";
 import { BRIDGE_HEALTH_ROW_ID, isBridgeHeartbeatStale } from "@/lib/bridge";
 import { User, Role } from "@/types/user";
@@ -539,9 +540,7 @@ export function useAdmin(options: UseAdminOptions = {}) {
     setIsSyncing(true);
     setSyncMessage(null);
     try {
-      const baseUrl =
-        (import.meta as any).env?.VITE_BRIDGE_URL || "http://localhost:3333";
-      const response = await fetch(`${baseUrl}/sync/${encodeURIComponent(type)}`, {
+      const response = await fetch(buildBridgeUrl(`/sync/${encodeURIComponent(type)}`), {
         method: "POST",
       });
       if (response.ok) {

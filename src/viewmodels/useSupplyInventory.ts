@@ -5,8 +5,14 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { anomalyMatchesInventoryItem, mapInventorySnapshotToItem } from "@/lib/inventory-identity";
+import {
+  anomalyMatchesInventoryItem,
+  mapInventorySnapshotToItem,
+  preferWarehouseSpecificInventoryItems,
+} from "@/lib/inventory-identity";
+import { buildSupplyTopMaterials } from "@/lib/supplyInventoryTopMaterials";
 import { supabase } from "@/lib/supabase";
+import { subscribeToPostgresChanges } from "@/lib/supabase-realtime";
 import type {
   InventoryAnomaly,
   InventoryFilterStatus,
@@ -60,12 +66,20 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
 
   const inventoryHistoryTargetIds = useMemo(() => {
     return inventory
-      .filter((item) =>
-        matchesInventoryHistoryFilters(item, filterCategory, searchQuery),
-      )
+      .filter((item) => {
+        if (!matchesInventoryHistoryFilters(item, filterCategory, searchQuery)) {
+          return false;
+        }
+
+        if (filterWarehouse !== "all" && item.warehouse !== filterWarehouse) {
+          return false;
+        }
+
+        return true;
+      })
       .map((item) => item.sourceId || item.sku)
       .filter(Boolean);
-  }, [inventory, filterCategory, searchQuery]);
+  }, [inventory, filterCategory, filterWarehouse, searchQuery]);
 
   const fetchInventory = useCallback(async () => {
     if (!enabled) return;
@@ -128,7 +142,11 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     }
 
     if (allData.length > 0) {
-      setInventory(allData.map((item: any) => mapInventorySnapshotToItem(item)));
+      setInventory(
+        preferWarehouseSpecificInventoryItems(
+          allData.map((item: any) => mapInventorySnapshotToItem(item)),
+        ),
+      );
 
       const { data: syncLog } = await supabase
         .from("fdc_sync_logs")
@@ -209,7 +227,10 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     if (!enabled) return;
 
     setError(null);
-    const hasFilters = filterCategory !== "all" || Boolean(searchQuery.trim());
+    const hasFilters =
+      filterWarehouse !== "all" ||
+      filterCategory !== "all" ||
+      Boolean(searchQuery.trim());
 
     if (!hasFilters) {
       setFilteredSnapshotHistory([]);
@@ -237,6 +258,10 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
             return false;
           }
 
+          if (filterWarehouse !== "all" && item.warehouse !== filterWarehouse) {
+            return false;
+          }
+
           const nameMatches = item.name.toLowerCase().includes(normalizedSearch);
           const skuMatches = getInventorySearchTerms(item)
             .filter((value) => value !== item.name.toLowerCase())
@@ -244,7 +269,10 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
           return skuMatches && !nameMatches;
         });
 
-      if (!hasSkuOnlyMatches) {
+      const canUseAggregatedHistoryRpc =
+        filterWarehouse === "all" && !hasSkuOnlyMatches;
+
+      if (canUseAggregatedHistoryRpc) {
         const { data: aggregatedHistory, error: aggregatedHistoryError } = await supabase.rpc(
           "get_inventory_filtered_history",
           {
@@ -290,7 +318,7 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
         let hasMore = true;
 
         while (hasMore) {
-          const { data, error } = await supabase
+          let query = supabase
             .from("fdc_inventory_snapshots")
             .select("snapshot_date, current_stock, unit_price, his_medicineid")
             .gte("snapshot_date", cutoff)
@@ -298,6 +326,12 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
             .order("snapshot_date", { ascending: true })
             .order("his_medicineid", { ascending: true })
             .range(from, from + PAGE_SIZE - 1);
+
+          if (filterWarehouse !== "all") {
+            query = query.eq("warehouse", filterWarehouse);
+          }
+
+          const { data, error } = await query;
 
           if (error) {
             console.error("[useSupplyInventory] fallback history query error:", error);
@@ -338,7 +372,14 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     } finally {
       setIsLoadingFilteredSnapshotHistory(false);
     }
-  }, [enabled, filterCategory, inventory, inventoryHistoryTargetIds, searchQuery]);
+  }, [
+    enabled,
+    filterCategory,
+    filterWarehouse,
+    inventory,
+    inventoryHistoryTargetIds,
+    searchQuery,
+  ]);
 
   const fetchItemSnapshots = useCallback(
     async (item: InventoryItem) => {
@@ -406,33 +447,35 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
 
     let snapshotTimeout: NodeJS.Timeout | null = null;
 
-    const channel = supabase
-      .channel("public:fdc_supply_inventory")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_inventory_snapshots" },
-        fetchInventory,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_inventory_daily_value" },
+    const cleanups = [
+      subscribeToPostgresChanges(
+        supabase,
+        "public:fdc_supply_inventory:snapshots",
+        [{ table: "fdc_inventory_snapshots" }],
+        () => fetchInventory(),
+      ),
+      subscribeToPostgresChanges(
+        supabase,
+        "public:fdc_supply_inventory:daily-value",
+        [{ table: "fdc_inventory_daily_value" }],
         () => {
           if (snapshotTimeout) clearTimeout(snapshotTimeout);
           snapshotTimeout = setTimeout(() => {
-            fetchSnapshotHistory();
-            fetchFilteredSnapshotHistory();
+            void fetchSnapshotHistory();
+            void fetchFilteredSnapshotHistory();
           }, 1000);
         },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_analytics_anomalies" },
-        fetchAnomalies,
-      )
-      .subscribe();
+      ),
+      subscribeToPostgresChanges(
+        supabase,
+        "public:fdc_supply_inventory:anomalies",
+        [{ table: "fdc_analytics_anomalies" }],
+        () => fetchAnomalies(),
+      ),
+    ];
 
     return () => {
-      supabase.removeChannel(channel);
+      cleanups.forEach((cleanup) => cleanup());
       if (snapshotTimeout) clearTimeout(snapshotTimeout);
     };
   }, [enabled, fetchInventory, fetchAnomalies, fetchSnapshotHistory, fetchFilteredSnapshotHistory]);
@@ -574,39 +617,14 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     return sortedInventory.reduce((sum, item) => sum + getInventoryValue(item), 0);
   }, [sortedInventory]);
 
-  const topMaterials: TopMaterial[] = useMemo(() => {
-    const byName = new Map<string, TopMaterial>();
+  const topMaterials: TopMaterial[] = useMemo(() => buildSupplyTopMaterials(inventory), [inventory]);
 
-    const normalizeName = (name: string) =>
+  /* const normalizeName = (name: string) =>
       name
         .replace(/[-–]/g, " ")
         .replace(/\s+/g, " ")
         .trim()
-        .toLowerCase();
-
-    inventory.forEach((item) => {
-      const key = normalizeName(item.name);
-      const value = getInventoryValue(item);
-      const existing = byName.get(key);
-
-      if (existing) {
-        existing.value += value;
-        existing.stock += item.currentStock;
-      } else {
-        byName.set(key, {
-          materialId: item.sku,
-          name: item.name,
-          value,
-          unit: item.unit,
-          stock: item.currentStock,
-        });
-      }
-    });
-
-    return Array.from(byName.values())
-      .sort((a, b) => b.value - a.value)
-      .slice(0, 10);
-  }, [inventory]);
+        .toLowerCase(); */
 
   const acknowledgeAnomaly = async (id: string) => {
     const { error } = await supabase

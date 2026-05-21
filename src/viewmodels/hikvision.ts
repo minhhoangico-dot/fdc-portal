@@ -1,3 +1,5 @@
+import { buildBridgeUrl } from "@/lib/bridge-client";
+
 export interface HikvisionValidationResult {
   ok: boolean;
   name?: string;
@@ -13,12 +15,11 @@ export async function validateHikvisionEmployeeId(
     return { ok: false, message: "Mã nhân viên không được để trống" };
   }
 
-  const baseUrl =
-    (import.meta as any).env?.VITE_BRIDGE_URL || "http://localhost:3333";
-
   try {
     const res = await fetch(
-      `${baseUrl}/hikvision/users/validate?employeeId=${encodeURIComponent(trimmed)}`,
+      buildBridgeUrl(
+        `/hikvision/users/validate?employeeId=${encodeURIComponent(trimmed)}`,
+      ),
     );
 
     if (!res.ok) {

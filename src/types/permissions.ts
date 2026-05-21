@@ -36,6 +36,13 @@ export type PermissionAction =
   | 'lab_dashboard.operate'
   | 'tv_management.view'
   | 'portal.view'
+  | 'attendance.view_self'
+  | 'attendance.view_team'
+  | 'attendance.view_all'
+  | 'attendance.manage_employees'
+  | 'attendance.manage_settings'
+  | 'attendance.manage_exceptions'
+  | 'attendance.export'
   | 'admin.view'
   | 'admin.manage'
   | 'org_chart.view';

@@ -6,7 +6,11 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { countActiveInventoryAnomalies } from "@/lib/inventory-dashboard-summary";
-import { mapInventorySnapshotToItem } from "@/lib/inventory-identity";
+import {
+  mapInventorySnapshotToItem,
+  preferWarehouseSpecificInventoryItems,
+} from "@/lib/inventory-identity";
+import { subscribeToPostgresChanges } from "@/lib/supabase-realtime";
 import { supabase } from "@/lib/supabase";
 import type { InventoryAnomaly, InventoryItem } from "@/types/inventory";
 import {
@@ -38,6 +42,7 @@ export function useInventoryDashboardSummary(options: UseInventoryOptions = {}) 
           .from("fdc_inventory_snapshots")
           .select("*")
           .eq("snapshot_date", snapshotDate)
+          .like("his_medicineid", "misa_%")
           .order("name")
           .range(from, from + PAGE_SIZE - 1);
 
@@ -57,7 +62,9 @@ export function useInventoryDashboardSummary(options: UseInventoryOptions = {}) 
         }
       }
 
-      return rows.map((row: any) => mapInventorySnapshotToItem(row));
+      return preferWarehouseSpecificInventoryItems(
+        rows.map((row: any) => mapInventorySnapshotToItem(row)),
+      );
     };
 
     let inventory = await loadInventory(todayDate);
@@ -66,6 +73,7 @@ export function useInventoryDashboardSummary(options: UseInventoryOptions = {}) 
       const { data: latest, error: latestError } = await supabase
         .from("fdc_inventory_snapshots")
         .select("snapshot_date")
+        .like("his_medicineid", "misa_%")
         .order("snapshot_date", { ascending: false })
         .limit(1);
 
@@ -83,6 +91,7 @@ export function useInventoryDashboardSummary(options: UseInventoryOptions = {}) 
     const { data: anomalyRows, error: anomalyError } = await supabase
       .from("fdc_analytics_anomalies")
       .select("*")
+      .or("module_type.eq.supply,module_type.is.null")
       .order("detected_at", { ascending: false });
 
     if (anomalyError) {
@@ -104,23 +113,15 @@ export function useInventoryDashboardSummary(options: UseInventoryOptions = {}) 
 
     fetchSummary();
 
-    const channel = supabase
-      .channel("public:fdc_inventory_dashboard_summary")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_inventory_snapshots" },
-        fetchSummary,
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_analytics_anomalies" },
-        fetchSummary,
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeToPostgresChanges(
+      supabase,
+      "public:fdc_inventory_dashboard_summary",
+      [
+        { table: "fdc_inventory_snapshots" },
+        { table: "fdc_analytics_anomalies" },
+      ],
+      fetchSummary,
+    );
   }, [enabled, fetchSummary]);
 
   return { anomalyCount, error };

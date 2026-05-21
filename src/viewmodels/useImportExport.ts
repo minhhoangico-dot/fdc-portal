@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { subscribeToPostgresChanges } from "@/lib/supabase-realtime";
 import { supabase } from "@/lib/supabase";
 import { SupplyVoucherLine, SupplyInward, SupplyConsumption } from "@/types/inventory";
 
@@ -224,22 +225,16 @@ export function useImportExport() {
   useEffect(() => {
     fetchAll();
 
-    const channel = supabase
-      .channel("import-export-realtime")
-      .on("postgres_changes", { event: "*", schema: "public", table: "fdc_supply_voucher_lines" }, () => {
-        fetchAll();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "fdc_supply_inward_daily" }, () => {
-        fetchAll();
-      })
-      .on("postgres_changes", { event: "*", schema: "public", table: "fdc_supply_consumption_daily" }, () => {
-        fetchAll();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeToPostgresChanges(
+      supabase,
+      "import-export-realtime",
+      [
+        { table: "fdc_supply_voucher_lines" },
+        { table: "fdc_supply_inward_daily" },
+        { table: "fdc_supply_consumption_daily" },
+      ],
+      fetchAll,
+    );
   }, [fetchAll]);
 
   // Reset page when filters change

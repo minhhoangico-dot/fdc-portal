@@ -28,13 +28,17 @@ const MISA_CURRENT_SNAPSHOT_QUERY = `
     MAX(i.InventoryItemName) as InventoryItemName,
     MAX(i.InventoryAccount) as InventoryAccount,
     MAX(u.UnitName) as UnitName,
+    CAST(l.StockID AS VARCHAR(36)) as StockID,
+    MAX(l.StockCode) as StockCode,
+    MAX(l.StockName) as StockName,
     SUM(ISNULL(l.InwardQuantity, 0)) - SUM(ISNULL(l.OutwardQuantity, 0)) as balance,
     SUM(ISNULL(l.InwardAmount, 0)) - SUM(ISNULL(l.OutwardAmount, 0)) as total_value
   FROM InventoryItem i
   LEFT JOIN InventoryLedger l ON i.InventoryItemID = l.InventoryItemID
   LEFT JOIN Unit u ON CAST(u.UnitID AS VARCHAR(36)) = CAST(i.UnitID AS VARCHAR(36))
   WHERE i.InventoryAccount LIKE '152%'
-  GROUP BY i.InventoryItemCode
+    AND l.StockID IS NOT NULL
+  GROUP BY i.InventoryItemCode, l.StockID
   HAVING SUM(ISNULL(l.InwardQuantity, 0)) - SUM(ISNULL(l.OutwardQuantity, 0)) > 0
 `;
 
@@ -43,16 +47,24 @@ const MISA_METADATA_QUERY = `
     i.InventoryItemCode,
     MAX(i.InventoryItemName) as InventoryItemName,
     MAX(i.InventoryAccount) as InventoryAccount,
-    MAX(u.UnitName) as UnitName
+    MAX(u.UnitName) as UnitName,
+    CAST(l.StockID AS VARCHAR(36)) as StockID,
+    MAX(l.StockCode) as StockCode,
+    MAX(l.StockName) as StockName
   FROM InventoryItem i
+  LEFT JOIN InventoryLedger l ON i.InventoryItemID = l.InventoryItemID
   LEFT JOIN Unit u ON CAST(u.UnitID AS VARCHAR(36)) = CAST(i.UnitID AS VARCHAR(36))
   WHERE i.InventoryAccount LIKE '152%'
-  GROUP BY i.InventoryItemCode
+    AND l.StockID IS NOT NULL
+  GROUP BY i.InventoryItemCode, l.StockID
 `;
 
 const MISA_BASELINE_QUERY = `
   SELECT
     i.InventoryItemCode,
+    CAST(l.StockID AS VARCHAR(36)) as StockID,
+    MAX(l.StockCode) as StockCode,
+    MAX(l.StockName) as StockName,
     SUM(ISNULL(l.InwardQuantity, 0)) - SUM(ISNULL(l.OutwardQuantity, 0)) as balance,
     SUM(ISNULL(l.InwardAmount, 0)) - SUM(ISNULL(l.OutwardAmount, 0)) as total_value
   FROM InventoryItem i
@@ -60,7 +72,8 @@ const MISA_BASELINE_QUERY = `
     ON i.InventoryItemID = l.InventoryItemID
    AND l.RefDate < @startDate
   WHERE i.InventoryAccount LIKE '152%'
-  GROUP BY i.InventoryItemCode
+    AND l.StockID IS NOT NULL
+  GROUP BY i.InventoryItemCode, l.StockID
   HAVING
     ABS(SUM(ISNULL(l.InwardQuantity, 0)) - SUM(ISNULL(l.OutwardQuantity, 0))) > 0
     OR ABS(SUM(ISNULL(l.InwardAmount, 0)) - SUM(ISNULL(l.OutwardAmount, 0))) > 0
@@ -70,6 +83,9 @@ const MISA_DAILY_DELTAS_QUERY = `
   SELECT
     CONVERT(varchar(10), CAST(l.RefDate AS date), 23) as snapshot_date,
     i.InventoryItemCode,
+    CAST(l.StockID AS VARCHAR(36)) as StockID,
+    MAX(l.StockCode) as StockCode,
+    MAX(l.StockName) as StockName,
     SUM(ISNULL(l.InwardQuantity, 0) - ISNULL(l.OutwardQuantity, 0)) as delta_stock,
     SUM(ISNULL(l.InwardAmount, 0) - ISNULL(l.OutwardAmount, 0)) as delta_value
   FROM InventoryLedger l
@@ -77,7 +93,8 @@ const MISA_DAILY_DELTAS_QUERY = `
   WHERE i.InventoryAccount LIKE '152%'
     AND l.RefDate >= @startDate
     AND l.RefDate < DATEADD(DAY, 1, @endDate)
-  GROUP BY CAST(l.RefDate AS date), i.InventoryItemCode
+    AND l.StockID IS NOT NULL
+  GROUP BY CAST(l.RefDate AS date), i.InventoryItemCode, l.StockID
   HAVING
     ABS(SUM(ISNULL(l.InwardQuantity, 0) - ISNULL(l.OutwardQuantity, 0))) > 0
     OR ABS(SUM(ISNULL(l.InwardAmount, 0) - ISNULL(l.OutwardAmount, 0))) > 0
@@ -88,6 +105,9 @@ type MisaCurrentSnapshotRow = {
   InventoryItemName: string | null;
   InventoryAccount: string | null;
   UnitName: string | null;
+  StockID: string | null;
+  StockCode: string | null;
+  StockName: string | null;
   balance: number | string | null;
   total_value: number | string | null;
 };
@@ -97,10 +117,16 @@ type MisaMetadataRow = {
   InventoryItemName: string | null;
   InventoryAccount: string | null;
   UnitName: string | null;
+  StockID: string | null;
+  StockCode: string | null;
+  StockName: string | null;
 };
 
 type MisaBaselineRow = {
   InventoryItemCode: string | null;
+  StockID: string | null;
+  StockCode: string | null;
+  StockName: string | null;
   balance: number | string | null;
   total_value: number | string | null;
 };
@@ -108,6 +134,9 @@ type MisaBaselineRow = {
 type MisaDeltaRow = {
   snapshot_date: string | Date;
   InventoryItemCode: string | null;
+  StockID: string | null;
+  StockCode: string | null;
+  StockName: string | null;
   delta_stock: number | string | null;
   delta_value: number | string | null;
 };
@@ -135,8 +164,21 @@ const misaSnapshotSelect = (columns: string) =>
     .select(columns)
     .like("his_medicineid", "misa_%");
 
-const toMisaHisMedicineId = (inventoryItemCode: string): string =>
+const toMisaSourceFamilyId = (inventoryItemCode: string): string =>
   `misa_${inventoryItemCode}`;
+
+const toMisaHisMedicineId = (
+  inventoryItemCode: string,
+  stockId: string | null,
+): string => {
+  const baseId = toMisaSourceFamilyId(inventoryItemCode);
+  const normalizedStockId = stockId?.trim();
+  if (!normalizedStockId) {
+    return baseId;
+  }
+
+  return `${baseId}__stock_${normalizedStockId}`;
+};
 
 const toSnapshotDateString = (value: string | Date): string =>
   typeof value === "string" ? value.slice(0, 10) : toHoChiMinhDate(new Date(value));
@@ -166,6 +208,20 @@ const normalizeItemName = (
 
 const normalizeUnitName = (unitName: string | null | undefined): string =>
   unitName?.trim() || DEFAULT_UNIT;
+
+const normalizeStockId = (stockId: string | null | undefined): string | null =>
+  stockId?.trim() || null;
+
+const normalizeWarehouseName = (
+  stockName: string | null | undefined,
+  stockCode: string | null | undefined,
+): string => stockName?.trim() || stockCode?.trim() || MISA_WAREHOUSE_NAME;
+
+const buildMisaStateKey = (
+  hisMedicineId: string,
+  _stockId: string | null,
+  _warehouse: string,
+): string => hisMedicineId;
 
 async function ensureMisaConnected(): Promise<void> {
   if (!misaPool.connected) {
@@ -202,9 +258,7 @@ async function fetchLatestMisaDailyValueDate(): Promise<string | null> {
   return rows[0]?.snapshot_date ?? null;
 }
 
-async function fetchMisaInventoryMetadata(): Promise<
-  Map<string, MisaInventorySnapshotMeta>
-> {
+async function fetchMisaInventoryMetadata(): Promise<Map<string, MisaInventorySnapshotMeta>> {
   const result = await new mssql.Request(misaPool).query(MISA_METADATA_QUERY);
   const rows = result.recordset as MisaMetadataRow[];
 
@@ -212,17 +266,20 @@ async function fetchMisaInventoryMetadata(): Promise<
 
   for (const row of rows) {
     const inventoryItemCode = row.InventoryItemCode?.trim();
-    if (!inventoryItemCode) {
+    const stockId = normalizeStockId(row.StockID);
+    if (!inventoryItemCode || !stockId) {
       continue;
     }
 
-    const hisMedicineId = toMisaHisMedicineId(inventoryItemCode);
-    metadata.set(hisMedicineId, {
+    const hisMedicineId = toMisaHisMedicineId(inventoryItemCode, stockId);
+    const warehouse = normalizeWarehouseName(row.StockName, row.StockCode);
+    metadata.set(buildMisaStateKey(hisMedicineId, stockId, warehouse), {
       his_medicineid: hisMedicineId,
       medicine_code: inventoryItemCode,
       name: normalizeItemName(row.InventoryItemName, inventoryItemCode),
       category: toCategory(row.InventoryAccount),
-      warehouse: MISA_WAREHOUSE_NAME,
+      warehouse,
+      stock_id: stockId,
       unit: normalizeUnitName(row.UnitName),
     });
   }
@@ -232,7 +289,7 @@ async function fetchMisaInventoryMetadata(): Promise<
 
 async function fetchBaselineMisaSnapshots(
   startDate: string,
-  metadataByHisMedicineId: Map<string, MisaInventorySnapshotMeta>,
+  metadataByStateKey: Map<string, MisaInventorySnapshotMeta>,
 ): Promise<MisaInventorySnapshotSeed[]> {
   const request = new mssql.Request(misaPool);
   request.input("startDate", mssql.Date, startDate);
@@ -243,19 +300,24 @@ async function fetchBaselineMisaSnapshots(
   return rows
     .map((row): MisaInventorySnapshotSeed | null => {
       const inventoryItemCode = row.InventoryItemCode?.trim();
-      if (!inventoryItemCode) {
+      const stockId = normalizeStockId(row.StockID);
+      if (!inventoryItemCode || !stockId) {
         return null;
       }
 
-      const hisMedicineId = toMisaHisMedicineId(inventoryItemCode);
-      const metadata = metadataByHisMedicineId.get(hisMedicineId);
+      const hisMedicineId = toMisaHisMedicineId(inventoryItemCode, stockId);
+      const warehouse = normalizeWarehouseName(row.StockName, row.StockCode);
+      const metadata = metadataByStateKey.get(
+        buildMisaStateKey(hisMedicineId, stockId, warehouse),
+      );
 
       return {
         his_medicineid: hisMedicineId,
         medicine_code: inventoryItemCode,
         name: metadata?.name ?? normalizeItemName(null, inventoryItemCode),
         category: metadata?.category ?? DEFAULT_CATEGORY,
-        warehouse: metadata?.warehouse ?? MISA_WAREHOUSE_NAME,
+        warehouse: metadata?.warehouse ?? warehouse,
+        stock_id: metadata?.stock_id ?? stockId,
         unit: metadata?.unit ?? DEFAULT_UNIT,
         current_stock: toPositiveNumber(row.balance),
         total_value: toPositiveNumber(row.total_value),
@@ -283,13 +345,16 @@ async function fetchMisaDeltas(
   return rows
     .map((row): MisaInventoryDelta | null => {
       const inventoryItemCode = row.InventoryItemCode?.trim();
-      if (!inventoryItemCode) {
+      const stockId = normalizeStockId(row.StockID);
+      if (!inventoryItemCode || !stockId) {
         return null;
       }
 
       return {
         snapshot_date: toSnapshotDateString(row.snapshot_date),
-        his_medicineid: toMisaHisMedicineId(inventoryItemCode),
+        his_medicineid: toMisaHisMedicineId(inventoryItemCode, stockId),
+        warehouse: normalizeWarehouseName(row.StockName, row.StockCode),
+        stock_id: stockId,
         delta_stock: toPositiveNumber(row.delta_stock),
         delta_value: toPositiveNumber(row.delta_value),
       };
@@ -306,7 +371,8 @@ async function fetchCurrentMisaSnapshotRows(
   return rows
     .map((row): InventorySnapshotWriteRow | null => {
       const inventoryItemCode = row.InventoryItemCode?.trim();
-      if (!inventoryItemCode) {
+      const stockId = normalizeStockId(row.StockID);
+      if (!inventoryItemCode || !stockId) {
         return null;
       }
 
@@ -317,11 +383,11 @@ async function fetchCurrentMisaSnapshotRows(
 
       const totalValue = toPositiveNumber(row.total_value);
       return {
-        his_medicineid: toMisaHisMedicineId(inventoryItemCode),
+        his_medicineid: toMisaHisMedicineId(inventoryItemCode, stockId),
         medicine_code: inventoryItemCode,
         name: normalizeItemName(row.InventoryItemName, inventoryItemCode),
         category: toCategory(row.InventoryAccount),
-        warehouse: MISA_WAREHOUSE_NAME,
+        warehouse: normalizeWarehouseName(row.StockName, row.StockCode),
         current_stock: currentStock,
         approved_export: 0,
         unit_price: currentStock > 0 ? totalValue / currentStock : 0,
@@ -340,11 +406,32 @@ async function upsertSnapshotRows(rows: InventorySnapshotWriteRow[]): Promise<vo
     const batch = rows.slice(index, index + SNAPSHOT_BATCH_SIZE);
     const { error } = await supabase
       .from("fdc_inventory_snapshots")
-      .upsert(batch, { onConflict: "his_medicineid,snapshot_date" });
+      .upsert(batch, { onConflict: "his_medicineid,warehouse,snapshot_date" });
 
     if (error) {
       throw error;
     }
+  }
+}
+
+async function deleteLegacyGroupedMisaSnapshots(
+  startDate: string,
+  endDate: string,
+): Promise<void> {
+  if (startDate > endDate) {
+    return;
+  }
+
+  const { error } = await supabase
+    .from("fdc_inventory_snapshots")
+    .delete()
+    .like("his_medicineid", "misa_%")
+    .eq("warehouse", MISA_WAREHOUSE_NAME)
+    .gte("snapshot_date", startDate)
+    .lte("snapshot_date", endDate);
+
+  if (error) {
+    throw error;
   }
 }
 
@@ -436,15 +523,15 @@ async function runMisaInventorySync(options: MisaSyncOptions): Promise<void> {
     let firstChangedSnapshotDate: string | null = null;
 
     if (historicalStartDate && historicalStartDate <= historicalEndDate) {
-      const metadataByHisMedicineId = await fetchMisaInventoryMetadata();
+      const metadataByStateKey = await fetchMisaInventoryMetadata();
       const [baselineSnapshots, deltas] = await Promise.all([
-        fetchBaselineMisaSnapshots(historicalStartDate, metadataByHisMedicineId),
+        fetchBaselineMisaSnapshots(historicalStartDate, metadataByStateKey),
         fetchMisaDeltas(historicalStartDate, historicalEndDate),
       ]);
 
       const historicalSnapshots = buildMisaInventorySnapshotsFromDeltas({
         seeds: baselineSnapshots,
-        metadataByHisMedicineId,
+        metadataByStateKey,
         deltas,
         startDate: historicalStartDate,
         endDate: historicalEndDate,
@@ -471,6 +558,12 @@ async function runMisaInventorySync(options: MisaSyncOptions): Promise<void> {
         `${options.logName}: upserted ${currentSnapshotRows.length} current MISA snapshot rows for ${todayDate}.`,
       );
     }
+
+    const cleanupStartDate =
+      historicalStartDate && historicalStartDate <= historicalEndDate
+        ? historicalStartDate
+        : todayDate;
+    await deleteLegacyGroupedMisaSnapshots(cleanupStartDate, todayDate);
 
     const aggregateCandidates = new Set<string>();
 

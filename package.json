@@ -8,7 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "check:bundle": "node scripts/check-portal-bundle-budget.mjs",
+    "check:pwa": "node scripts/check-pwa-precache-budget.mjs",
+    "check:auth-smoke": "tsx scripts/check-authenticated-routes.ts"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.98.0",
@@ -28,7 +31,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "autoprefixer": "^10.4.21",
+    "playwright-core": "^1.59.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2",

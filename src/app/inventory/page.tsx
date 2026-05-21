@@ -29,6 +29,7 @@ export default function InventoryPage() {
   const {
     inventory,
     searchQuery, setSearchQuery,
+    filterWarehouse, setFilterWarehouse,
     filterCategory, setFilterCategory,
     filterStatus, setFilterStatus,
     filteredInventory,
@@ -36,6 +37,7 @@ export default function InventoryPage() {
     sortDir,
     toggleSort,
     uniqueCategories,
+    uniqueWarehouses,
     selectedItem, setSelectedItem,
     anomalies, acknowledgeAnomaly,
     snapshotHistory,
@@ -130,10 +132,17 @@ export default function InventoryPage() {
       )}
 
       {activeTab === "list" && (() => {
-        const hasChartFilters = filterCategory !== "all" || searchQuery.trim() !== "";
+        const hasChartFilters =
+          filterWarehouse !== "all" ||
+          filterCategory !== "all" ||
+          searchQuery.trim() !== "";
         const isFiltered = hasChartFilters && filteredSnapshotHistory.length > 0;
         const chartData = hasChartFilters ? filteredSnapshotHistory : snapshotHistory;
         const chartLoading = hasChartFilters ? isLoadingFilteredSnapshotHistory : isLoadingSnapshotHistory;
+        const activeFilterLabels = [
+          filterWarehouse !== "all" ? filterWarehouse : null,
+          filterCategory !== "all" ? filterCategory : null,
+        ].filter(Boolean);
         return (
           <div className="space-y-4">
             <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-4">
@@ -142,7 +151,7 @@ export default function InventoryPage() {
                   Giá trị tồn kho 1 năm
                   {isFiltered && (
                     <span className="ml-2 text-xs font-normal text-indigo-500">
-                      (Theo bộ lọc{filterCategory !== "all" ? ` — ${filterCategory}` : ""})
+                      (Theo bộ lọc{activeFilterLabels.length > 0 ? ` — ${activeFilterLabels.join(" / ")}` : ""})
                     </span>
                   )}
                 </h3>
@@ -210,6 +219,10 @@ export default function InventoryPage() {
                   />
                 </div>
                 <div className="flex flex-wrap gap-2">
+                  <select value={filterWarehouse} onChange={e => setFilterWarehouse(e.target.value)} className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500">
+                    <option value="all">Tất cả kho</option>
+                    {uniqueWarehouses.map(warehouse => <option key={warehouse} value={warehouse}>{warehouse}</option>)}
+                  </select>
                   <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500">
                     <option value="all">Tất cả loại</option>
                     {uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
@@ -257,6 +270,7 @@ export default function InventoryPage() {
                       >
                         Giá trị{sortIndicator("value")}
                       </th>
+                      <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase hidden lg:table-cell">Kho</th>
                       <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase text-center">TT</th>
                     </tr>
                   </thead>
@@ -274,11 +288,12 @@ export default function InventoryPage() {
                         </td>
                         <td className="px-4 py-3 text-right hidden md:table-cell text-sm text-gray-600">{formatCurrency(item.unitPrice || 0)}</td>
                         <td className="px-4 py-3 text-right hidden lg:table-cell text-sm font-medium text-gray-900">{formatCompact(item.currentStock * (item.unitPrice || 0))}</td>
+                        <td className="px-4 py-3 hidden lg:table-cell"><span className="text-sm text-gray-600">{item.warehouse}</span></td>
                         <td className="px-4 py-3 text-center">{getStatusBadge(item.status)}</td>
                       </tr>
                     ))}
                     {filteredInventory.length === 0 && (
-                      <tr><td colSpan={6} className="px-4 py-12 text-center text-gray-500">Không tìm thấy vật tư nào.</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-12 text-center text-gray-500">Không tìm thấy vật tư nào.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -366,6 +381,10 @@ export default function InventoryPage() {
                 <div className="bg-gray-50 rounded-xl p-4">
                   <p className="text-sm text-gray-500 mb-1">Loại</p>
                   <p className="text-sm font-medium text-gray-700">{selectedItem.category}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <p className="text-sm text-gray-500 mb-1">Kho</p>
+                  <p className="text-sm font-medium text-gray-700">{selectedItem.warehouse}</p>
                 </div>
               </div>
               <div>

@@ -4,6 +4,11 @@
  */
 
 import { can, canAccessModule } from '@/lib/permissions/access';
+import {
+  FULL_ACCESS_ROLES,
+  hasFullPortalAdminAccess,
+  isOnsiteAccessBypassRole,
+} from '@/lib/role-authority';
 import type { Role } from '@/types/user';
 
 const ALL_ROLES: readonly Role[] = [
@@ -22,7 +27,6 @@ const ALL_ROLES: readonly Role[] = [
   'clinic_staff',
 ];
 
-export const FULL_ACCESS_ROLES: readonly Role[] = ['super_admin'];
 export const APPROVER_ROLES: readonly Role[] = ALL_ROLES.filter((role) =>
   can(role, 'approvals.review_assigned'),
 );
@@ -52,5 +56,7 @@ export function getDeptHeadRoleForDepartment(department: string): Role {
 }
 
 export function canRoleBypassApprovalAssignment(role: Role): boolean {
-  return role === 'super_admin';
+  return isOnsiteAccessBypassRole(role);
 }
+
+export { FULL_ACCESS_ROLES, hasFullPortalAdminAccess, isOnsiteAccessBypassRole };

@@ -6,6 +6,7 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 
 import { RANGE_LABELS, buildSupplyChartData, monthsAgo } from "@/lib/supplyChart";
+import { subscribeToPostgresChanges } from "@/lib/supabase-realtime";
 import { supabase } from "@/lib/supabase";
 import type {
   SupplyAccountFilter,
@@ -76,27 +77,18 @@ export function useSupplyChart() {
       setIsLoading(false);
     });
 
-    const channel = supabase
-      .channel("supply-chart-realtime")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_supply_monthly_stats" },
-        () => {
-          fetchMonthlyStats();
-        },
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "fdc_supply_consumption_daily" },
-        () => {
-          fetchDailySummary();
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return subscribeToPostgresChanges(
+      supabase,
+      "supply-chart-realtime",
+      [
+        { table: "fdc_supply_monthly_stats" },
+        { table: "fdc_supply_consumption_daily" },
+      ],
+      () => {
+        fetchMonthlyStats();
+        fetchDailySummary();
+      },
+    );
   }, [fetchMonthlyStats, fetchDailySummary]);
 
   const chartData: SupplyChartPoint[] = useMemo(() => {

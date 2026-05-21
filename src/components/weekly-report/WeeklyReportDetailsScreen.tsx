@@ -34,8 +34,8 @@ export function WeeklyReportDetailsScreen() {
   const sortedRows = React.useMemo(() => {
     if (!sortConfig) return rows;
     return [...rows].sort((left, right) => {
-      const leftValue = (left as Record<string, unknown>)[sortConfig.key];
-      const rightValue = (right as Record<string, unknown>)[sortConfig.key];
+      const leftValue = (left as unknown as Record<string, unknown>)[sortConfig.key];
+      const rightValue = (right as unknown as Record<string, unknown>)[sortConfig.key];
       if (leftValue == null && rightValue == null) return 0;
       if (leftValue == null) return sortConfig.direction === 'asc' ? -1 : 1;
       if (rightValue == null) return sortConfig.direction === 'asc' ? 1 : -1;

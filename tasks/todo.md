@@ -2,10 +2,10 @@
 
 ## Current Task
 
-- Task ID: `role-schema-rebuild-backend`
-- Owner: `data-worker`
-- Status: `rolled-out`
-- Spec: `tasks/active/2026-04-01-role-schema-rebuild-backend.md`
+- Task ID: `codebase-optimization`
+- Owner: `planner`
+- Status: `completed`
+- Spec: `tasks/active/2026-04-30-codebase-optimization.md`
 
 ## Operating Checklist
 
@@ -27,6 +27,153 @@
 - [x] Review
 - [x] Lessons and closeout
 
+## 2026-04-30 Codebase Optimization
+
+- Scope: restore the verification baseline, then split bundle, portal refactor, viewmodel, bridge, and final verification work across non-overlapping agent scopes.
+- Multi-agent plans:
+  - [x] `01-verification-baseline.md`: create task spec, update task board, fix noisy verification.
+  - [x] `02-portal-bundle-pwa.md`: add bundle budgets, lazy routes, vendor chunks, PWA export exclusion.
+  - [x] `03-portal-presentation-refactor.md`: split large pharmacy and inventory presentation files.
+  - [x] `04-portal-viewmodel-realtime.md`: helper extraction landed, realtime wiring was consolidated, and the existing approval-config helper covered the draft-state portion without needing a duplicate module.
+  - [x] `05-bridge-refactor.md`: split lab dashboard loaders and weekly report query modules.
+  - [x] `06-final-verification-review.md`: final verification reran with authenticated browser smoke, bridge proxy smoke, and restored `pthue / 123` access.
+- Agent 01 checklist:
+  - [x] Create `tasks/active/2026-04-30-codebase-optimization.md`.
+  - [x] Update `tasks/todo.md`.
+  - [x] Confirm failing baseline checks.
+  - [x] Narrow portal TypeScript scope.
+  - [x] Fix bridge TAT provenance fixtures.
+  - [x] Run portal and bridge verification.
+  - [x] Record evidence and residual risks.
+- Agent 01 verification evidence:
+  - `cmd /c npm.cmd run lint` at repo root: passed.
+  - `cmd /c npm.cmd run build` at repo root: passed with the existing large chunk warning; main chunk `assets/index-vpbWUJmR.js` is `1,457.61 kB` minified.
+  - `cmd /c npm.cmd run build` in `fdc-lan-bridge`: passed.
+  - `cmd /c npm.cmd test -- --runInBand` in `fdc-lan-bridge`: passed, `15` suites and `63` tests.
+- Agent 02 checklist:
+  - [x] Add portal bundle budget script.
+  - [x] Add PWA precache budget script.
+  - [x] Wire package check scripts.
+  - [x] Prove the current bundle and PWA checks fail before splitting.
+  - [x] Lazy-load portal route pages behind a shared fallback.
+  - [x] Add Vite vendor chunks.
+  - [x] Exclude XLSX export chunk from Workbox precache.
+  - [x] Run final portal verification.
+- Agent 02 verification evidence:
+  - Red check: `cmd /c npm.cmd run check:bundle` failed on pre-split `assets/index-vpbWUJmR.js` at `1423.45 KiB`, above the `950.00 KiB` main budget.
+  - Red check: `cmd /c npm.cmd run check:pwa` failed because `assets/xlsx-CkFp8p6R.js` was precached.
+  - `cmd /c npm.cmd run build` at repo root: passed after route/vendor splitting; main chunk `assets/index-tu7jH01S.js` is `334.85 kB` minified and `101.80 kB` gzip.
+  - `cmd /c npm.cmd run check:bundle`: passed; largest non-XLSX chunks are under the `500 KiB` route/vendor budget.
+  - `cmd /c npm.cmd run check:pwa`: passed with `61` precache entries and XLSX excluded.
+  - `cmd /c npm.cmd run lint`: passed.
+- Agent 03 verification evidence:
+  - `cmd /c .\node_modules\.bin\tsx.cmd --test test\unit\portalPresentationComponents.test.ts test\unit\pharmacyInventoryPresentation.test.ts test\unit\inventoryDashboardSummary.test.ts`: passed.
+  - `src/app/pharmacy/page.tsx` is now `405` lines in the current workspace.
+  - `src/app/inventory/OverviewTab.tsx` is now `454` lines in the current workspace.
+- Agent 05 verification evidence:
+  - `cmd /c npm.cmd run build` in `fdc-lan-bridge`: passed on `2026-04-30`.
+  - `cmd /c npm.cmd test -- --runInBand` in `fdc-lan-bridge`: passed on `2026-04-30`, `15` suites and `63` tests.
+  - `fdc-lan-bridge/src/labDashboard/service.ts` is `229` lines; `fdc-lan-bridge/src/weeklyReport/queries.ts` is `330` lines.
+- Agent 06 verification evidence:
+  - `cmd /c npm.cmd run lint`: passed on `2026-04-30`.
+  - `cmd /c npm.cmd run build`: passed on `2026-04-30`; emitted `assets/index-Drc6An4x.js` at `335.45 kB`, `assets/charts-BRJ_mBCz.js` at `383.36 kB`, `assets/xlsx-CkFp8p6R.js` at `429.53 kB`, and PWA precache `61` entries / `1576.17 KiB`.
+  - `cmd /c npm.cmd run check:bundle`: passed; `index-Drc6An4x.js` is `327.59 KiB`, `charts-BRJ_mBCz.js` is `374.38 KiB`, `xlsx-CkFp8p6R.js` is `419.47 KiB`, and `supabase-yKjPlrCh.js` is `170.08 KiB`.
+  - `cmd /c npm.cmd run check:pwa`: passed with `61` precache entries and XLSX excluded.
+  - `cmd /c .\node_modules\.bin\tsx.cmd --test test\unit\pharmacyInventoryPresentation.test.ts test\unit\inventoryDashboardSummary.test.ts test\unit\approvalActions.test.ts test\unit\approvalConfigState.test.ts test\unit\supabaseRealtime.test.ts test\unit\bridgeClient.test.ts`: passed with `15` tests and `0` failures.
+  - Browser smoke on a fresh local Vite server at `http://127.0.0.1:3001` confirmed `/login` renders, `pthue / 123` authenticates, `/dashboard`, `/inventory`, `/pharmacy`, `/tv-management/weekly-report`, `/admin`, and `/lab-dashboard/tv` render real content, Playwright `console error` returns `0` errors, and `/api/bridge/tv-access/check` plus `/api/bridge/lab-dashboard/current` return `200 OK`.
+  - `cmd /c npm.cmd run check:auth-smoke` with `PORTAL_SMOKE_BASE_URL=http://127.0.0.1:3001`, `PORTAL_SMOKE_USERNAME=pthue`, and `PORTAL_SMOKE_PASSWORD=123`: passed; the automated browser smoke now covers `/dashboard`, `/inventory`, `/pharmacy`, `/weekly-report`, `/admin`, and `/lab-dashboard/tv`, and requires successful bridge responses for `/tv-access/check` and `/lab-dashboard/current`.
+- Current blockers:
+  - None. Final verification on `2026-04-30` confirmed the Agent 04 helper/test landing, restored the documented `pthue / 123` smoke credential, and validated the local TV bridge path through `/api/bridge`.
+
+## 2026-04-13 Weekly Report Health Check Count
+
+- Scope: fix the weekly-report examination summary so week 15 counts `Khám Sức khỏe (Khám)` correctly instead of dropping all 38 live HIS rows because of case-sensitive `contains` matching.
+- Checklist:
+  - [x] Refresh workflow context and confirm the live root cause with HIS + snapshot evidence
+  - [x] Add the failing regression test for case-insensitive examination mapping
+  - [x] Implement the minimal bridge fix in `getExaminationStats`
+  - [x] Run targeted verification and record the stored-snapshot follow-up risk
+  - [x] Roll out the bridge change to the live host
+  - [x] Regenerate the live week-15 snapshot and verify localhost/public payloads
+- Verification evidence:
+  - HIS live verification on `2026-04-13`: week 15 (`2026-04-06` to `2026-04-12`) contains `38` `dm_servicegroupid = 1` rows with service name `Khám Sức khỏe (Khám)`.
+  - Bridge live verification on `2026-04-13`: `getCurrentWeeklyReport({ date: '2026-04-12' })` returns snapshot week `15` with `kham_suc_khoe.current = 0`, and `getExaminationStats(...)` also returns `kham_suc_khoe.current = 0` before the fix.
+  - `cmd /c npx jest test/unit/weeklyReportQueries.test.ts --runInBand`: failed first with `current = 0`, then passed after the matching fix.
+  - Live-code verification on `2026-04-13`: `getExaminationStats(...)` now returns `kham_suc_khoe.current = 38` and `previous = 28` for week `15`.
+  - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - SSH rollout on `2026-04-13`: copied `src/weeklyReport/queries.ts` to `/opt/fdc-lan-bridge`, ran `sudo npm run build`, then `sudo systemctl restart fdc-lan-bridge`.
+  - Direct host-side regenerate on `2026-04-13`: `require('./dist/weeklyReport/service').generateWeeklyReportSnapshot({ date: '2026-04-12', trigger: 'manual' })` returned `kham_suc_khoe.current = 38` and updated `fdc_weekly_report_snapshots.generated_at` to `2026-04-13T12:31:29.136+00:00`.
+  - Live bridge verification on `2026-04-13`: both host localhost and `https://bridge.fdc-nhanvien.org/weekly-report/current?date=2026-04-12` now return `kham_suc_khoe.current = 38`, `previous = 28`, `source = snapshot`.
+- Residual risk:
+  - The bridge is still `degraded` after restart because `misaConnected = false`; logs show repeated `Login failed for user 'fdc_readonly'` for the MISA SQL Server connection.
+
+## 2026-04-09 Head Nurse Full Access With Onsite Admin And TV Gating
+
+- Scope: give `head_nurse` the same portal-level access as `super_admin`, but keep `super_admin` as the only onsite-bypass role so `head_nurse` still needs onsite access for `/admin`, `/tv-management`, and TV display routes.
+- Checklist:
+  - [x] Refresh workflow context and save the focused task spec
+  - [x] Save the approved design spec and implementation plan
+  - [x] Add failing regression tests for full-access parity and onsite gating
+  - [x] Implement shared full-access helpers and reusable onsite gate logic
+  - [x] Protect `/admin`, `/tv-management`, and TV display routes with the onsite gate
+  - [x] Run targeted verification and record residual risks
+- Verification evidence:
+  - `cmd /c .\node_modules\.bin\tsx.cmd --test test\unit\roleAccess.test.ts test\unit\permissionMatrix.test.ts test\unit\navigation.test.ts test\unit\onsiteAccess.test.ts`: passed with `18` tests and `0` failures.
+  - `cmd /c npm.cmd run build`: passed; emitted `dist/assets/index-DIfePsHY.js` and `dist/assets/index-Bo6voCTa.css`. The existing large-chunk warning remains.
+- Residual risk:
+  - Browser smoke is still needed to validate the shared onsite gate across `/admin`, `/tv-management`, and TV display routes with real network/geolocation conditions.
+
+## 2026-04-06 Pharmacy Inventory Logic Fix
+
+- Scope: fix pharmacy inventory logic so zero-stock anomalies can be detected, same-name rows are not merged in Top 10, and anomaly/status handling follows inventory identity instead of display name.
+- Checklist:
+  - [x] Refresh workflow context and confirm the root cause with code + HIS live evidence
+  - [x] Add failing regression tests for zero-stock retention, anomaly identity matching, and pharmacy top-material grouping
+  - [x] Update bridge pharmacy sync/backfill/anomaly logic
+  - [x] Update portal pharmacy derived status and Top 10 behavior
+  - [x] Run targeted verification and record residual risks
+- Verification evidence:
+  - HIS live verification on `2026-04-06`: `tb_medicinestore` contains `8,982` zero-stock rows, `266` of them with same-day export, proving the old positive-stock-only snapshot logic could never surface `zero_stock`.
+  - HIS live + Supabase verification on `2026-04-06`: `Paracetamol 1g/100ml` exists as `5` distinct rows across `Khám Bệnh` and `Khoa Dược / Vật tư`, proving pharmacy Top 10 cannot safely group by medicine name.
+  - `cmd /c .\node_modules\.bin\jest.cmd --runInBand test/unit/pharmacyInventorySync.test.ts test/unit/syncInventory.test.ts test/unit/detectAnomalies.test.ts` in `fdc-lan-bridge`: passed.
+  - `cmd /c .\node_modules\.bin\tsx.cmd --test test\unit\inventoryIdentity.test.ts test\unit\pharmacyInventoryPresentation.test.ts` at the repo root: passed.
+  - `cmd /c npm.cmd run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npm.cmd run build` at the repo root: passed (`vite build` completed; existing large-chunk warning only).
+  - `cmd /c npx.cmd wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://256bed7f.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://256bed7f.fdc-portal.pages.dev/` and `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/`: both returned `200` and referenced `assets/index-BvFGePB5.js`.
+  - SSH rollout to `Vostro-Server` (`hbminh@192.168.1.9`): copied `src/jobs/detectAnomalies.ts`, `src/jobs/syncInventory.ts`, and `src/lib/pharmacyInventorySync.ts` into `/opt/fdc-lan-bridge`, then ran `sudo npm run build`, `sudo systemctl restart fdc-lan-bridge`, and `curl http://127.0.0.1:3333/health`.
+  - Remote bridge health verification on `2026-04-07`: returned `status = healthy`, `hisConnected = true`, and `misaConnected = true` after restart.
+  - Manual `POST /sync/HIS` on the bridge completed `syncInventoryJob` (`921` synced rows) and `detectAnomaliesJob` via `journalctl` within the same rollout window.
+- Residual risk:
+  - Manual `sync/HIS` ran at `01:32` ICT on `2026-04-07`, so there were `0` qualifying `out_of_stock` rows and `0` active `zero_stock` anomalies at that moment; those states will only appear when HIS actually produces zero-stock-with-export rows later in the day.
+  - Same-day parity with HIS is still limited by the `06:00` daily scheduler unless pharmacy sync is made intraday in a follow-up task.
+
+## 2026-04-06 Inventory MISA Warehouse Fix
+
+- Scope: stop `Kho vật tư` from merging MISA balances across multiple stock locations, keep the portal inventory views warehouse-aware, and preserve temporary compatibility for legacy anomaly keys that still point at `Khối Vật Tư`.
+- Checklist:
+  - [x] Refresh workflow context and confirm the root cause with live MISA + Supabase evidence
+  - [x] Add failing regression tests for per-warehouse MISA snapshots and portal top-value grouping
+  - [x] Update bridge MISA sync/backfill to preserve stock-specific warehouses
+  - [x] Update portal inventory overview/list/detail to expose warehouse-specific rows correctly
+  - [x] Run targeted verification and record residual risks
+- Verification evidence:
+  - Live MISA query on `2026-04-06`: item `AO018` exists separately in `Kho vật tư - Khác` (`170`, `17,909,678`) and `Kho vật tư - Dịch vụ` (`9`, `2,772,000`), confirming the merge bug upstream of the portal.
+  - Live Supabase query on `2026-04-06`: `fdc_inventory_snapshots` still stored one legacy merged row for `misa_AO018` in warehouse `Khối Vật Tư` with `current_stock = 179`, confirming the bridge root cause before patching.
+  - `cmd /c .\node_modules\.bin\jest.cmd --runInBand test/unit/misaInventorySync.test.ts test/unit/syncMisaSupplies.test.ts` in `fdc-lan-bridge`: passed after the bridge sync/backfill was made warehouse-aware.
+  - `cmd /c .\node_modules\.bin\tsx.cmd --test test\unit\inventoryIdentity.test.ts test\unit\supplyInventoryTopMaterials.test.ts` at the repo root: passed after tightening keyed anomaly matching and splitting top materials by warehouse.
+  - `cmd /c npm.cmd run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npm.cmd run build` at the repo root: passed (`vite build` completed; existing large-chunk warning only).
+  - Live deploy on `2026-04-06`: first manual `syncMisaSupplies` failed on host with unique constraint `fdc_inventory_snapshots_his_medicineid_snapshot_date_key`, which revealed the live schema still enforces `his_medicineid + snapshot_date`.
+  - Follow-up patch switched MISA supply `his_medicineid` to a warehouse-specific stock key, then `cmd /c .\node_modules\.bin\jest.cmd --runInBand test/unit/misaInventorySync.test.ts test/unit/syncMisaSupplies.test.ts`, `cmd /c .\node_modules\.bin\tsx.cmd --test test\unit\inventoryIdentity.test.ts test\unit\supplyInventoryTopMaterials.test.ts`, `cmd /c npm.cmd run build` in `fdc-lan-bridge`, and `cmd /c npm.cmd run build` at the repo root all passed again.
+  - `cmd /c npx.cmd wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; final deployment URL `https://4e13273a.fdc-portal.pages.dev`.
+  - `ssh ... "cd /opt/fdc-lan-bridge && sudo -n npm run build && sudo -n systemctl restart fdc-lan-bridge && sleep 5 && systemctl is-active fdc-lan-bridge && curl -fsS http://127.0.0.1:3333/health"`: passed; bridge returned `status = healthy`, `hisConnected = true`, `misaConnected = true`.
+  - `ssh ... "curl -fsS -X POST http://127.0.0.1:3333/sync/MISA"` followed by `journalctl -u fdc-lan-bridge | grep syncMisaSupplies`: final run completed successfully with `475` current MISA snapshot rows and `1` inventory daily aggregate row.
+  - Post-rollout Supabase verification via `node -e` in `fdc-lan-bridge`: `misa_AO018` now appears only as `misa_AO018__stock_CE65BC14-E9BF-4A0C-BED7-E9560A07FCE5` (`Kho vật tư - Dịch vụ`, `9`) and `misa_AO018__stock_1820E446-DA54-4647-968A-6C2B519FBACB` (`Kho vật tư - Khác`, `170`), with no `Khối Vật Tư` row remaining for `2026-04-06`.
+  - `curl.exe -I https://4e13273a.fdc-portal.pages.dev` and `curl.exe -I https://portal.fdc-nhanvien.org`: both returned `200 OK` after deployment.
+- Residual risk:
+  - Historical MISA supply dates older than the freshly rewritten `2026-04-06` snapshot still need an explicit backfill if operators want the older chart points cleaned from legacy `Khối Vật Tư` rows as well.
+
 ## 2026-04-06 Anomaly Dynamic Thresholds
 
 - Scope: apply the live Supabase migration for dynamic anomaly-threshold configuration and verify the new anomaly schema fields used by the bridge and admin UI.
@@ -40,6 +187,12 @@
   - `@' ... '@ | node -` in `fdc-lan-bridge`: applied all 4 SQL chunks from `sql/20260406_anomaly_dynamic_thresholds.sql` successfully.
   - Post-rollout verification via `@' ... '@ | node -` in `fdc-lan-bridge`: `public.fdc_anomaly_thresholds` exists, `public.fdc_analytics_anomalies` now has `module_type` and `inventory_item_key`, 10 default `__default__` threshold rows exist, `fdc_analytics_anomalies` has `214` rows with `0` null `module_type` values, and `2` legacy rows still have null `inventory_item_key`.
   - Live inspection via `@' ... '@ | node -` in `fdc-lan-bridge`: the 2 null-key rows are acknowledged `pharmacy` `near_expiry` anomalies from `2026-03-11` (`Paracetamol 1g/100ml` and `Test HIV - Standard ( 25 test/hộp )`).
+  - `cmd /c npm.cmd run build` in the portal root: passed and emitted `dist/assets/index-LjZCG-9P.js`.
+  - `cmd /c npm.cmd run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npx.cmd wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://4f0787a5.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://4f0787a5.fdc-portal.pages.dev/` and `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/`: both returned `200` and referenced `assets/index-LjZCG-9P.js`.
+  - SSH rollout to `Vostro-Server` (`hbminh@192.168.1.9`): copied `src/jobs/detectAnomalies.ts`, `src/lib/anomalyThresholds.ts`, and `src/scheduler.ts` into `/opt/fdc-lan-bridge`, then ran `sudo npm run build`, `sudo systemctl restart fdc-lan-bridge`, and `curl http://127.0.0.1:3333/health`.
+  - Remote bridge health verification returned `200 OK` with `status = healthy`, `hisConnected = true`, and `misaConnected = true` after restart.
 - Residual risk:
   - Existing acknowledged legacy anomalies without `inventory_item_key` still depend on name fallback in the portal; new anomalies created after this rollout will populate the key directly.
 

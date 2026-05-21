@@ -3,12 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-function getBridgeBaseUrl(): string {
-  return (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env?.VITE_BRIDGE_URL || 'http://localhost:3333';
+export interface BridgeEnv {
+  DEV?: boolean | string;
+  VITE_BRIDGE_URL?: string;
 }
 
-export function buildBridgeUrl(path: string): string {
-  const baseUrl = getBridgeBaseUrl().replace(/\/$/, '');
+function getBridgeEnv(): BridgeEnv {
+  return (import.meta as ImportMeta & { env?: BridgeEnv }).env ?? {};
+}
+
+export function resolveBridgeBaseUrl(env: BridgeEnv = getBridgeEnv()): string {
+  const configuredBaseUrl = env.VITE_BRIDGE_URL?.trim() || 'http://localhost:3333';
+  const isDev = env.DEV === true || env.DEV === 'true';
+
+  if (isDev) {
+    return '/api/bridge';
+  }
+
+  return configuredBaseUrl;
+}
+
+export function buildBridgeUrl(path: string, env: BridgeEnv = getBridgeEnv()): string {
+  const baseUrl = resolveBridgeBaseUrl(env).replace(/\/$/, '');
   return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 }
 

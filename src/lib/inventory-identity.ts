@@ -5,6 +5,8 @@
 
 import { InventoryAnomaly, InventoryItem } from "@/types/inventory";
 
+const LEGACY_GROUPED_MISA_WAREHOUSE = "khoi vat tu";
+
 type InventorySnapshotRow = {
   id: string;
   name: string;
@@ -23,6 +25,33 @@ type InventorySnapshotRow = {
 
 const normalizeInventoryKeyPart = (value?: string | null): string =>
   value?.trim().toLowerCase() || "";
+
+const canonicalizeInventoryKeyPart = (value?: string | null): string =>
+  normalizeInventoryKeyPart(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+
+const canonicalizeInventorySourceFamily = (value?: string | null): string => {
+  const normalized = canonicalizeInventoryKeyPart(value);
+  const stockSuffixIndex = normalized.indexOf("__stock_");
+  return stockSuffixIndex >= 0 ? normalized.slice(0, stockSuffixIndex) : normalized;
+};
+
+const parseInventoryKey = (key?: string | null): { sourceId: string; warehouse: string } | null => {
+  if (!key) {
+    return null;
+  }
+
+  const [sourceId, ...warehouseParts] = key.split("::");
+  if (!sourceId || warehouseParts.length === 0) {
+    return null;
+  }
+
+  return {
+    sourceId,
+    warehouse: warehouseParts.join("::"),
+  };
+};
 
 export const buildInventoryItemKey = (
   sourceId?: string | null,
@@ -69,8 +98,61 @@ export const anomalyMatchesInventoryItem = (
   item: Pick<InventoryItem, "name" | "inventoryKey">,
 ): boolean => {
   if (anomaly.inventoryKey) {
-    return anomaly.inventoryKey === item.inventoryKey;
+    if (anomaly.inventoryKey === item.inventoryKey) {
+      return true;
+    }
+
+    const anomalyIdentity = parseInventoryKey(anomaly.inventoryKey);
+    const itemIdentity = parseInventoryKey(item.inventoryKey);
+
+    if (
+      anomalyIdentity &&
+      itemIdentity &&
+      canonicalizeInventorySourceFamily(anomalyIdentity.sourceId) ===
+        canonicalizeInventorySourceFamily(itemIdentity.sourceId) &&
+      canonicalizeInventoryKeyPart(anomalyIdentity.warehouse) === "khoi vat tu"
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
   return anomaly.materialId === item.name;
+};
+
+export const preferWarehouseSpecificInventoryItems = <
+  T extends Pick<InventoryItem, "sourceId" | "warehouse">,
+>(
+  items: T[],
+): T[] => {
+  const sourceIdsWithRealWarehouses = new Set<string>();
+
+  for (const item of items) {
+    const sourceId = canonicalizeInventorySourceFamily(item.sourceId);
+    if (!sourceId.startsWith("misa_")) {
+      continue;
+    }
+
+    if (
+      canonicalizeInventoryKeyPart(item.warehouse) !== LEGACY_GROUPED_MISA_WAREHOUSE
+    ) {
+      sourceIdsWithRealWarehouses.add(sourceId);
+    }
+  }
+
+  return items.filter((item) => {
+    const sourceId = canonicalizeInventorySourceFamily(item.sourceId);
+    if (!sourceId.startsWith("misa_")) {
+      return true;
+    }
+
+    if (
+      canonicalizeInventoryKeyPart(item.warehouse) !== LEGACY_GROUPED_MISA_WAREHOUSE
+    ) {
+      return true;
+    }
+
+    return !sourceIdsWithRealWarehouses.has(sourceId);
+  });
 };

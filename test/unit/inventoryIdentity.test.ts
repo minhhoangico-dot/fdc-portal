@@ -9,6 +9,7 @@ import {
   anomalyMatchesInventoryItem,
   buildInventoryItemKey,
   mapInventorySnapshotToItem,
+  preferWarehouseSpecificInventoryItems,
 } from '../../src/lib/inventory-identity';
 
 test('maps pharmacy snapshots to display the real medicine code while keeping source identity', () => {
@@ -99,4 +100,79 @@ test('legacy anomalies without identity still fall back to name matching', () =>
   };
 
   assert.equal(anomalyMatchesInventoryItem(legacyAnomaly, item), true);
+});
+
+test('legacy supply anomaly keys tied to Khoi Vat Tu still match the same source item in real warehouses', () => {
+  const anomaly = {
+    id: 'supply-legacy-1',
+    materialId: 'Bo xanh nu size M',
+    rule: 'low_stock',
+    severity: 'medium',
+    description: 'Legacy grouped warehouse key',
+    detectedAt: '2026-04-06T00:00:00.000Z',
+    acknowledged: false,
+    inventoryKey: buildInventoryItemKey('misa_AO018', 'Khoi Vat Tu'),
+  };
+
+  const item = {
+    id: 'row-1',
+    name: 'Bo xanh nu size M',
+    sku: 'AO018',
+    category: 'Vat tu',
+    warehouse: 'Kho vat tu - Khac',
+    currentStock: 170,
+    unit: 'Bo',
+    status: 'in_stock',
+    lastUpdated: '2026-04-06',
+    sourceId: 'misa_AO018__stock_1521',
+    inventoryKey: buildInventoryItemKey('misa_AO018__stock_1521', 'Kho vat tu - Khac'),
+  };
+
+  assert.equal(anomalyMatchesInventoryItem(anomaly, item), true);
+});
+
+test('prefers warehouse-specific MISA rows over legacy Khoi Vat Tu rows for the same source item', () => {
+  const filtered = preferWarehouseSpecificInventoryItems([
+    {
+      id: 'legacy-row',
+      name: 'Bo xanh nu size M',
+      sku: 'AO018',
+      category: 'Vat tu',
+      warehouse: 'Khoi Vat Tu',
+      currentStock: 179,
+      unit: 'Bo',
+      status: 'in_stock',
+      lastUpdated: '2026-04-06',
+      sourceId: 'misa_AO018',
+      inventoryKey: buildInventoryItemKey('misa_AO018', 'Khoi Vat Tu'),
+    },
+    {
+      id: 'split-row-1',
+      name: 'Bo xanh nu size M',
+      sku: 'AO018',
+      category: 'Vat tu',
+      warehouse: 'Kho vat tu - Khac',
+      currentStock: 170,
+      unit: 'Bo',
+      status: 'in_stock',
+      lastUpdated: '2026-04-06',
+      sourceId: 'misa_AO018__stock_1521',
+      inventoryKey: buildInventoryItemKey('misa_AO018__stock_1521', 'Kho vat tu - Khac'),
+    },
+    {
+      id: 'split-row-2',
+      name: 'Bo xanh nu size M',
+      sku: 'AO018',
+      category: 'Vat tu',
+      warehouse: 'Kho vat tu - Dich vu',
+      currentStock: 9,
+      unit: 'Bo',
+      status: 'in_stock',
+      lastUpdated: '2026-04-06',
+      sourceId: 'misa_AO018__stock_1522',
+      inventoryKey: buildInventoryItemKey('misa_AO018__stock_1522', 'Kho vat tu - Dich vu'),
+    },
+  ]);
+
+  assert.deepEqual(filtered.map((item) => item.id), ['split-row-1', 'split-row-2']);
 });

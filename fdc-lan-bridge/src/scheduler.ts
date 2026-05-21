@@ -5,6 +5,8 @@ import { syncPatientVolumeJob } from "./jobs/syncPatientVolume";
 import { syncMisaPaymentsJob } from "./jobs/syncMisaPayments";
 import { scanMisaPhieuchiJob } from "./jobs/scanMisaPhieuchi";
 import { syncAttendanceJob } from "./jobs/syncAttendance";
+import { syncEmployeesJob } from "./jobs/syncEmployees";
+import { aggregateAttendanceJob } from "./jobs/aggregateAttendance";
 import { syncMisaSuppliesJob } from "./jobs/syncMisaSupplies";
 import { updateHealthJob } from "./jobs/updateHealth";
 import { syncMedicineImportsJob } from "./jobs/syncMedicineImports";
@@ -26,8 +28,16 @@ export function startScheduler(): void {
   cron.schedule("*/5 * * * *", scanMisaPhieuchiJob);
   logger.info("Cron registered: scanMisaPhieuchiJob (Every 5 minutes: */5 * * * *)");
 
-  cron.schedule("*/15 * * * *", syncAttendanceJob);
-  logger.info("Cron registered: syncAttendanceJob (Every 15 minutes: */15 * * * *)");
+  cron.schedule("*/15 * * * *", async () => {
+    await syncAttendanceJob();
+    await aggregateAttendanceJob();
+  });
+  logger.info(
+    "Cron registered: syncAttendanceJob + aggregateAttendanceJob (Every 15 minutes: */15 * * * *)",
+  );
+
+  cron.schedule("0 3 * * *", syncEmployeesJob);
+  logger.info("Cron registered: syncEmployeesJob (Daily 03:00: 0 3 * * *)");
 
   cron.schedule("0 6 * * *", async () => {
     logger.info("Running scheduled syncInventoryJob (Medicine)...");
@@ -55,10 +65,10 @@ export function startScheduler(): void {
     await syncSupplyMonthlyStatsJob();
   });
 
-  cron.schedule("0 23 * * 0", async () => {
+  cron.schedule("0 23 * * *", async () => {
     logger.info("Running scheduled generateWeeklyReportJob...");
     await generateWeeklyReportJob(undefined, "scheduler");
   });
-  logger.info("Cron registered: generateWeeklyReportJob (Sunday 23:00: 0 23 * * 0)");
+  logger.info("Cron registered: generateWeeklyReportJob (Daily 23:00: 0 23 * * *)");
 }
 

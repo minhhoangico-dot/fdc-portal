@@ -43,6 +43,16 @@ test('super_admin absorbs all former chief_accountant permissions', () => {
   assert.equal(can('super_admin', 'admin.manage'), true);
 });
 
+test('head_nurse inherits the same portal-level access as super_admin', () => {
+  assert.equal(can('head_nurse', 'approvals.forward_manual'), true);
+  assert.equal(can('head_nurse', 'requests.view_all'), true);
+  assert.equal(can('head_nurse', 'tv_management.view'), true);
+  assert.equal(can('head_nurse', 'admin.manage'), true);
+  assert.equal(can('head_nurse', 'lab_dashboard.operate'), true);
+  assert.equal(canAccessModule('head_nurse', 'admin'), true);
+  assert.equal(canAccessModule('head_nurse', 'tv_management'), true);
+});
+
 test('org_chart module is accessible to all roles', () => {
   assert.equal(can('clinic_staff', 'org_chart.view'), true);
   assert.equal(can('super_admin', 'org_chart.view'), true);

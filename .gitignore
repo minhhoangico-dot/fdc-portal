@@ -10,3 +10,6 @@ coverage/
 # Orphaned checkout — do not commit
 fdc-portal/
 .worktrees/
+
+# Per-user Claude Code settings (may contain API tokens in Bash allowlist)
+.claude/settings.local.json

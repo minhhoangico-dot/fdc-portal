@@ -23,5 +23,17 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "include": [
+    "src",
+    "vite.config.ts"
+  ],
+  "exclude": [
+    "dist",
+    "node_modules",
+    "fdc-lan-bridge",
+    "to be intergrate",
+    ".worktrees",
+    ".wrangler"
+  ]
 }

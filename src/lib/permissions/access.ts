@@ -4,6 +4,7 @@
  */
 
 import { PERMISSION_MATRIX } from '@/lib/permissions/matrix';
+import { hasFullPortalAdminAccess } from '@/lib/role-authority';
 import type { PermissionAction, PermissionModuleKey } from '@/types/permissions';
 import type { ModuleKey } from '@/types/roleCatalog';
 import type { Role } from '@/types/user';
@@ -31,6 +32,15 @@ const MODULE_ACCESS_ACTIONS: Record<PermissionModuleKey, readonly PermissionActi
   weekly_report: ['weekly_report.view', 'weekly_report.operate'],
   tv_management: ['tv_management.view'],
   portal: ['portal.view'],
+  attendance: [
+    'attendance.view_self',
+    'attendance.view_team',
+    'attendance.view_all',
+    'attendance.manage_employees',
+    'attendance.manage_settings',
+    'attendance.manage_exceptions',
+    'attendance.export',
+  ],
   admin: ['admin.view', 'admin.manage'],
   valuation: ['valuation.view'],
   lab_dashboard: ['lab_dashboard.view', 'lab_dashboard.operate'],
@@ -39,7 +49,15 @@ const MODULE_ACCESS_ACTIONS: Record<PermissionModuleKey, readonly PermissionActi
 
 export function can(role: Role, action: PermissionAction): boolean {
   const visibility = PERMISSION_MATRIX[action];
-  return visibility === 'all' || visibility.includes(role);
+  if (visibility === 'all') {
+    return true;
+  }
+
+  if (visibility.includes(role)) {
+    return true;
+  }
+
+  return hasFullPortalAdminAccess(role) && visibility.includes('super_admin');
 }
 
 export function canAccessModule(role: Role, moduleKey: ModuleKey | PermissionModuleKey): boolean {

@@ -55,9 +55,18 @@
   - `public.fdc_analytics_anomalies` includes `module_type` and `inventory_item_key`
   - 10 default threshold rows exist for `__default__`
   - `module_type` backfill completed for all existing anomalies
+- Command or check 4: `cmd /c npm.cmd run build` in the portal root, then `cmd /c npx.cmd wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`.
+- Command or check 5: SSH rollout to `hbminh@192.168.1.9` copying the changed bridge files to `/opt/fdc-lan-bridge`, then `sudo npm run build`, `sudo systemctl restart fdc-lan-bridge`, and `curl http://127.0.0.1:3333/health`.
 
 ## Closeout
 
 - Final status: rolled out and verified on self-hosted Supabase
+- Deployment evidence:
+  - `cmd /c npm.cmd run build` in the portal root: passed and emitted `dist/assets/index-LjZCG-9P.js`.
+  - `cmd /c npm.cmd run build` in `fdc-lan-bridge`: passed (`tsc` clean).
+  - `cmd /c npx.cmd wrangler pages deploy dist --project-name fdc-portal --branch main --commit-dirty=true`: passed; deployment URL `https://4f0787a5.fdc-portal.pages.dev`.
+  - `Invoke-WebRequest -UseBasicParsing https://4f0787a5.fdc-portal.pages.dev/` and `Invoke-WebRequest -UseBasicParsing https://portal.fdc-nhanvien.org/`: both returned `200` and referenced `assets/index-LjZCG-9P.js`.
+  - SSH rollout to `hbminh@192.168.1.9`: copied `src/jobs/detectAnomalies.ts`, `src/lib/anomalyThresholds.ts`, and `src/scheduler.ts` into `/opt/fdc-lan-bridge`, then ran `sudo npm run build`, `sudo systemctl restart fdc-lan-bridge`, and `curl http://127.0.0.1:3333/health`.
+  - Remote bridge health verification returned `200 OK` with `{"status":"healthy","hisConnected":true,"misaConnected":true,"queueDepth":0,...}` after restart.
 - Residual risks:
   - Two acknowledged legacy pharmacy anomalies from `2026-03-11` still have `inventory_item_key = null`; current frontend matching tolerates that via name fallback, but only newly detected anomalies will carry the new key automatically.

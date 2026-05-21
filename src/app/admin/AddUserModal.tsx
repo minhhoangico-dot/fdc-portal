@@ -74,7 +74,7 @@ export function AddUserModal({
     setName("");
     setEmail("");
     setDepartment("");
-    setRole("staff");
+    setRole("clinic_staff");
     setHikvisionEmployeeId("");
     setHikStatus(null);
     onClose();

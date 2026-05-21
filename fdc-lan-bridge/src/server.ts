@@ -23,6 +23,8 @@ import { syncSupplyInwardJob } from "./jobs/syncSupplyInward";
 import { syncSupplyMonthlyStatsJob } from "./jobs/syncSupplyMonthlyStats";
 
 import { syncAttendanceJob } from "./jobs/syncAttendance";
+import { syncEmployeesJob } from "./jobs/syncEmployees";
+import { aggregateAttendanceJob } from "./jobs/aggregateAttendance";
 import { LabDashboardDetailQueryError, parseLabDashboardDetailQuery } from "./labDashboard/detailHelpers";
 import { getLabDashboardCurrent, getLabDashboardDetails } from "./labDashboard/service";
 import { getTvAccessCheck } from "./tvAccess/service";
@@ -135,7 +137,20 @@ app.post("/sync/:type", async (req: Request, res: Response) => {
       case "timekeeping": {
         void (async () => {
           await syncAttendanceJob();
+          await aggregateAttendanceJob();
         })();
+        return res.json({ ok: true });
+      }
+      case "employees": {
+        void syncEmployeesJob();
+        return res.json({ ok: true });
+      }
+      case "attendance-aggregate": {
+        const fromDate =
+          typeof req.query.fromDate === "string"
+            ? req.query.fromDate
+            : undefined;
+        void aggregateAttendanceJob(fromDate);
         return res.json({ ok: true });
       }
       case "backfill-inventory": {

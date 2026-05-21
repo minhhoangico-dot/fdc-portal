@@ -27,10 +27,11 @@ test('weekly report is no longer shown as a top-level nav item', () => {
   assert.equal(items.some((item) => item.path === '/weekly-report'), false);
 });
 
-test('non-admin roles do not see the tv management nav item', () => {
+test('head_nurse sees admin and tv management nav items', () => {
   const items = getVisibleNavItems('head_nurse');
 
-  assert.equal(items.some((item) => item.path === '/tv-management'), false);
+  assert.equal(items.some((item) => item.path === '/tv-management'), true);
+  assert.equal(items.some((item) => item.path === '/admin'), true);
 });
 
 test('department-specific roles see correct modules', () => {

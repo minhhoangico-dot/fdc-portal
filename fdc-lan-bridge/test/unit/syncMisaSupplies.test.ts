@@ -3,6 +3,7 @@ export {};
 const mockMisaQuery = jest.fn();
 const mockConnect = jest.fn();
 const mockSnapshotUpsert = jest.fn();
+const mockSnapshotDelete = jest.fn();
 const mockDailyUpsert = jest.fn();
 const mockInfo = jest.fn();
 const mockError = jest.fn();
@@ -26,6 +27,8 @@ const mockFrom = jest.fn((table: string) => {
     let selected = "";
     let startDate = "";
     let endDate = "";
+    let warehouse = "";
+    let deleteMode = false;
 
     const chain: any = {
       select: (columns: string) => {
@@ -33,6 +36,12 @@ const mockFrom = jest.fn((table: string) => {
         return chain;
       },
       like: () => chain,
+      eq: (column: string, value: string) => {
+        if (deleteMode && column === "warehouse") {
+          warehouse = value;
+        }
+        return chain;
+      },
       order: () => chain,
       gte: (_column: string, value: string) => {
         startDate = value;
@@ -40,6 +49,14 @@ const mockFrom = jest.fn((table: string) => {
       },
       lte: (_column: string, value: string) => {
         endDate = value;
+        if (deleteMode) {
+          mockSnapshotDelete({
+            startDate,
+            endDate,
+            warehouse,
+          });
+          return Promise.resolve({ error: null });
+        }
         return chain;
       },
       limit: async () => {
@@ -64,13 +81,19 @@ const mockFrom = jest.fn((table: string) => {
                 snapshot_date: "2026-03-13",
                 current_stock: 8,
                 unit_price: 25,
-                his_medicineid: "misa_VT001",
+                his_medicineid: "misa_VT001__stock_1522",
               },
               {
                 snapshot_date: "2026-03-14",
                 current_stock: 4,
                 unit_price: 25,
-                his_medicineid: "misa_VT001",
+                his_medicineid: "misa_VT001__stock_1522",
+              },
+              {
+                snapshot_date: "2026-03-14",
+                current_stock: 6,
+                unit_price: 20,
+                his_medicineid: "misa_VT001__stock_1521",
               },
             ],
             error: null,
@@ -78,6 +101,10 @@ const mockFrom = jest.fn((table: string) => {
         }
 
         return { data: [], error: null };
+      },
+      delete: () => {
+        deleteMode = true;
+        return chain;
       },
       upsert: mockSnapshotUpsert,
     };
@@ -154,6 +181,7 @@ describe("syncMisaSuppliesJob", () => {
     mockMisaQuery.mockReset();
     mockConnect.mockReset();
     mockSnapshotUpsert.mockReset();
+    mockSnapshotDelete.mockReset();
     mockDailyUpsert.mockReset();
     mockInfo.mockReset();
     mockError.mockReset();
@@ -168,6 +196,9 @@ describe("syncMisaSuppliesJob", () => {
             {
               snapshot_date: "2026-03-13",
               InventoryItemCode: "VT001",
+              StockID: "1522",
+              StockCode: "1522",
+              StockName: "Kho Dich vu",
               delta_stock: -2,
               delta_value: -50,
             },
@@ -180,6 +211,9 @@ describe("syncMisaSuppliesJob", () => {
           recordset: [
             {
               InventoryItemCode: "VT001",
+              StockID: "1522",
+              StockCode: "1522",
+              StockName: "Kho Dich vu",
               balance: 10,
               total_value: 250,
             },
@@ -195,14 +229,31 @@ describe("syncMisaSuppliesJob", () => {
               InventoryItemName: "Vat tu A",
               InventoryAccount: "1522",
               UnitName: "Hop",
+              StockID: "1522",
+              StockCode: "1522",
+              StockName: "Kho Dich vu",
               balance: 4,
               total_value: 100,
+            },
+            {
+              InventoryItemCode: "VT001",
+              InventoryItemName: "Vat tu A",
+              InventoryAccount: "1522",
+              UnitName: "Hop",
+              StockID: "1521",
+              StockCode: "1521",
+              StockName: "Kho Khac",
+              balance: 6,
+              total_value: 120,
             },
           ],
         };
       }
 
-      if (!sql.includes("InventoryLedger")) {
+      if (
+        sql.includes("MAX(i.InventoryItemName) as InventoryItemName") &&
+        sql.includes("GROUP BY i.InventoryItemCode, l.StockID")
+      ) {
         return {
           recordset: [
             {
@@ -210,6 +261,18 @@ describe("syncMisaSuppliesJob", () => {
               InventoryItemName: "Vat tu A",
               InventoryAccount: "1522",
               UnitName: "Hop",
+              StockID: "1522",
+              StockCode: "1522",
+              StockName: "Kho Dich vu",
+            },
+            {
+              InventoryItemCode: "VT001",
+              InventoryItemName: "Vat tu A",
+              InventoryAccount: "1522",
+              UnitName: "Hop",
+              StockID: "1521",
+              StockCode: "1521",
+              StockName: "Kho Khac",
             },
           ],
         };
@@ -236,28 +299,38 @@ describe("syncMisaSuppliesJob", () => {
       1,
       [
         expect.objectContaining({
-          his_medicineid: "misa_VT001",
+          his_medicineid: "misa_VT001__stock_1522",
           snapshot_date: "2026-03-13",
+          warehouse: "Kho Dich vu",
           current_stock: 8,
           unit_price: 25,
           category: "V\u1eadt t\u01b0 y t\u1ebf",
         }),
       ],
-      { onConflict: "his_medicineid,snapshot_date" },
+      { onConflict: "his_medicineid,warehouse,snapshot_date" },
     );
 
     expect(mockSnapshotUpsert).toHaveBeenNthCalledWith(
       2,
-      [
+      expect.arrayContaining([
         expect.objectContaining({
-          his_medicineid: "misa_VT001",
+          his_medicineid: "misa_VT001__stock_1522",
           snapshot_date: "2026-03-14",
+          warehouse: "Kho Dich vu",
           current_stock: 4,
           unit_price: 25,
           category: "V\u1eadt t\u01b0 y t\u1ebf",
         }),
-      ],
-      { onConflict: "his_medicineid,snapshot_date" },
+        expect.objectContaining({
+          his_medicineid: "misa_VT001__stock_1521",
+          snapshot_date: "2026-03-14",
+          warehouse: "Kho Khac",
+          current_stock: 6,
+          unit_price: 20,
+          category: "V\u1eadt t\u01b0 y t\u1ebf",
+        }),
+      ]),
+      { onConflict: "his_medicineid,warehouse,snapshot_date" },
     );
 
     expect(mockDailyUpsert).toHaveBeenCalledWith(
@@ -271,12 +344,18 @@ describe("syncMisaSuppliesJob", () => {
         {
           snapshot_date: "2026-03-14",
           module_type: "inventory",
-          total_stock: 4,
-          total_value: 100,
+          total_stock: 10,
+          total_value: 220,
         },
       ],
       { onConflict: "snapshot_date,module_type" },
     );
+
+    expect(mockSnapshotDelete).toHaveBeenCalledWith({
+      startDate: "2026-03-13",
+      endDate: "2026-03-14",
+      warehouse: "Kh\u1ed1i V\u1eadt T\u01b0",
+    });
 
     expect(mockError).not.toHaveBeenCalled();
   });

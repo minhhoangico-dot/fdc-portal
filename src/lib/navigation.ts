@@ -7,6 +7,7 @@ import type { LucideIcon } from 'lucide-react';
 import {
   Building2,
   CheckCircle,
+  ClipboardList,
   FileText,
   GitBranch,
   Home,
@@ -47,6 +48,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
     icon: Monitor,
   },
   { key: 'org_chart', path: '/org-chart', label: 'Sơ đồ tổ chức', icon: GitBranch },
+  { key: 'attendance', path: '/attendance', label: 'Chấm công', icon: ClipboardList },
   { key: 'portal', path: '/portal', label: 'Cá nhân', icon: User },
   { key: 'admin', path: '/admin', label: 'Quản trị', icon: Settings },
 ];

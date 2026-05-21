@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { subscribeToPostgresChanges } from '@/lib/supabase-realtime';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { Notification } from '@/types/notification';
@@ -57,21 +58,15 @@ export function useNotifications() {
 
         if (!user) return;
 
-        const channel = supabase
-            .channel(`public:fdc_notifications:${user.id}`)
-            .on('postgres_changes', {
-                event: '*',
-                schema: 'public',
+        return subscribeToPostgresChanges(
+            supabase,
+            `public:fdc_notifications:${user.id}`,
+            [{
                 table: 'fdc_notifications',
                 filter: `recipient_id=eq.${user.id}`
-            }, () => {
-                fetchNotifications();
-            })
-            .subscribe();
-
-        return () => {
-            supabase.removeChannel(channel);
-        };
+            }],
+            fetchNotifications,
+        );
     }, [fetchNotifications, user]);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;

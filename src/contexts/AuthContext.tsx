@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { subscribeToPostgresChanges } from '@/lib/supabase-realtime';
 import { User, Role } from '@/types/user';
 import { supabase } from '@/lib/supabase';
 
@@ -83,25 +84,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!user?.supabaseUid) return;
 
-    const channel = supabase
-      .channel(`public:fdc_user_mapping:${user.supabaseUid}`)
-      .on(
-        'postgres_changes',
+    return subscribeToPostgresChanges(
+      supabase,
+      `public:fdc_user_mapping:${user.supabaseUid}`,
+      [
         {
           event: 'UPDATE',
-          schema: 'public',
           table: 'fdc_user_mapping',
           filter: `supabase_uid=eq.${user.supabaseUid}`,
         },
-        () => {
-          fetchUserMapping(user.supabaseUid!);
-        },
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
+      ],
+      () => fetchUserMapping(user.supabaseUid!),
+    );
   }, [fetchUserMapping, user?.supabaseUid]);
 
   const logout = async () => {

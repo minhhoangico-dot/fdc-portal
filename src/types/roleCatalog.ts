@@ -15,6 +15,7 @@ export type ModuleKey =
   | 'weekly_report'
   | 'tv_management'
   | 'portal'
+  | 'attendance'
   | 'admin'
   | 'org_chart';
 
