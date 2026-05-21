@@ -3,18 +3,28 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Download, RefreshCw } from 'lucide-react';
 import { useAttendanceReports } from '@/viewmodels/attendance/useAttendanceReports';
 import {
   getAttendanceStatusColor,
   getAttendanceStatusLabel,
 } from '@/viewmodels/attendance/shared';
+import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
 import { can } from '@/lib/permissions/access';
 
+interface UserOption {
+  id: string;
+  fullName: string;
+  department: string | null;
+}
+
 function formatTime(value: string | null): string {
   if (!value) return '--:--';
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+    return value.slice(0, 5);
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleTimeString('vi-VN', {
@@ -44,6 +54,30 @@ export default function ReportsTab() {
     refresh,
     exportXlsx,
   } = useAttendanceReports();
+  const [users, setUsers] = useState<UserOption[]>([]);
+
+  useEffect(() => {
+    if (filters.type !== 'employee') return;
+    let cancelled = false;
+    void (async () => {
+      const { data } = await supabase
+        .from('fdc_user_mapping')
+        .select('id,full_name,department_name,is_active')
+        .neq('is_active', false)
+        .order('full_name', { ascending: true });
+      if (cancelled) return;
+      setUsers(
+        (data ?? []).map((u) => ({
+          id: u.id,
+          fullName: u.full_name ?? '(không tên)',
+          department: u.department_name ?? null,
+        })),
+      );
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [filters.type]);
 
   return (
     <div className="space-y-4">
@@ -107,15 +141,21 @@ export default function ReportsTab() {
 
           {filters.type === 'employee' && (
             <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Mã NV"
-                value={filters.employeeNo ?? ''}
+              <select
+                value={filters.userMappingId ?? ''}
                 onChange={(e) =>
-                  setFilters({ ...filters, employeeNo: e.target.value })
+                  setFilters({ ...filters, userMappingId: e.target.value || undefined })
                 }
-                className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm w-28"
-              />
+                className="border border-gray-200 rounded-lg px-2 py-1.5 text-sm min-w-[12rem]"
+              >
+                <option value="">— Chọn nhân viên —</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.fullName}
+                    {u.department ? ` · ${u.department}` : ''}
+                  </option>
+                ))}
+              </select>
               <input
                 type="date"
                 value={filters.startDate ?? ''}
@@ -174,19 +214,20 @@ export default function ReportsTab() {
               <th className="text-left px-4 py-2 font-medium">Ra</th>
               <th className="text-right px-4 py-2 font-medium">Muộn</th>
               <th className="text-right px-4 py-2 font-medium">Giờ làm</th>
+              <th className="text-left px-4 py-2 font-medium">Ca</th>
               <th className="text-left px-4 py-2 font-medium">Trạng thái</th>
             </tr>
           </thead>
           <tbody>
             {isLoading && records.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
                   Đang tải...
                 </td>
               </tr>
             ) : records.length === 0 ? (
               <tr>
-                <td colSpan={8} className="px-4 py-6 text-center text-gray-400">
+                <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
                   Không có dữ liệu.
                 </td>
               </tr>
@@ -197,7 +238,7 @@ export default function ReportsTab() {
                     {formatDate(r.date)}
                   </td>
                   <td className="px-4 py-2 text-gray-800">
-                    {r.name ?? r.employeeNo ?? '—'}
+                    {r.name ?? '—'}
                   </td>
                   <td className="px-4 py-2 text-gray-600">
                     {r.department ?? '—'}
@@ -213,6 +254,9 @@ export default function ReportsTab() {
                   </td>
                   <td className="px-4 py-2 text-right">
                     {r.hoursWorked.toFixed(1)}h
+                  </td>
+                  <td className="px-4 py-2 text-gray-500 text-xs">
+                    {r.shiftType}
                   </td>
                   <td className="px-4 py-2">
                     <span

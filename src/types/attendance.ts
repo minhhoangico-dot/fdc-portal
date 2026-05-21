@@ -5,6 +5,7 @@
 
 export type AttendanceStatus =
   | 'on_time'
+  | 'late_allowed'
   | 'late'
   | 'absent'
   | 'leave'
@@ -14,7 +15,6 @@ export type AttendanceStatus =
 export interface AttendanceRecord {
   id: string;
   userId: string | null;
-  employeeNo: string | null;
   name: string | null;
   department: string | null;
   date: string;
@@ -23,9 +23,10 @@ export interface AttendanceRecord {
   status: AttendanceStatus;
   lateMinutes: number;
   hoursWorked: number;
-  overtimeHours: number;
+  overtime: number;
+  shiftType: string;
   source: string;
-  scheduleSource?: string;
+  processedAt: string | null;
 }
 
 export interface AttendanceSummary {
@@ -48,15 +49,28 @@ export interface AttendanceEmployee {
 }
 
 export interface AttendanceSchedule {
+  id: string;
+  label: string;
   startTime: string;
   endTime: string;
   allowedLateMinutes: number;
+  isDefault: boolean;
+  createdAt: string | null;
+  updatedAt: string | null;
 }
 
-export interface AttendanceScheduleException extends AttendanceSchedule {
-  employeeNo: string;
-  note: string | null;
-  updatedAt: string | null;
+export interface AttendanceScheduleOverride {
+  id: string;
+  userMappingId: string;
+  userName: string | null;
+  userRole: string | null;
+  userDepartment: string | null;
+  startTime: string;
+  endTime: string;
+  allowedLateMinutes: number | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  createdAt: string | null;
 }
 
 export interface AttendanceRawEvent {
@@ -75,6 +89,7 @@ export interface AttendanceReportFilters {
   month?: number;
   year?: number;
   employeeNo?: string;
+  userMappingId?: string;
   startDate?: string;
   endDate?: string;
 }

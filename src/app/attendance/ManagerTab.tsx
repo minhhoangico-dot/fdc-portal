@@ -13,6 +13,9 @@ import {
 
 function formatTime(value: string | null): string {
   if (!value) return '--:--';
+  if (/^\d{2}:\d{2}(:\d{2})?$/.test(value)) {
+    return value.slice(0, 5);
+  }
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleTimeString('vi-VN', {
@@ -113,7 +116,7 @@ export default function ManagerTab() {
                     {formatDate(r.date)}
                   </td>
                   <td className="px-4 py-2 text-gray-800">
-                    {r.name ?? r.employeeNo ?? '—'}
+                    {r.name ?? '—'}
                   </td>
                   <td className="px-4 py-2 text-gray-600">
                     {r.department ?? '—'}

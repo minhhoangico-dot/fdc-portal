@@ -4,83 +4,135 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/lib/supabase';
-import type { AttendanceScheduleException } from '@/types/attendance';
-import { mapExceptionRow } from '@/viewmodels/attendance/shared';
+import type { AttendanceScheduleOverride } from '@/types/attendance';
+import { mapOverrideRow } from '@/viewmodels/attendance/shared';
+
+export interface OverrideUserOption {
+  id: string;
+  fullName: string;
+  role: string | null;
+  department: string | null;
+}
+
+export type OverrideDraft = {
+  id?: string;
+  userMappingId: string;
+  startTime: string;
+  endTime: string;
+  allowedLateMinutes: number | null;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+};
 
 export function useAttendanceScheduleExceptions() {
-  const { user } = useAuth();
-  const [exceptions, setExceptions] = useState<AttendanceScheduleException[]>([]);
+  const [overrides, setOverrides] = useState<AttendanceScheduleOverride[]>([]);
+  const [users, setUsers] = useState<OverrideUserOption[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchExceptions = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const { data, error: queryErr } = await supabase
-        .from('fdc_attendance_schedule_exceptions')
-        .select('employee_no,start_time,end_time,allowed_late_minutes,note,updated_at')
-        .order('employee_no', { ascending: true });
-      if (queryErr) throw queryErr;
-      setExceptions((data ?? []).map(mapExceptionRow));
+      const [{ data: overrideRows, error: overrideErr }, { data: userRows, error: userErr }] =
+        await Promise.all([
+          supabase
+            .from('fdc_attendance_schedule_override')
+            .select(
+              'id,user_mapping_id,start_time,end_time,allowed_late_minutes,effective_from,effective_to,created_at',
+            )
+            .order('effective_from', { ascending: false }),
+          supabase
+            .from('fdc_user_mapping')
+            .select('id,full_name,role,department_name,is_active')
+            .neq('is_active', false)
+            .order('full_name', { ascending: true }),
+        ]);
+      if (overrideErr) throw overrideErr;
+      if (userErr) throw userErr;
+
+      const userById = new Map<string, OverrideUserOption>();
+      for (const u of userRows ?? []) {
+        userById.set(u.id, {
+          id: u.id,
+          fullName: u.full_name ?? '(không tên)',
+          role: u.role ?? null,
+          department: u.department_name ?? null,
+        });
+      }
+
+      const decorated = (overrideRows ?? []).map((row) => {
+        const u = userById.get(row.user_mapping_id);
+        return mapOverrideRow({
+          ...row,
+          user_name: u?.fullName ?? null,
+          user_role: u?.role ?? null,
+          user_department: u?.department ?? null,
+        });
+      });
+
+      setOverrides(decorated);
+      setUsers(Array.from(userById.values()));
     } catch (err: any) {
       setError(err?.message ?? 'Không tải được dữ liệu lịch riêng');
-      setExceptions([]);
+      setOverrides([]);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void fetchExceptions();
-  }, [fetchExceptions]);
+    void fetchAll();
+  }, [fetchAll]);
 
-  const upsertException = useCallback(
-    async (next: AttendanceScheduleException) => {
+  const upsertOverride = useCallback(
+    async (draft: OverrideDraft) => {
       setIsSaving(true);
       setError(null);
       try {
-        const { error: upsertErr } = await supabase
-          .from('fdc_attendance_schedule_exceptions')
-          .upsert(
-            {
-              employee_no: next.employeeNo,
-              start_time: next.startTime,
-              end_time: next.endTime,
-              allowed_late_minutes: next.allowedLateMinutes,
-              note: next.note ?? null,
-              updated_at: new Date().toISOString(),
-              updated_by: user?.id ?? null,
-            },
-            { onConflict: 'employee_no' },
-          );
-        if (upsertErr) throw upsertErr;
-        await fetchExceptions();
+        const payload = {
+          user_mapping_id: draft.userMappingId,
+          start_time: draft.startTime,
+          end_time: draft.endTime,
+          allowed_late_minutes: draft.allowedLateMinutes,
+          effective_from: draft.effectiveFrom,
+          effective_to: draft.effectiveTo,
+        };
+        if (draft.id) {
+          const { error: updateErr } = await supabase
+            .from('fdc_attendance_schedule_override')
+            .update(payload)
+            .eq('id', draft.id);
+          if (updateErr) throw updateErr;
+        } else {
+          const { error: insertErr } = await supabase
+            .from('fdc_attendance_schedule_override')
+            .insert(payload);
+          if (insertErr) throw insertErr;
+        }
+        await fetchAll();
       } catch (err: any) {
         setError(err?.message ?? 'Không thể lưu lịch riêng');
       } finally {
         setIsSaving(false);
       }
     },
-    [fetchExceptions, user?.id],
+    [fetchAll],
   );
 
-  const deleteException = useCallback(
-    async (employeeNo: string) => {
+  const deleteOverride = useCallback(
+    async (id: string) => {
       setIsSaving(true);
       setError(null);
       try {
         const { error: deleteErr } = await supabase
-          .from('fdc_attendance_schedule_exceptions')
+          .from('fdc_attendance_schedule_override')
           .delete()
-          .eq('employee_no', employeeNo);
+          .eq('id', id);
         if (deleteErr) throw deleteErr;
-        setExceptions((prev) =>
-          prev.filter((e) => e.employeeNo !== employeeNo),
-        );
+        setOverrides((prev) => prev.filter((o) => o.id !== id));
       } catch (err: any) {
         setError(err?.message ?? 'Không thể xoá lịch riêng');
       } finally {
@@ -91,12 +143,13 @@ export function useAttendanceScheduleExceptions() {
   );
 
   return {
-    exceptions,
+    overrides,
+    users,
     isLoading,
     isSaving,
     error,
-    refresh: fetchExceptions,
-    upsertException,
-    deleteException,
+    refresh: fetchAll,
+    upsertOverride,
+    deleteOverride,
   };
 }

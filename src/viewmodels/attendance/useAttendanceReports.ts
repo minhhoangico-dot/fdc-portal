@@ -72,51 +72,50 @@ export function useAttendanceReports() {
       let query = supabase
         .from('fdc_emp_attendance')
         .select(
-          'id,user_id,employee_no,date,check_in,check_out,status,late_minutes,hours_worked,overtime_hours,source,schedule_source',
+          'id,user_id,date,check_in,check_out,status,late_minutes,hours_worked,overtime,shift_type,source,processed_at',
         )
         .gte('date', start)
         .lte('date', end)
-        .order('date', { ascending: true })
-        .order('employee_no', { ascending: true });
+        .order('date', { ascending: true });
 
       if (scope.kind === 'self') {
         query = query.eq('user_id', scope.userId);
       }
-      if (filters.type === 'employee' && filters.employeeNo) {
-        query = query.eq('employee_no', filters.employeeNo);
+      if (filters.type === 'employee' && filters.userMappingId) {
+        query = query.eq('user_id', filters.userMappingId);
       }
 
       const { data: attendance, error: attErr } = await query;
       if (attErr) throw attErr;
 
-      const employeeNos = Array.from(
+      const userIds = Array.from(
         new Set(
           (attendance ?? [])
-            .map((r) => r.employee_no)
-            .filter((n): n is string => Boolean(n)),
+            .map((r) => r.user_id)
+            .filter((id): id is string => Boolean(id)),
         ),
       );
 
-      let employeeMap = new Map<
+      let userMap = new Map<
         string,
         { name: string | null; department: string | null }
       >();
-      if (employeeNos.length > 0) {
-        const { data: employees, error: empErr } = await supabase
-          .from('fdc_attendance_employees')
-          .select('employee_no,name,department')
-          .in('employee_no', employeeNos);
-        if (empErr) throw empErr;
-        employeeMap = new Map(
-          (employees ?? []).map((e) => [
-            e.employee_no,
-            { name: e.name, department: e.department },
+      if (userIds.length > 0) {
+        const { data: users, error: userErr } = await supabase
+          .from('fdc_user_mapping')
+          .select('id,full_name,department_name')
+          .in('id', userIds);
+        if (userErr) throw userErr;
+        userMap = new Map(
+          (users ?? []).map((u) => [
+            u.id,
+            { name: u.full_name, department: u.department_name },
           ]),
         );
       }
 
       let mapped = (attendance ?? []).map((row) => {
-        const meta = row.employee_no ? employeeMap.get(row.employee_no) : null;
+        const meta = row.user_id ? userMap.get(row.user_id) : null;
         return mapAttendanceRow({
           ...row,
           name: meta?.name ?? null,

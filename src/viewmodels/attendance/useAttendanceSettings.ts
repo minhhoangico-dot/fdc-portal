@@ -4,82 +4,124 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
 import { bridgeRequest } from '@/lib/bridge-client';
 import { supabase } from '@/lib/supabase';
 import type { AttendanceSchedule } from '@/types/attendance';
+import { mapScheduleRow } from '@/viewmodels/attendance/shared';
 
-const DEFAULT_SCHEDULE: AttendanceSchedule = {
-  startTime: '08:00',
-  endTime: '17:30',
-  allowedLateMinutes: 5,
-};
+export type ScheduleDraft = Omit<
+  AttendanceSchedule,
+  'id' | 'createdAt' | 'updatedAt'
+> & { id?: string };
 
 export function useAttendanceSettings() {
-  const { user } = useAuth();
-  const [schedule, setSchedule] = useState<AttendanceSchedule>(DEFAULT_SCHEDULE);
+  const [schedules, setSchedules] = useState<AttendanceSchedule[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isRecomputing, setIsRecomputing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [updatedAt, setUpdatedAt] = useState<string | null>(null);
 
-  const fetchSettings = useCallback(async () => {
+  const fetchSchedules = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
       const { data, error: queryErr } = await supabase
-        .from('fdc_attendance_settings')
-        .select('value,updated_at')
-        .eq('key', 'global_schedule')
-        .maybeSingle();
+        .from('fdc_attendance_schedule')
+        .select('id,label,start_time,end_time,allowed_late_minutes,is_default,created_at,updated_at')
+        .order('is_default', { ascending: false })
+        .order('label', { ascending: true });
       if (queryErr) throw queryErr;
-      if (data?.value) {
-        setSchedule({
-          startTime: data.value.startTime ?? DEFAULT_SCHEDULE.startTime,
-          endTime: data.value.endTime ?? DEFAULT_SCHEDULE.endTime,
-          allowedLateMinutes:
-            data.value.allowedLateMinutes ?? DEFAULT_SCHEDULE.allowedLateMinutes,
-        });
-        setUpdatedAt(data.updated_at ?? null);
-      }
+      setSchedules((data ?? []).map(mapScheduleRow));
     } catch (err: any) {
-      setError(err?.message ?? 'Không tải được cấu hình');
+      setError(err?.message ?? 'Không tải được danh sách ca làm việc');
+      setSchedules([]);
     } finally {
       setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void fetchSettings();
-  }, [fetchSettings]);
+    void fetchSchedules();
+  }, [fetchSchedules]);
 
-  const save = useCallback(
-    async (next: AttendanceSchedule) => {
+  const upsertSchedule = useCallback(
+    async (draft: ScheduleDraft) => {
       setIsSaving(true);
       setError(null);
       try {
-        const { error: upsertErr } = await supabase
-          .from('fdc_attendance_settings')
-          .upsert(
-            {
-              key: 'global_schedule',
-              value: next,
-              updated_at: new Date().toISOString(),
-              updated_by: user?.id ?? null,
-            },
-            { onConflict: 'key' },
-          );
-        if (upsertErr) throw upsertErr;
-        setSchedule(next);
-        setUpdatedAt(new Date().toISOString());
+        const payload = {
+          label: draft.label,
+          start_time: draft.startTime,
+          end_time: draft.endTime,
+          allowed_late_minutes: draft.allowedLateMinutes,
+          is_default: draft.isDefault,
+          updated_at: new Date().toISOString(),
+        };
+        if (draft.id) {
+          const { error: updateErr } = await supabase
+            .from('fdc_attendance_schedule')
+            .update(payload)
+            .eq('id', draft.id);
+          if (updateErr) throw updateErr;
+        } else {
+          const { error: insertErr } = await supabase
+            .from('fdc_attendance_schedule')
+            .insert(payload);
+          if (insertErr) throw insertErr;
+        }
+        await fetchSchedules();
       } catch (err: any) {
-        setError(err?.message ?? 'Không thể lưu cấu hình');
+        setError(err?.message ?? 'Không thể lưu ca làm việc');
       } finally {
         setIsSaving(false);
       }
     },
-    [user?.id],
+    [fetchSchedules],
+  );
+
+  const setDefault = useCallback(
+    async (id: string) => {
+      setIsSaving(true);
+      setError(null);
+      try {
+        const { error: clearErr } = await supabase
+          .from('fdc_attendance_schedule')
+          .update({ is_default: false, updated_at: new Date().toISOString() })
+          .neq('id', id);
+        if (clearErr) throw clearErr;
+        const { error: setErr } = await supabase
+          .from('fdc_attendance_schedule')
+          .update({ is_default: true, updated_at: new Date().toISOString() })
+          .eq('id', id);
+        if (setErr) throw setErr;
+        await fetchSchedules();
+      } catch (err: any) {
+        setError(err?.message ?? 'Không thể đặt ca mặc định');
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [fetchSchedules],
+  );
+
+  const deleteSchedule = useCallback(
+    async (id: string) => {
+      setIsSaving(true);
+      setError(null);
+      try {
+        const { error: deleteErr } = await supabase
+          .from('fdc_attendance_schedule')
+          .delete()
+          .eq('id', id);
+        if (deleteErr) throw deleteErr;
+        setSchedules((prev) => prev.filter((s) => s.id !== id));
+      } catch (err: any) {
+        setError(err?.message ?? 'Không thể xoá ca làm việc');
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [],
   );
 
   const recompute = useCallback(async (fromDate?: string) => {
@@ -98,14 +140,15 @@ export function useAttendanceSettings() {
   }, []);
 
   return {
-    schedule,
-    updatedAt,
+    schedules,
     isLoading,
     isSaving,
     isRecomputing,
     error,
-    save,
+    refresh: fetchSchedules,
+    upsertSchedule,
+    setDefault,
+    deleteSchedule,
     recompute,
-    refresh: fetchSettings,
   };
 }
