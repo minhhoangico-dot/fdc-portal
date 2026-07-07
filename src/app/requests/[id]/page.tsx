@@ -16,6 +16,7 @@ import {
   Image,
   MessageSquare,
   Paperclip,
+  Printer,
   User,
   XCircle,
 } from 'lucide-react';
@@ -29,6 +30,8 @@ import { getLeaveDates, LEAVE_TYPE_LABELS, PAYMENT_METHOD_LABELS } from '@/lib/r
 import { supabase } from '@/lib/supabase';
 import { StatusBadge, PriorityBadge } from '@/components/shared/Badges';
 import { requiresManualForwardChoice } from '@/lib/approvals/workqueue';
+import { isFullyApproved, getFinalApprover } from '@/lib/requests/approvalState';
+import { SealMark } from '@/ui/SealMark';
 import { formatDate, formatTimeAgo, formatVND, cn } from '@/lib/utils';
 
 const HANDOFF_STATUS_STYLES = {
@@ -144,6 +147,8 @@ export default function RequestDetailPage() {
   }
 
   const isCurrentApprover = canTakeAction(request);
+  const fullyApproved = isFullyApproved(request);
+  const finalApprover = fullyApproved ? getFinalApprover(request) : null;
 
   const handleAction = async (action: 'approve' | 'reject' | 'escalate') => {
     if ((action === 'reject' || action === 'escalate') && !comment.trim()) {
@@ -192,7 +197,7 @@ export default function RequestDetailPage() {
         >
           <ArrowLeft className="w-5 h-5 text-gray-600" />
         </button>
-        <div>
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-sm font-medium text-gray-500">{request.requestNumber}</span>
             <span className="text-sm text-gray-400">•</span>
@@ -200,11 +205,26 @@ export default function RequestDetailPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900">{request.title}</h1>
         </div>
+        <button
+          onClick={() => navigate(`/requests/${request.id}/print`)}
+          className="ml-auto inline-flex shrink-0 items-center gap-2 rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          <Printer className="h-4 w-4" /> Xuất / In
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+          <div className="relative bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            {fullyApproved && finalApprover ? (
+              <div className="mb-6 flex justify-center border-b border-gray-100 pb-6 sm:absolute sm:right-6 sm:top-6 sm:mb-0 sm:border-0 sm:pb-0">
+                <SealMark
+                  approverName={finalApprover.approverName || getRoleLabel(finalApprover.approverRole)}
+                  roleLabel={finalApprover.approverName ? getRoleLabel(finalApprover.approverRole) : undefined}
+                  date={finalApprover.actedAt ? formatDate(finalApprover.actedAt) : formatDate(request.updatedAt)}
+                />
+              </div>
+            ) : null}
             <div className="flex flex-wrap items-center gap-3 mb-6 pb-6 border-b border-gray-100">
               <StatusBadge status={request.status} className="text-sm px-3 py-1" />
               <PriorityBadge priority={request.priority} className="text-sm px-3 py-1" />
