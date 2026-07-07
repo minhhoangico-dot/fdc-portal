@@ -5,70 +5,121 @@
 
 import React from 'react';
 import { NavLink } from 'react-router-dom';
+import { Settings } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getVisibleNavItems } from '@/lib/navigation';
+import { can } from '@/lib/permissions/access';
+import { getPrimaryNav, type PrimaryNavItem, type ReferenceNavItem } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 
-export function Sidebar({
-  isOpen,
-  onClose,
-  pendingCount = 0,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  pendingCount?: number;
-}) {
+const primaryLinkClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'flex items-center gap-3 rounded-field px-3 py-2.5 text-sm font-medium transition-colors',
+    isActive
+      ? 'bg-brand-50 text-brand-700'
+      : 'text-ink-600 hover:bg-brand-50/60 hover:text-ink-900',
+  );
+
+function PrimaryLink({ item, badgeCount }: { item: PrimaryNavItem; badgeCount: number }) {
+  if (!item.path) return null;
+  const Icon = item.icon;
+
+  return (
+    <NavLink to={item.path} className={primaryLinkClass} end={item.path === '/dashboard'}>
+      <Icon className="h-5 w-5 flex-shrink-0" />
+      <span className="flex-1 truncate">{item.label}</span>
+      {item.badge && badgeCount > 0 && (
+        <span className="rounded-full bg-danger-600 px-2 py-0.5 text-[11px] font-semibold leading-none text-white tabular-nums">
+          {badgeCount}
+        </span>
+      )}
+    </NavLink>
+  );
+}
+
+function ReferenceLink({ item }: { item: ReferenceNavItem }) {
+  const Icon = item.icon;
+
+  return (
+    <NavLink
+      to={item.path}
+      className={({ isActive }) =>
+        cn(
+          'flex items-center gap-3 rounded-field px-3 py-2 text-[13px] font-medium transition-colors',
+          isActive
+            ? 'bg-brand-50 text-brand-700'
+            : 'text-ink-600 hover:bg-brand-50/60 hover:text-ink-900',
+        )
+      }
+    >
+      <Icon className="h-4 w-4 flex-shrink-0" />
+      <span className="flex-1 truncate">{item.label}</span>
+    </NavLink>
+  );
+}
+
+export function Sidebar({ pendingCount = 0 }: { pendingCount?: number }) {
   const { user } = useAuth();
 
   if (!user) return null;
 
-  const visibleItems = getVisibleNavItems(user.role);
+  const primary = getPrimaryNav(user.role);
+  const reference = primary.find((item) => item.slot === 'reference');
+  const referenceChildren = reference?.children ?? [];
+  const showAdmin = can(user.role, 'admin.view');
 
   return (
-    <>
-      {isOpen && <div className="fixed inset-0 z-40 bg-black/20 md:hidden" onClick={onClose} />}
+    <aside className="hidden w-[var(--sidebar-width)] flex-shrink-0 flex-col border-r border-line bg-paper lg:flex">
+      <div className="flex h-14 flex-shrink-0 items-center gap-2 border-b border-line px-5">
+        <span className="flex h-7 w-7 items-center justify-center rounded-field bg-brand-600 text-sm font-bold text-white">
+          F
+        </span>
+        <span className="text-base font-semibold text-brand-700">FDC Portal</span>
+      </div>
 
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 w-[var(--sidebar-width)] transform border-r border-gray-200 bg-white transition-transform duration-200 ease-in-out md:static md:flex-shrink-0 md:translate-x-0',
-          isOpen ? 'translate-x-0' : '-translate-x-full',
-        )}
-      >
-        <div className="flex h-14 items-center border-b border-gray-200 px-6 md:hidden">
-          <span className="text-lg font-semibold text-indigo-900">FDC Portal</span>
-        </div>
-
-        <nav className="space-y-1 p-4">
-          {visibleItems.map((item) => {
-            const Icon = item.icon;
-            const isApprovals = item.path === '/approvals';
-
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                onClick={onClose}
-                className={({ isActive }) =>
-                  cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors',
-                    isActive
-                      ? 'bg-indigo-50 text-indigo-700'
-                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
-                  )
-                }
-              >
-                <Icon className="h-5 w-5" />
-                <span className="flex-1">{item.label}</span>
-                {isApprovals && pendingCount > 0 && (
-                  <span className="rounded-full bg-red-500 px-2 py-0.5 text-[10px] font-bold text-white">
-                    {pendingCount}
-                  </span>
+      <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        {primary.map((item) =>
+          item.slot === 'reference' ? (
+            referenceChildren.length > 0 && (
+              <div key="reference" className="pt-3">
+                {reference && (
+                  <div className="flex items-center gap-2 px-3 pb-1">
+                    <reference.icon className="h-3.5 w-3.5 text-ink-400" />
+                    <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-400">
+                      {reference.label}
+                    </span>
+                  </div>
                 )}
-              </NavLink>
-            );
-          })}
-        </nav>
-      </aside>
-    </>
+                <div className="space-y-0.5">
+                  {referenceChildren.map((child) => (
+                    <ReferenceLink key={child.key} item={child} />
+                  ))}
+                </div>
+              </div>
+            )
+          ) : (
+            <PrimaryLink key={item.slot} item={item} badgeCount={pendingCount} />
+          ),
+        )}
+      </nav>
+
+      {showAdmin && (
+        <div className="flex-shrink-0 border-t border-line p-3">
+          <NavLink
+            to="/admin"
+            className={({ isActive }) =>
+              cn(
+                'flex items-center gap-3 rounded-field px-3 py-2.5 text-sm font-medium transition-colors',
+                isActive
+                  ? 'bg-brand-50 text-brand-700'
+                  : 'text-ink-600 hover:bg-brand-50/60 hover:text-ink-900',
+              )
+            }
+          >
+            <Settings className="h-5 w-5 flex-shrink-0" />
+            <span className="flex-1 truncate">Quản trị</span>
+          </NavLink>
+        </div>
+      )}
+    </aside>
   );
 }
