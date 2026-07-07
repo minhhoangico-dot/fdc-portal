@@ -18,6 +18,7 @@ const AdminPage = React.lazy(() => import('@/app/admin/page'));
 const ApprovalsPage = React.lazy(() => import('@/app/approvals/page'));
 const AttendancePage = React.lazy(() => import('@/app/attendance/page'));
 const DashboardPage = React.lazy(() => import('@/app/dashboard/page'));
+const InboxPage = React.lazy(() => import('@/app/inbox/page'));
 const InventoryPage = React.lazy(() => import('@/app/inventory/page'));
 const LabDashboardPage = React.lazy(() => import('@/app/lab-dashboard/page'));
 const LabDashboardTvPage = React.lazy(() => import('@/app/lab-dashboard/tv/page'));
@@ -29,8 +30,10 @@ const RoomManagementMaintenancePage = React.lazy(() => import('@/app/room-manage
 const RoomManagementPage = React.lazy(() => import('@/app/room-management/page'));
 const RoomManagementMaterialsPrintPage = React.lazy(() => import('@/app/room-management/print/materials/page'));
 const RequestDetailPage = React.lazy(() => import('@/app/requests/[id]/page'));
+const RequestPrintPage = React.lazy(() => import('@/app/requests/[id]/print/page'));
 const CreateRequestPage = React.lazy(() => import('@/app/requests/create/page'));
 const RequestsPage = React.lazy(() => import('@/app/requests/page'));
+const WorkflowWorkspace = React.lazy(() => import('@/app/workflow/WorkflowWorkspace'));
 const TvDisplayPage = React.lazy(() => import('@/app/tv/[slug]/page'));
 const TvManagementPage = React.lazy(() => import('@/app/tv-management/page'));
 const TvManagementWeeklyReportDetailsPage = React.lazy(() => import('@/app/tv-management/weekly-report/details/page'));
@@ -135,10 +138,44 @@ export default function App() {
                   }
                 />
                 <Route
+                  path="/requests/:id/print"
+                  element={
+                    <RequireAuth moduleKey="requests">
+                      <RequestPrintPage />
+                    </RequireAuth>
+                  }
+                />
+                <Route
                   path="/approvals"
                   element={
                     <RequireAuth moduleKey="approvals">
                       <ApprovalsPage />
+                    </RequireAuth>
+                  }
+                />
+                {/*
+                  Unified inbox "Cần xử lý" (Phase 2). No moduleKey — every role
+                  has an inbox (at minimum unread notifications). Nav slot 2 and
+                  the Home inbox strip both point here via getPrimaryNav.
+                */}
+                <Route
+                  path="/inbox"
+                  element={
+                    <RequireAuth>
+                      <InboxPage />
+                    </RequireAuth>
+                  }
+                />
+                {/*
+                  Two-lens workspace (Của tôi / Chờ tôi) parked at /workflow for
+                  proving before /requests and /approvals are flipped to it
+                  (lens-preset). Legacy /requests + /approvals stay resolvable.
+                */}
+                <Route
+                  path="/workflow"
+                  element={
+                    <RequireAuth moduleKey="requests">
+                      <WorkflowWorkspace defaultLens="cua-toi" />
                     </RequireAuth>
                   }
                 />

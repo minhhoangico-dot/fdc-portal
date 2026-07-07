@@ -192,22 +192,26 @@ export function getPrimaryNav(role: Role): PrimaryNavItem[] {
     moduleKey: 'dashboard',
   };
 
-  // Slot 2 — inbox. Points at /approvals when the role can reach the approvals
-  // module; staff without approval power get their own request tracker so the
-  // slot is never a dead link (Phase 2 replaces both with a unified /inbox).
-  const inboxAccessible = canAccessModule(role, 'approvals');
+  // Slot 2 — the unified inbox "Cần xử lý" (Phase 2, direction §4.4). Every role
+  // has an inbox (at minimum unread notifications), so the slot is always present
+  // and never a dead link; the /inbox route is gated by RequireAuth with no
+  // moduleKey. The actionable-count badge (useActionableCount) renders here. This
+  // slot carries no `moduleKey` because /inbox is not a permission module — the
+  // underlying `requests`/`approvals` modules stay reachable via the workspace
+  // slot and the "Tra cứu" disclosure (see getReferenceNavItems).
   const inbox: PrimaryNavItem = {
     slot: 'inbox',
     label: 'Cần xử lý',
     icon: Inbox,
     badge: true,
-    path: inboxAccessible ? '/approvals' : '/requests',
-    moduleKey: inboxAccessible ? 'approvals' : 'requests',
+    path: '/inbox',
   };
 
-  // Slot 3 — workspace. Dedupe against the inbox slot: pure-staff roles resolve
-  // to Đề nghị (/requests), which collides with their inbox (/requests); route
-  // the workspace to Chấm công instead (attendance.view_self is granted to all).
+  // Slot 3 — workspace. With the inbox now at its own /inbox path, a pure-staff
+  // role's workspace resolves to Đề nghị (/requests) — its natural home
+  // (direction §4.1: the two-lens workspace is "safe as staff's [Workspace] slot
+  // (Đề nghị)"). The guard below remains only as a safety net so no workspace can
+  // ever duplicate the inbox target.
   let workspace = resolveWorkspace(role);
   if (workspace.path === inbox.path) {
     workspace = workspaceSlot('attendance', 'Chấm công');

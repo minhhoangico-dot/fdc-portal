@@ -87,6 +87,8 @@ test('workspace resolves per persona for representative roles', () => {
   assert.equal(workspacePath('business_head'), '/attendance');
   assert.equal(workspacePath('lab_head'), '/attendance');
   assert.equal(workspacePath('pharmacy_head'), '/attendance');
-  assert.equal(workspacePath('clinic_staff'), '/attendance'); // deduped from /requests inbox
-  assert.equal(workspacePath('pharmacy_staff'), '/attendance');
+  // Phase 2: the inbox moved to its own /inbox slot, freeing /requests as the
+  // natural pure-staff workspace ("Đề nghị"; direction §4.1) — no longer deduped.
+  assert.equal(workspacePath('clinic_staff'), '/requests');
+  assert.equal(workspacePath('pharmacy_staff'), '/requests');
 });
