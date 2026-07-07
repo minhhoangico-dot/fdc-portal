@@ -20,3 +20,14 @@ export type { EmptyStateProps } from './EmptyState';
 
 export { WidgetCard } from './WidgetCard';
 export type { WidgetCardProps } from './WidgetCard';
+
+// Phase 2 (Flow) primitives. Waves import these by direct path to avoid barrel
+// contention; these exports are the canonical entry point for future callers.
+export { ApprovalCard } from './ApprovalCard';
+export type { ApprovalCardProps } from './ApprovalCard';
+
+export { InboxItem } from './InboxItem';
+export type { InboxItemProps } from './InboxItem';
+
+export { SealMark } from './SealMark';
+export type { SealMarkProps } from './SealMark';
