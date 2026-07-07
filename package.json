@@ -14,6 +14,7 @@
     "check:auth-smoke": "tsx scripts/check-authenticated-routes.ts"
   },
   "dependencies": {
+    "@fontsource/be-vietnam-pro": "^5.2.8",
     "@supabase/supabase-js": "^2.98.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
