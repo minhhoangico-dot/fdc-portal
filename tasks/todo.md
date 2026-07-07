@@ -713,3 +713,16 @@
   - Cloudflare Pages deployment completed for project `fdc-portal`: `https://aa51928b.fdc-portal.pages.dev`.
 - Residual risk:
   - Already-open browser tabs may keep stale client state until reloaded, so the live TV page may need a hard refresh to pick up both the new reagent payload and the updated section label.
+
+## 2026-07-08 — UX redesign: user-centric overhaul (ACTIVE)
+
+Owner: Fable 5 (direction) -> Opus 4.8 (execution). Spec: tasks/active/2026-07-08-ux-redesign-user-centric.md
+
+- [x] Design direction doc written (IA, tokens, components, 4 phases)
+- [x] Current-state audit launched (workflow wf_671654b5-5a4, 4x sonnet + opus synth -> tasks/handoffs/2026-07-08-ux-audit-current-state.md)
+- [x] Audit workflow completed (wf_671654b5-5a4, 5/5 agents); summary reconciled into direction doc; Opus reads full audit at Phase 1 start
+- [x] Open decisions confirmed by Minh 2026-07-08 (defaults; recorded in tasks/decisions.md)
+- [x] Phase 1 spec written: tasks/active/2026-07-08-phase1-shell.md
+- [x] Phase 1 build DONE (wf_faaf8240-6a7, 9/9 agents): src/ui + AppShell v2 + Home; useDashboard.ts deleted
+- [x] Phase 1 gates: lint/bundle/pwa/nav-reachability PASS; auth-smoke env-BLOCKED (needs live creds); screenshots pending Minh review
+- [ ] Phase 2 (Flow) / Phase 3 (Kho) / Phase 4 (Sweep) per direction doc
