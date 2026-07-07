@@ -1,8 +1,6 @@
 @import "tailwindcss";
-
-@theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
-}
+@import "./ui/fonts.css";
+@import "./ui/tokens.css";
 
 @layer utilities {
   .pb-safe {
@@ -10,5 +8,32 @@
   }
   .pt-safe {
     padding-top: env(safe-area-inset-top);
+  }
+
+  /*
+   * The ONE orchestrated motion moment (direction §5.1): the Home "Hôm nay"
+   * load stagger — header → inbox strip → widgets. Each element fades/rises in
+   * over 250ms; callers offset with an inline `animation-delay` (60ms/step).
+   * `both` fill keeps the element hidden during its delay window.
+   */
+  .fdc-home-enter {
+    animation: fdc-home-enter 250ms ease-out both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fdc-home-enter {
+      animation: none;
+    }
+  }
+}
+
+@keyframes fdc-home-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }

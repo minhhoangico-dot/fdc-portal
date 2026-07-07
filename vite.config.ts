@@ -19,7 +19,7 @@ export default defineConfig(({ mode }) => {
           name: 'FDC Portal — Phòng khám Gia Đình',
           short_name: 'FDC Portal',
           description: 'Hệ thống quản lý phê duyệt và vận hành Phòng khám Gia Đình',
-          theme_color: '#4f46e5',
+          theme_color: '#0B7A5C',
           background_color: '#ffffff',
           display: 'standalone',
           start_url: '/',

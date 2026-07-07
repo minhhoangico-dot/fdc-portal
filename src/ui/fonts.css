@@ -1,0 +1,17 @@
+/* @license SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * Be Vietnam Pro — self-hosted via @fontsource/be-vietnam-pro (no Google Fonts
+ * CDN request). Weights 400/500/600/700, latin + vietnamese subsets only
+ * (per direction doc §5.1: "one family, weight does the pairing work").
+ * Vite resolves these node_modules imports and copies the woff2/woff files
+ * into the build output (see fdc-portal PWA precache budget: check:pwa).
+ */
+@import "@fontsource/be-vietnam-pro/latin-400.css";
+@import "@fontsource/be-vietnam-pro/latin-500.css";
+@import "@fontsource/be-vietnam-pro/latin-600.css";
+@import "@fontsource/be-vietnam-pro/latin-700.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-400.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-500.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-600.css";
+@import "@fontsource/be-vietnam-pro/vietnamese-700.css";

@@ -1,0 +1,32 @@
+/* @license SPDX-License-Identifier: Apache-2.0 */
+
+/*
+ * FDC UI design tokens — transcribed verbatim from
+ * tasks/active/2026-07-08-ux-redesign-user-centric.md §5.1.
+ * Do not hand-edit values here without updating the direction doc first;
+ * this file is the single source of truth for Tailwind 4 @theme tokens
+ * consumed by src/ui/* primitives.
+ */
+
+@theme {
+  --font-sans: "Be Vietnam Pro", system-ui, "Segoe UI", sans-serif; /* built for VN diacritics */
+  /* Paper & ink (warm, not blue-gray) */
+  --color-paper: #FAFAF7;      /* app background */
+  --color-card: #FFFFFF;
+  --color-ink-900: #201D1A;    /* primary text */
+  --color-ink-600: #5C564E;    /* secondary */
+  --color-ink-400: #A39C92;    /* muted/disabled */
+  --color-line: #EAE7E1;       /* borders */
+  /* Brand: deep VN-pharmacy green (viridian) */
+  --color-brand-50: #EFFAF4; --color-brand-100: #D7F2E4;
+  --color-brand-500: #10896B; --color-brand-600: #0B7A5C;
+  --color-brand-700: #0A6650; --color-brand-900: #07402F;
+  /* Status — meaning only */
+  --color-ok-600: #0B7A5C;     /* success shares brand family */
+  --color-warn-600: #B45309; --color-warn-100: #FEF3C7;
+  --color-danger-600: #C8321E; /* vermilion ink — danger AND the seal (see 5.3) */
+  --color-info-600: #0369A1;  --color-info-100: #E0F2FE;
+  /* Shape & rhythm */
+  --radius-card: 1rem; --radius-field: 0.625rem; /* keep existing rounded-2xl friendliness */
+  --shadow-card: 0 1px 2px rgb(32 29 26 / 0.06);
+}
