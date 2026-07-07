@@ -725,4 +725,4 @@ Owner: Fable 5 (direction) -> Opus 4.8 (execution). Spec: tasks/active/2026-07-0
 - [x] Phase 1 spec written: tasks/active/2026-07-08-phase1-shell.md
 - [x] Phase 1 build DONE (wf_faaf8240-6a7, 9/9 agents): src/ui + AppShell v2 + Home; useDashboard.ts deleted
 - [x] Phase 1 gates: lint/bundle/pwa/nav-reachability PASS; auth-smoke env-BLOCKED (needs live creds); screenshots pending Minh review
-- [ ] Phase 2 (Flow) / Phase 3 (Kho) / Phase 4 (Sweep) per direction doc
+- [~] Phase 2 (Flow) IN PROGRESS: spec-first build workflow launched 2026-07-08; Phase 3 (Kho) / Phase 4 (Sweep) queued
