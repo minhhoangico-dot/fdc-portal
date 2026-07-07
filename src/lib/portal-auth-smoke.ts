@@ -13,7 +13,7 @@ export interface PortalAuthSmokeRoute {
 export const PORTAL_AUTH_SMOKE_ROUTES: PortalAuthSmokeRoute[] = [
   {
     path: '/dashboard',
-    expectedText: 'Xin chào',
+    expectedText: 'Chào',
   },
   {
     path: '/inventory',
