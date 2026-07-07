@@ -153,9 +153,9 @@ export function errorMessageFor(reason: unknown, fallback: string): string {
 function mapTimelineDetailRows(rows: TimelineDetailRow[]): LabDashboardTimelineDetailInput[] {
   return rows.map((row) => ({
     serviceDataId: toNumber(row.servicedataid),
-    patientCode: row.patientcode?.trim() || "áº¨n danh",
-    subgroupKey: resolveTatTypeKey(row.dm_servicesubgroupid, row.subgroup_name || "KhÃ¡c"),
-    subgroupName: row.subgroup_name?.trim() || "KhÃ¡c",
+    patientCode: row.patientcode?.trim() || "Ẩn danh",
+    subgroupKey: resolveTatTypeKey(row.dm_servicesubgroupid, row.subgroup_name || "Khác"),
+    subgroupName: row.subgroup_name?.trim() || "Khác",
     testName: row.test_name?.trim() || "Xet nghiem",
     requestedAt: row.requested_at || "",
     processingAt: row.processing_at || null,

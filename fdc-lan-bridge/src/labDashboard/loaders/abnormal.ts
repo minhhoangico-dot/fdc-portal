@@ -201,7 +201,7 @@ async function buildAbnormalDetailRows(asOfDate: string, generatedAt: string): P
       SELECT
         p.patientcode,
         COALESCE(NULLIF(BTRIM(sd.servicecode), ''), NULLIF(BTRIM(sd.servicename), '')) AS test_code,
-        COALESCE(NULLIF(BTRIM(sd.servicename), ''), 'XÃ©t nghiá»‡m') AS test_name,
+        COALESCE(NULLIF(BTRIM(sd.servicename), ''), 'Xét nghiệm') AS test_name,
         sd.data_value,
         COALESCE(NULLIF(BTRIM(sd.serviceresultunit), ''), NULLIF(BTRIM(sd.serviceunit), '')) AS unit,
         NULLIF(BTRIM(sd.datareference), '') AS reference_range,
@@ -219,9 +219,9 @@ async function buildAbnormalDetailRows(asOfDate: string, generatedAt: string): P
   return result.rows
     .map((row) => ({
       kind: "abnormal" as const,
-      patientCode: row.patientcode?.trim() || "áº¨n danh",
+      patientCode: row.patientcode?.trim() || "Ẩn danh",
       testCode: row.test_code?.trim() || "XN",
-      testName: row.test_name?.trim() || "XÃ©t nghiá»‡m",
+      testName: row.test_name?.trim() || "Xét nghiệm",
       value: formatValueWithUnit(row.data_value, row.unit),
       severity: getAbnormalSeverity(row.abnormal_flag, row.data_value, row.reference_range),
       resultAt: row.result_at || generatedAt,

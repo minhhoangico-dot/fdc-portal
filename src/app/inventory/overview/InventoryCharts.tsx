@@ -32,17 +32,17 @@ const formatCurrency = (value: number) =>
   new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(value);
 
 const formatCompact = (value: number) => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tá»·`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
   return value.toString();
 };
 
 const ACCOUNT_LABELS: Record<SupplyAccountFilter, string> = {
-  all: "Táº¥t cáº£ TK 152",
-  "1521": "NguyÃªn váº­t liá»‡u",
-  "1522": "Váº­t tÆ° y táº¿",
-  "1523": "VÄƒn phÃ²ng pháº©m",
+  all: "Tất cả TK 152",
+  "1521": "Nguyên vật liệu",
+  "1522": "Vật tư y tế",
+  "1523": "Văn phòng phẩm",
 };
 
 const openWithKeyboard =

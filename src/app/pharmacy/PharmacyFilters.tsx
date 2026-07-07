@@ -38,7 +38,7 @@ export function PharmacyFilters({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
         <input
           type="text"
-          placeholder="TÃ¬m kiáº¿m thuá»‘c, mÃ£ thuá»‘c..."
+          placeholder="Tìm kiếm thuốc, mã thuốc..."
           value={searchTerm}
           onChange={(event) => onSearchTermChange(event.target.value)}
           className="w-full pl-10 pr-4 py-2.5 bg-gray-50 border-transparent rounded-xl focus:bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
@@ -50,7 +50,7 @@ export function PharmacyFilters({
           onChange={(event) => onWarehouseFilterChange(event.target.value)}
           className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
         >
-          <option value="all">Táº¥t cáº£ kho</option>
+          <option value="all">Tất cả kho</option>
           {warehouses.map((warehouse) => (
             <option key={warehouse} value={warehouse}>
               {warehouse}
@@ -62,7 +62,7 @@ export function PharmacyFilters({
           onChange={(event) => onCategoryFilterChange(event.target.value)}
           className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
         >
-          <option value="all">Táº¥t cáº£ nhÃ³m</option>
+          <option value="all">Tất cả nhóm</option>
           {categories.map((category) => (
             <option key={category} value={category}>
               {category}
@@ -76,12 +76,12 @@ export function PharmacyFilters({
           }
           className="text-sm rounded-lg border-gray-200 py-1.5 pl-3 pr-8 focus:ring-indigo-500 focus:border-indigo-500"
         >
-          <option value="all">Táº¥t cáº£ tráº¡ng thÃ¡i</option>
-          <option value="in_stock">BÃ¬nh thÆ°á»ng</option>
-          <option value="low_stock">Sáº¯p háº¿t</option>
-          <option value="near_expiry">Sáº¯p háº¿t háº¡n</option>
-          <option value="out_of_stock">Háº¿t hÃ ng</option>
-          <option value="anomaly">CÃ³ báº¥t thÆ°á»ng</option>
+          <option value="all">Tất cả trạng thái</option>
+          <option value="in_stock">Bình thường</option>
+          <option value="low_stock">Sắp hết</option>
+          <option value="near_expiry">Sắp hết hạn</option>
+          <option value="out_of_stock">Hết hàng</option>
+          <option value="anomaly">Có bất thường</option>
         </select>
       </div>
     </div>

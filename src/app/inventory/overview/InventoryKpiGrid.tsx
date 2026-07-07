@@ -20,7 +20,7 @@ export type InventoryKpiKind =
   | "cost-per-visit";
 
 const formatCompact = (value: number) => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tá»·`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
   return value.toString();

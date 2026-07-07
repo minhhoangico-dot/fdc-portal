@@ -16,9 +16,9 @@ export default defineConfig(({ mode }) => {
         registerType: 'autoUpdate',
         includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'icon-192.png'],
         manifest: {
-          name: 'FDC Portal â€” PhÃ²ng khÃ¡m Gia ÄÃ¬nh',
+          name: 'FDC Portal — Phòng khám Gia Đình',
           short_name: 'FDC Portal',
-          description: 'Há»‡ thá»‘ng quáº£n lÃ½ phÃª duyá»‡t vÃ  váº­n hÃ nh PhÃ²ng khÃ¡m Gia ÄÃ¬nh',
+          description: 'Hệ thống quản lý phê duyệt và vận hành Phòng khám Gia Đình',
           theme_color: '#4f46e5',
           background_color: '#ffffff',
           display: 'standalone',

@@ -43,7 +43,7 @@ export function PharmacyKpiGrid({
           <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center text-indigo-600">
             <Package className="w-5 h-5" />
           </div>
-          <span className="text-sm font-medium text-gray-500">Tá»•ng mÃ£ thuá»‘c</span>
+          <span className="text-sm font-medium text-gray-500">Tổng mã thuốc</span>
         </div>
         <p className="text-2xl font-bold text-gray-900">{stats.totalItems}</p>
       </button>
@@ -63,7 +63,7 @@ export function PharmacyKpiGrid({
           >
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <span className="text-sm font-medium text-gray-500">Báº¥t thÆ°á»ng</span>
+          <span className="text-sm font-medium text-gray-500">Bất thường</span>
         </div>
         <p
           className={`text-2xl font-bold ${
@@ -89,7 +89,7 @@ export function PharmacyKpiGrid({
           >
             <Clock className="w-5 h-5" />
           </div>
-          <span className="text-sm font-medium text-gray-500">Sáº¯p háº¿t háº¡n</span>
+          <span className="text-sm font-medium text-gray-500">Sắp hết hạn</span>
         </div>
         <p
           className={`text-2xl font-bold ${
@@ -109,7 +109,7 @@ export function PharmacyKpiGrid({
           <div className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
             <DollarSign className="w-5 h-5" />
           </div>
-          <span className="text-sm font-medium text-gray-500">GiÃ¡ trá»‹ tá»“n kho</span>
+          <span className="text-sm font-medium text-gray-500">Giá trị tồn kho</span>
         </div>
         <p className="text-2xl font-bold text-gray-900">
           {formatCurrency(stats.estimatedValue)}

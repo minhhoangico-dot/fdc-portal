@@ -26,7 +26,7 @@ const formatCurrency = (value: number) => {
 };
 
 const formatCompact = (value: number) => {
-  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tá»·`;
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
   return value.toString();
@@ -42,7 +42,7 @@ export function PharmacyCharts({ snapshotHistory, topMaterials }: PharmacyCharts
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
         <h3 className="text-base font-bold text-gray-900 mb-4">
-          Biáº¿n Ä‘á»™ng giÃ¡ trá»‹ tá»“n kho (1 nÄƒm)
+          Biến động giá trị tồn kho (1 năm)
         </h3>
         <div className="h-72">
           {snapshotHistory.length > 0 ? (
@@ -92,7 +92,7 @@ export function PharmacyCharts({ snapshotHistory, topMaterials }: PharmacyCharts
                       return value as string;
                     }
                   }}
-                  formatter={(value: number) => [formatCurrency(value), "GiÃ¡ trá»‹ tá»“n"]}
+                  formatter={(value: number) => [formatCurrency(value), "Giá trị tồn"]}
                 />
                 <Area
                   type="monotone"
@@ -106,7 +106,7 @@ export function PharmacyCharts({ snapshotHistory, topMaterials }: PharmacyCharts
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-              ChÆ°a cÃ³ dá»¯ liá»‡u trong 1 nÄƒm gáº§n nháº¥t. Há»‡ thá»‘ng sáº½ báº¯t Ä‘áº§u thu tháº­p sau 1-2 ngÃ y.
+              Chưa có dữ liệu trong 1 năm gần nhất. Hệ thống sẽ bắt đầu thu thập sau 1-2 ngày.
             </div>
           )}
         </div>
@@ -114,7 +114,7 @@ export function PharmacyCharts({ snapshotHistory, topMaterials }: PharmacyCharts
 
       <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
         <h3 className="text-base font-bold text-gray-900 mb-4">
-          Top 10 thuá»‘c giÃ¡ trá»‹ tá»“n cao nháº¥t
+          Top 10 thuốc giá trị tồn cao nhất
         </h3>
         <div className="h-72">
           {topMaterials.length > 0 ? (
@@ -147,7 +147,7 @@ export function PharmacyCharts({ snapshotHistory, topMaterials }: PharmacyCharts
                     border: "none",
                     boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1)",
                   }}
-                  formatter={(value: number) => [formatCurrency(value), "GiÃ¡ trá»‹"]}
+                  formatter={(value: number) => [formatCurrency(value), "Giá trị"]}
                 />
                 <Bar
                   dataKey="value"
@@ -160,7 +160,7 @@ export function PharmacyCharts({ snapshotHistory, topMaterials }: PharmacyCharts
             </ResponsiveContainer>
           ) : (
             <div className="h-full flex items-center justify-center text-gray-400 text-sm">
-              KhÃ´ng cÃ³ dá»¯ liá»‡u.
+              Không có dữ liệu.
             </div>
           )}
         </div>
@@ -186,10 +186,10 @@ export function PharmacyListValueChart({
     <div>
       <div className="mb-1 flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-gray-400">
-          Biáº¿n Ä‘á»™ng giÃ¡ trá»‹ tá»“n kho ({hasFilters ? "theo bá»™ lá»c" : "1 nÄƒm â€” toÃ n kho"})
+          Biến động giá trị tồn kho ({hasFilters ? "theo bộ lọc" : "1 năm — toàn kho"})
         </p>
         {isRefreshing ? (
-          <span className="text-[11px] font-medium text-gray-400">Äang cáº­p nháº­t...</span>
+          <span className="text-[11px] font-medium text-gray-400">Đang cập nhật...</span>
         ) : null}
       </div>
       <div className="h-32">
@@ -239,7 +239,7 @@ export function PharmacyListValueChart({
                     return value as string;
                   }
                 }}
-                formatter={(value: number) => [formatCurrency(value), "GiÃ¡ trá»‹ tá»“n"]}
+                formatter={(value: number) => [formatCurrency(value), "Giá trị tồn"]}
               />
               <Area
                 type="monotone"
@@ -253,7 +253,7 @@ export function PharmacyListValueChart({
           </ResponsiveContainer>
         ) : (
           <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-            ChÆ°a cÃ³ dá»¯ liá»‡u lá»‹ch sá»­.
+            Chưa có dữ liệu lịch sử.
           </div>
         )}
       </div>

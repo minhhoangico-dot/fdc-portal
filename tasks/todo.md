@@ -416,7 +416,7 @@
 
 - Verification evidence:
   - `cmd /c npx jest test/unit/labDashboardDetails.test.ts --runInBand` in `fdc-lan-bridge`: passed, 8/8 tests including TAT `testName` preservation across subgroup filters.
-  - `cmd /c npx tsx --test test/unit/labDashboardDetailExport.test.ts`: passed, 6/6 tests including the `TÃªn test` export column assertion.
+  - `cmd /c npx tsx --test test/unit/labDashboardDetailExport.test.ts`: passed, 6/6 tests including the `Tên test` export column assertion.
   - `cmd /c npm run build` in `fdc-lan-bridge`: passed (`tsc` clean).
   - `cmd /c npm run build` at repo root: passed, Vite production build completed successfully.
   - Live host root cause on `2026-03-25`: `/opt/fdc-lan-bridge/src/labDashboard/detailHelpers.ts` and `/opt/fdc-lan-bridge/src/labDashboard/service.ts` were stale, so the live TAT detail payload still omitted `testName` even though the local repo and tests were already correct.

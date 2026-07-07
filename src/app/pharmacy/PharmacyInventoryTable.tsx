@@ -56,7 +56,7 @@ export function PharmacyInventoryTable({
       />
       {sortKey === key && (
         <span className="sr-only">
-          {sortDir === "asc" ? "tÄƒng dáº§n" : "giáº£m dáº§n"}
+          {sortDir === "asc" ? "tăng dần" : "giảm dần"}
         </span>
       )}
     </button>
@@ -68,34 +68,34 @@ export function PharmacyInventoryTable({
         <thead className="bg-gray-50 sticky top-0 z-10">
           <tr>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-              MÃ£ thuá»‘c
+              Mã thuốc
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-              {renderSortButton("name", "TÃªn thuá»‘c", "Sáº¯p xáº¿p theo tÃªn thuá»‘c")}
+              {renderSortButton("name", "Tên thuốc", "Sắp xếp theo tên thuốc")}
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
               Kho
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
-              ÄVT
+              ĐVT
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
-              LÃ´ SX
+              Lô SX
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider hidden lg:table-cell">
               HSD
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">
-              Tráº¡ng thÃ¡i
+              Trạng thái
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
-              {renderSortButton("stock", "Tá»“n kho", "Sáº¯p xáº¿p theo tá»“n kho")}
+              {renderSortButton("stock", "Tồn kho", "Sắp xếp theo tồn kho")}
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right hidden sm:table-cell">
-              ÄÆ¡n giÃ¡
+              Đơn giá
             </th>
             <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right hidden sm:table-cell">
-              {renderSortButton("value", "GiÃ¡ trá»‹", "Sáº¯p xáº¿p theo thÃ nh tiá»n")}
+              {renderSortButton("value", "Giá trị", "Sắp xếp theo thành tiền")}
             </th>
           </tr>
         </thead>
@@ -149,7 +149,7 @@ export function PharmacyInventoryTable({
           {items.length === 0 && (
             <tr>
               <td colSpan={10} className="px-4 py-12 text-center text-gray-500">
-                KhÃ´ng tÃ¬m tháº¥y thuá»‘c nÃ o phÃ¹ há»£p.
+                Không tìm thấy thuốc nào phù hợp.
               </td>
             </tr>
           )}
