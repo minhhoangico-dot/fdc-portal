@@ -24,10 +24,15 @@ import type {
   TopMaterial,
 } from "@/types/inventory";
 import {
+  buildSnapshotHistory,
+  filterAnomaliesToInventory,
+  sortInventoryItems,
+  sumInventoryValue,
+} from "@/viewmodels/inventory/compute";
+import {
   compactSnapshotHistoryByWeek,
   formatLocalDate,
   getInventorySearchTerms,
-  getInventoryValue,
   getOneYearCutoffDate,
   hasNearExpiry,
   mapInventoryAnomaly,
@@ -480,38 +485,15 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     };
   }, [enabled, fetchInventory, fetchAnomalies, fetchSnapshotHistory, fetchFilteredSnapshotHistory]);
 
-  const filteredAnomalies = useMemo(() => {
-    return anomalies.filter((anomaly) =>
-      inventory.some((item) => anomalyMatchesInventoryItem(anomaly, item)),
-    );
-  }, [anomalies, inventory]);
+  const filteredAnomalies = useMemo(
+    () => filterAnomaliesToInventory(anomalies, inventory),
+    [anomalies, inventory],
+  );
 
-  const snapshotHistory = useMemo(() => {
-    const mergedByDate = new Map<string, SnapshotHistory>();
-
-    rawSnapshotHistory.forEach((point) => {
-      mergedByDate.set(point.date, point);
-    });
-
-    if (inventory.length > 0) {
-      const latestSnapshotDate = inventory.reduce((latest, item) => {
-        return item.lastUpdated > latest ? item.lastUpdated : latest;
-      }, "");
-
-      if (latestSnapshotDate) {
-        mergedByDate.set(latestSnapshotDate, {
-          date: latestSnapshotDate,
-          totalStock: inventory.reduce(
-            (sum, item) => sum + (Number(item.currentStock) || 0),
-            0,
-          ),
-          totalValue: inventory.reduce((sum, item) => sum + getInventoryValue(item), 0),
-        });
-      }
-    }
-
-    return compactSnapshotHistoryByWeek(Array.from(mergedByDate.values()));
-  }, [rawSnapshotHistory, inventory]);
+  const snapshotHistory = useMemo(
+    () => buildSnapshotHistory(rawSnapshotHistory, inventory),
+    [rawSnapshotHistory, inventory],
+  );
 
   useEffect(() => {
     if (!enabled) {
@@ -554,30 +536,10 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     });
   }, [inventory, searchQuery, filterWarehouse, filterCategory, filterStatus, filteredAnomalies]);
 
-  const sortedInventory = useMemo(() => {
-    const dir = sortDir === "asc" ? 1 : -1;
-
-    return filteredInventory
-      .map((item, idx) => ({ item, idx }))
-      .sort((a, b) => {
-        let cmp = 0;
-        switch (sortKey) {
-          case "name":
-            cmp = a.item.name.localeCompare(b.item.name, "vi");
-            break;
-          case "stock":
-            cmp = (Number(a.item.currentStock) || 0) - (Number(b.item.currentStock) || 0);
-            break;
-          case "value":
-            cmp = getInventoryValue(a.item) - getInventoryValue(b.item);
-            break;
-        }
-
-        if (cmp === 0) return a.idx - b.idx;
-        return cmp * dir;
-      })
-      .map((entry) => entry.item);
-  }, [filteredInventory, sortKey, sortDir]);
+  const sortedInventory = useMemo(
+    () => sortInventoryItems(filteredInventory, sortKey, sortDir),
+    [filteredInventory, sortKey, sortDir],
+  );
 
   const toggleSort = useCallback((key: InventorySortKey) => {
     setSortKey((prevKey) => {
@@ -609,13 +571,12 @@ export function useSupplyInventory(options: UseInventoryOptions = {}) {
     return inventory.filter((item) => hasNearExpiry(item)).length;
   }, [inventory]);
 
-  const estimatedValue = useMemo(() => {
-    return inventory.reduce((sum, item) => sum + getInventoryValue(item), 0);
-  }, [inventory]);
+  const estimatedValue = useMemo(() => sumInventoryValue(inventory), [inventory]);
 
-  const filteredValue = useMemo(() => {
-    return sortedInventory.reduce((sum, item) => sum + getInventoryValue(item), 0);
-  }, [sortedInventory]);
+  const filteredValue = useMemo(
+    () => sumInventoryValue(sortedInventory),
+    [sortedInventory],
+  );
 
   const topMaterials: TopMaterial[] = useMemo(() => buildSupplyTopMaterials(inventory), [inventory]);
 
