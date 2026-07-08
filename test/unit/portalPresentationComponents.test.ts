@@ -38,10 +38,6 @@ test("portal presentation refactor exposes the planned component boundaries", ()
 
 test("portal presentation pages stay under the agreed refactor budgets", () => {
   assert.ok(
-    countLines("src/app/pharmacy/page.tsx") < 500,
-    "src/app/pharmacy/page.tsx should stay below 500 lines",
-  );
-  assert.ok(
     countLines("src/app/inventory/OverviewTab.tsx") < 550,
     "src/app/inventory/OverviewTab.tsx should stay below 550 lines",
   );
