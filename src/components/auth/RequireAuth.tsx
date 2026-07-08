@@ -8,7 +8,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { AccessDenied } from '@/components/auth/AccessDenied';
 import { useAuth } from '@/contexts/AuthContext';
 import { canRoleAccessModule } from '@/lib/navigation';
-import type { ModuleKey } from '@/types/roleCatalog';
+import type { PermissionModuleKey } from '@/types/permissions';
 import { Role } from '@/types/user';
 
 export function RequireAuth({
@@ -18,7 +18,7 @@ export function RequireAuth({
 }: {
   children: React.ReactNode;
   roles?: Role[];
-  moduleKey?: ModuleKey;
+  moduleKey?: PermissionModuleKey;
 }) {
   const { user, loading } = useAuth();
   const location = useLocation();

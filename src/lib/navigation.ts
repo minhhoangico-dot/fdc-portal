@@ -64,7 +64,7 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { key: 'admin', path: '/admin', label: 'Quản trị', icon: Settings },
 ];
 
-export function canRoleAccessModule(role: Role, moduleKey: ModuleKey): boolean {
+export function canRoleAccessModule(role: Role, moduleKey: PermissionModuleKey): boolean {
   return canAccessModule(role, moduleKey);
 }
 
@@ -145,10 +145,19 @@ function hasNativeAdmin(role: Role): boolean {
   return visibility !== 'all' && visibility.includes(role);
 }
 
-/** Build a workspace slot (slot 3) from a module key with an override label. */
-function workspaceSlot(moduleKey: PermissionModuleKey, label: string): PrimaryNavItem {
+/**
+ * Build a workspace slot (slot 3) from a module key with an override label.
+ * `pathOverride` repoints the slot target while keeping `moduleKey` (and thus
+ * reachability + the gate) unchanged — used to send the KTT Kho slot to /kho
+ * while its permission module stays `inventory`.
+ */
+function workspaceSlot(
+  moduleKey: PermissionModuleKey,
+  label: string,
+  pathOverride?: string,
+): PrimaryNavItem {
   const meta = MODULE_NAV_META[moduleKey];
-  return { slot: 'workspace', label, icon: meta.icon, path: meta.path, moduleKey };
+  return { slot: 'workspace', label, icon: meta.icon, path: pathOverride ?? meta.path, moduleKey };
 }
 
 /**
@@ -168,7 +177,7 @@ function resolveWorkspace(role: Role): PrimaryNavItem {
     return workspaceSlot('admin', 'Quản trị');
   }
   if (can(role, 'inventory.view') && can(role, 'valuation.view')) {
-    return workspaceSlot('inventory', 'Kho');
+    return workspaceSlot('inventory', 'Kho', '/kho');
   }
   if (can(role, 'attendance.view_team')) {
     return workspaceSlot('attendance', 'Chấm công');

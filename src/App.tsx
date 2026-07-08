@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useSearchParams } from 'react-router-dom';
 import { OnsiteAccessGate } from '@/components/auth/OnsiteAccessGate';
 import { RequireAuth } from '@/components/auth/RequireAuth';
 import { TvAccessGate } from '@/components/auth/TvAccessGate';
@@ -15,17 +15,14 @@ import { RoomManagementProvider } from '@/contexts/RoomManagementContext';
 import { RoleCatalogProvider } from '@/contexts/RoleCatalogContext';
 
 const AdminPage = React.lazy(() => import('@/app/admin/page'));
-const ApprovalsPage = React.lazy(() => import('@/app/approvals/page'));
 const AttendancePage = React.lazy(() => import('@/app/attendance/page'));
 const DashboardPage = React.lazy(() => import('@/app/dashboard/page'));
 const InboxPage = React.lazy(() => import('@/app/inbox/page'));
-const InventoryPage = React.lazy(() => import('@/app/inventory/page'));
 const KhoWorkspace = React.lazy(() => import('@/app/kho/KhoWorkspace'));
 const LabDashboardPage = React.lazy(() => import('@/app/lab-dashboard/page'));
 const LabDashboardTvPage = React.lazy(() => import('@/app/lab-dashboard/tv/page'));
 const LoginPage = React.lazy(() => import('@/app/login/page'));
 const OrgChartPage = React.lazy(() => import('@/app/org-chart/page'));
-const PharmacyPage = React.lazy(() => import('@/app/pharmacy/page'));
 const PortalPage = React.lazy(() => import('@/app/portal/page'));
 const RoomManagementMaintenancePage = React.lazy(() => import('@/app/room-management/maintenance/page'));
 const RoomManagementPage = React.lazy(() => import('@/app/room-management/page'));
@@ -33,17 +30,26 @@ const RoomManagementMaterialsPrintPage = React.lazy(() => import('@/app/room-man
 const RequestDetailPage = React.lazy(() => import('@/app/requests/[id]/page'));
 const RequestPrintPage = React.lazy(() => import('@/app/requests/[id]/print/page'));
 const CreateRequestPage = React.lazy(() => import('@/app/requests/create/page'));
-const RequestsPage = React.lazy(() => import('@/app/requests/page'));
 const WorkflowWorkspace = React.lazy(() => import('@/app/workflow/WorkflowWorkspace'));
 const TvDisplayPage = React.lazy(() => import('@/app/tv/[slug]/page'));
 const TvManagementPage = React.lazy(() => import('@/app/tv-management/page'));
 const TvManagementWeeklyReportDetailsPage = React.lazy(() => import('@/app/tv-management/weekly-report/details/page'));
 const TvManagementWeeklyReportPage = React.lazy(() => import('@/app/tv-management/weekly-report/page'));
 const TvManagementWeeklyReportTvPage = React.lazy(() => import('@/app/tv-management/weekly-report/tv/page'));
-const ValuationPage = React.lazy(() => import('@/app/valuation/page'));
 const WeeklyReportDetailsPage = React.lazy(() => import('@/app/weekly-report/details/page'));
 const WeeklyReportPage = React.lazy(() => import('@/app/weekly-report/page'));
 const WeeklyReportTvPage = React.lazy(() => import('@/app/weekly-report/tv/page'));
+
+/**
+ * Legacy /valuation → /kho redirect (Phase 4b flip). `?module=inventory` lands
+ * on the Vật tư warehouse; every other value (null / pharmacy / chooser) lands
+ * on Thuốc. Always opens the Giá trị tồn kho tab.
+ */
+function ValuationRedirect() {
+  const [params] = useSearchParams();
+  const wh = params.get('module') === 'inventory' ? 'vat-tu' : 'thuoc';
+  return <Navigate to={`/kho?wh=${wh}&tab=gia-tri`} replace />;
+}
 
 export default function App() {
   return (
@@ -118,7 +124,7 @@ export default function App() {
                   path="/requests"
                   element={
                     <RequireAuth moduleKey="requests">
-                      <RequestsPage />
+                      <WorkflowWorkspace defaultLens="cua-toi" />
                     </RequireAuth>
                   }
                 />
@@ -150,7 +156,7 @@ export default function App() {
                   path="/approvals"
                   element={
                     <RequireAuth moduleKey="approvals">
-                      <ApprovalsPage />
+                      <WorkflowWorkspace defaultLens="cho-toi" />
                     </RequireAuth>
                   }
                 />
@@ -182,28 +188,13 @@ export default function App() {
                 />
                 <Route
                   path="/inventory"
-                  element={
-                    <RequireAuth moduleKey="inventory">
-                      <InventoryPage />
-                    </RequireAuth>
-                  }
+                  element={<Navigate to="/kho?wh=vat-tu" replace />}
                 />
                 <Route
                   path="/pharmacy"
-                  element={
-                    <RequireAuth moduleKey="pharmacy">
-                      <PharmacyPage />
-                    </RequireAuth>
-                  }
+                  element={<Navigate to="/kho?wh=thuoc" replace />}
                 />
-                <Route
-                  path="/valuation"
-                  element={
-                    <RequireAuth moduleKey="inventory">
-                      <ValuationPage />
-                    </RequireAuth>
-                  }
-                />
+                <Route path="/valuation" element={<ValuationRedirect />} />
                 {/*
                   Kho & Dược consolidation (Phase 3) parked at /kho for KTT
                   side-by-side proving before /pharmacy, /inventory, /valuation
@@ -263,7 +254,11 @@ export default function App() {
                 </Route>
                 <Route
                   path="/weekly-report"
-                  element={<WeeklyReportPage />}
+                  element={
+                    <RequireAuth moduleKey="weekly_report">
+                      <WeeklyReportPage />
+                    </RequireAuth>
+                  }
                 />
                 <Route
                   path="/tv-management"
@@ -285,7 +280,14 @@ export default function App() {
                     </RequireAuth>
                   }
                 />
-                <Route path="/lab-dashboard" element={<LabDashboardPage />} />
+                <Route
+                  path="/lab-dashboard"
+                  element={
+                    <RequireAuth moduleKey="lab_dashboard">
+                      <LabDashboardPage />
+                    </RequireAuth>
+                  }
+                />
                 <Route
                   path="/admin"
                   element={

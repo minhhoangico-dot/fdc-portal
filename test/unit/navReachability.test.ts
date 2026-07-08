@@ -77,13 +77,13 @@ test('workspace resolves per persona for representative roles', () => {
     getPrimaryNav(role).find((item) => item.slot === 'workspace')?.path;
 
   assert.equal(workspacePath('super_admin'), '/admin'); // control room
-  assert.equal(workspacePath('accountant'), '/inventory'); // KTT → Kho
-  assert.equal(workspacePath('internal_accountant'), '/inventory');
-  assert.equal(workspacePath('director'), '/inventory'); // has inventory + valuation
-  assert.equal(workspacePath('chairman'), '/inventory');
+  assert.equal(workspacePath('accountant'), '/kho'); // KTT → Kho
+  assert.equal(workspacePath('internal_accountant'), '/kho');
+  assert.equal(workspacePath('director'), '/kho'); // has inventory + valuation
+  assert.equal(workspacePath('chairman'), '/kho');
   // head_nurse gains valuation.view via the full-access bypass, so its dominant
   // permission resolves to Kho (not admin — the native-admin check excludes it).
-  assert.equal(workspacePath('head_nurse'), '/inventory');
+  assert.equal(workspacePath('head_nurse'), '/kho');
   assert.equal(workspacePath('business_head'), '/attendance');
   assert.equal(workspacePath('lab_head'), '/attendance');
   assert.equal(workspacePath('pharmacy_head'), '/attendance');
