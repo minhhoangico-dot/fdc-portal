@@ -4,10 +4,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { can } from '@/lib/permissions/access';
-import { useApprovals } from '@/viewmodels/useApprovals';
-import { useNotifications } from '@/viewmodels/useNotifications';
+import { useActionableData } from '@/contexts/ActionableDataContext';
 import {
   buildInbox,
   inboxItemKey,
@@ -17,11 +14,11 @@ import {
 /**
  * The unified inbox "Cần xử lý" viewmodel (direction §4.4, Phase-2 spec §3.2).
  *
- * It COMPOSES the existing frozen hooks — one `useApprovals` instance (data +
- * action fns) and `useNotifications` — and never re-implements approval logic
- * (same requirement `ChoBanDuyet` satisfies). The `items` list is the pure
- * `buildInbox` map over the very arrays the badge counts, so the inbox and
- * `useActionableCount` can never disagree.
+ * It reads the shared `ActionableDataContext` — the SAME single `useApprovals`
+ * instance (data + action fns) and `useNotifications` the nav badge counts — and
+ * never re-implements approval logic (same requirement `ChoBanDuyet` satisfies).
+ * The `items` list is the pure `buildInbox` map over the very arrays the badge
+ * counts, so the inbox and `useActionableCount` can never disagree.
  */
 
 export interface UseInboxResult {
@@ -38,19 +35,10 @@ export interface UseInboxResult {
 }
 
 export function useInbox(): UseInboxResult {
-  const { user } = useAuth();
-
-  // Replicate `useActionableCount`'s EXACT predicate so the inbox mounts the
-  // same single `useApprovals` instance the badge does — keep these two in sync.
-  const approvalEnabled = Boolean(
-    user &&
-      (can(user.role, 'approvals.review_assigned') ||
-        can(user.role, 'approvals.receive_handoff') ||
-        can(user.role, 'room_management.review_group_queue')),
-  );
-
-  const approvals = useApprovals({ enabled: approvalEnabled });
-  const { notifications, isLoading: notificationsLoading, markAsRead } = useNotifications();
+  // Read the shared single `useApprovals` + `useNotifications` instance the nav
+  // badge also consumes, so the inbox derives from the very same arrays.
+  const { approvals, notifications: notificationsVm, approvalEnabled } = useActionableData();
+  const { notifications, isLoading: notificationsLoading, markAsRead } = notificationsVm;
 
   const items = useMemo(
     () => buildInbox({ workQueue: approvals.approvalWorkQueue, notifications }),

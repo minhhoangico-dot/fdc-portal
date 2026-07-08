@@ -6,6 +6,7 @@
 import React from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { ActionableDataProvider } from '@/contexts/ActionableDataContext';
 import { useActionableCount } from '@/viewmodels/useActionableCount';
 import { TopBar } from './TopBar';
 import { Sidebar } from './Sidebar';
@@ -13,12 +14,21 @@ import { BottomNav } from './BottomNav';
 
 export function AppShell() {
   const { user } = useAuth();
-  const { total } = useActionableCount();
-  const shellStyle = { ['--sidebar-width' as string]: '264px' } as React.CSSProperties;
 
   if (!user) {
     return null;
   }
+
+  return (
+    <ActionableDataProvider>
+      <AppShellChrome />
+    </ActionableDataProvider>
+  );
+}
+
+function AppShellChrome() {
+  const { total } = useActionableCount();
+  const shellStyle = { ['--sidebar-width' as string]: '264px' } as React.CSSProperties;
 
   return (
     <div className="flex min-h-screen bg-paper text-ink-900" style={shellStyle}>

@@ -4,10 +4,7 @@
  */
 
 import { useMemo } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { can } from '@/lib/permissions/access';
-import { useApprovals } from '@/viewmodels/useApprovals';
-import { useNotifications } from '@/viewmodels/useNotifications';
+import { useActionableData } from '@/contexts/ActionableDataContext';
 
 export interface ActionableCount {
   /** Pending approval-work-queue items awaiting this user (steps + handoffs + reviews). */
@@ -20,31 +17,23 @@ export interface ActionableCount {
 
 /**
  * The count behind the "Cần xử lý" inbox badge: everything awaiting the user
- * right now = pending approval steps for me + unread notifications. Reuses the
- * existing `useApprovals` / `useNotifications` viewmodels (both already wired to
- * the shared realtime helper) rather than introducing a third subscription
- * pattern.
+ * right now = pending approval steps for me + unread notifications. Reads the
+ * shared `ActionableDataContext` (one `useApprovals` + one `useNotifications`
+ * instance for the whole shell) so the badge and the inbox derive from the SAME
+ * arrays and can never disagree.
  */
 export function useActionableCount(): ActionableCount {
-  const { user } = useAuth();
+  const { approvals, notifications, approvalEnabled } = useActionableData();
 
-  const approvalEnabled = Boolean(
-    user &&
-      (can(user.role, 'approvals.review_assigned') ||
-        can(user.role, 'approvals.receive_handoff') ||
-        can(user.role, 'room_management.review_group_queue')),
-  );
+  const approvalCount = approvalEnabled ? approvals.approvalWorkQueue.totalCount : 0;
+  const notificationCount = notifications.unreadCount;
 
-  const { approvalWorkQueue } = useApprovals({ enabled: approvalEnabled });
-  const { unreadCount } = useNotifications();
-
-  return useMemo(() => {
-    const approvalCount = approvalEnabled ? approvalWorkQueue.totalCount : 0;
-    const notificationCount = unreadCount;
-    return {
+  return useMemo(
+    () => ({
       approvalCount,
       notificationCount,
       total: approvalCount + notificationCount,
-    };
-  }, [approvalEnabled, approvalWorkQueue.totalCount, unreadCount]);
+    }),
+    [approvalCount, notificationCount],
+  );
 }
