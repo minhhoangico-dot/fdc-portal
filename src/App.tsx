@@ -20,6 +20,7 @@ const AttendancePage = React.lazy(() => import('@/app/attendance/page'));
 const DashboardPage = React.lazy(() => import('@/app/dashboard/page'));
 const InboxPage = React.lazy(() => import('@/app/inbox/page'));
 const InventoryPage = React.lazy(() => import('@/app/inventory/page'));
+const KhoWorkspace = React.lazy(() => import('@/app/kho/KhoWorkspace'));
 const LabDashboardPage = React.lazy(() => import('@/app/lab-dashboard/page'));
 const LabDashboardTvPage = React.lazy(() => import('@/app/lab-dashboard/tv/page'));
 const LoginPage = React.lazy(() => import('@/app/login/page'));
@@ -200,6 +201,22 @@ export default function App() {
                   element={
                     <RequireAuth moduleKey="inventory">
                       <ValuationPage />
+                    </RequireAuth>
+                  }
+                />
+                {/*
+                  Kho & Dược consolidation (Phase 3) parked at /kho for KTT
+                  side-by-side proving before /pharmacy, /inventory, /valuation
+                  are flipped to it. Gate matches /valuation (moduleKey
+                  "inventory") + the KTT workspace resolver (inventory.view &&
+                  valuation.view), preserving the head_nurse FULL_ACCESS bypass.
+                  Legacy /pharmacy + /inventory + /valuation stay resolvable.
+                */}
+                <Route
+                  path="/kho"
+                  element={
+                    <RequireAuth moduleKey="inventory">
+                      <KhoWorkspace />
                     </RequireAuth>
                   }
                 />
