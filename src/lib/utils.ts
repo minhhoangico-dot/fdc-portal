@@ -15,6 +15,13 @@ export function formatVND(amount: number): string {
   }).format(amount);
 }
 
+export function formatCompact(value: number): string {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)} tỷ`;
+  if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)} tr`;
+  if (value >= 1_000) return `${(value / 1_000).toFixed(0)}k`;
+  return value.toString();
+}
+
 export function formatDate(dateString: string | Date): string {
   const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
   return format(date, 'dd/MM/yyyy');

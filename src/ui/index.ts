@@ -31,3 +31,24 @@ export type { InboxItemProps } from './InboxItem';
 
 export { SealMark } from './SealMark';
 export type { SealMarkProps } from './SealMark';
+
+// Phase 3 (Kho & Dược) shared presentation primitives. Waves import these by
+// direct path to avoid barrel contention; these exports are the canonical entry
+// point for future callers.
+export { DataTable } from './DataTable';
+export type { DataTableColumn, DataTableProps } from './DataTable';
+
+export {
+  ChartFrame,
+  ValueTrendChart,
+  TopMaterialsChart,
+  CHART_BRAND,
+  CHART_AXIS_TICK,
+  CHART_GRID,
+  CHART_TOOLTIP_STYLE,
+} from './ChartFrame';
+export type {
+  ChartFrameProps,
+  ValueTrendChartProps,
+  TopMaterialsChartProps,
+} from './ChartFrame';
