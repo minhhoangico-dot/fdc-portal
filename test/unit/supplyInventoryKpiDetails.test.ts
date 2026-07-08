@@ -146,6 +146,11 @@ const buildDetail = (state: SupplyInventoryKpiModalState) =>
         patient_visits: 25,
       }),
     ],
+    // Fixed clock so the daily/monthly windows are relative to the April 2026
+    // fixtures, not wall-clock. buildSupplyChartData threads this `now` through
+    // for exactly this determinism; without it the 1M window drifts and the
+    // cost-per-visit rows empty out on any run past May 2026.
+    now: new Date("2026-04-15T00:00:00.000Z"),
   });
 
 test("builds total-item KPI detail with category summary and status filter", () => {
