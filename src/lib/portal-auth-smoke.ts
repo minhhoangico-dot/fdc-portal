@@ -18,10 +18,12 @@ export const PORTAL_AUTH_SMOKE_ROUTES: PortalAuthSmokeRoute[] = [
   {
     path: '/inventory',
     expectedText: 'Kho vật tư',
+    expectedUrlPath: '/kho?wh=vat-tu',
   },
   {
     path: '/pharmacy',
     expectedText: 'Quản lý Kho Thuốc',
+    expectedUrlPath: '/kho?wh=thuoc',
   },
   {
     path: '/weekly-report',

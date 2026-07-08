@@ -123,7 +123,7 @@ const MODULE_NAV_META: Record<PermissionModuleKey, { path: string; label: string
   pharmacy: { path: '/pharmacy', label: 'Kho thuốc', icon: Pill },
   inventory: { path: '/inventory', label: 'Kho vật tư', icon: Package },
   room_management: { path: '/room-management', label: 'Quản lý phòng', icon: Building2 },
-  weekly_report: { path: '/tv-management/weekly-report', label: 'Báo cáo tuần', icon: BarChart3 },
+  weekly_report: { path: '/weekly-report', label: 'Báo cáo tuần', icon: BarChart3 },
   tv_management: { path: '/tv-management', label: 'Quản lý TV', icon: Monitor },
   portal: { path: '/portal', label: 'Cá nhân', icon: User },
   attendance: { path: '/attendance', label: 'Chấm công', icon: ClipboardList },
