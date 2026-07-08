@@ -725,4 +725,9 @@ Owner: Fable 5 (direction) -> Opus 4.8 (execution). Spec: tasks/active/2026-07-0
 - [x] Phase 1 spec written: tasks/active/2026-07-08-phase1-shell.md
 - [x] Phase 1 build DONE (wf_faaf8240-6a7, 9/9 agents): src/ui + AppShell v2 + Home; useDashboard.ts deleted
 - [x] Phase 1 gates: lint/bundle/pwa/nav-reachability PASS; auth-smoke env-BLOCKED (needs live creds); screenshots pending Minh review
-- [x] Phase 2 (Flow) DONE + committed (5 commits, all gates green, flip deferred to live-auth). Phase 3 (Kho) IN PROGRESS: spec-first re-skin workflow (frozen viewmodels, numbers-unchanged discipline). Phase 4 (Sweep) queued
+- [x] Phase 2 (Flow) DONE + committed (5 commits). Flip /requests+/approvals -> /workflow PARKED pending Minh live-auth sign-off.
+- [x] Phase 3 (Kho) DONE + committed (4 commits; no-drift verified, frozen viewmodels). /kho PARKED; flip + viewmodel merge deferred to Phase 4 (live-auth gated).
+- [ ] MINH: live-auth review — preview /inbox, /workflow, /kho?wh=thuoc vs /pharmacy; confirm numbers match, then authorize flips.
+- [ ] MINH decision: head_nurse authority (direction §8.5) — needed before Phase 4 admin/roles sweep.
+- [ ] Phase 4 (Sweep) — GATED: Nhan su blocked by attendance WIP; Bao cao & Man hinh (weekly-report/lab-dashboard reskin) doable now; admin control room needs §8.5.
+- [ ] Follow-up (Minh-flagged, separate commit): router-gap tightening (moduleKey on /lab-dashboard + /weekly-report*, /valuation gate) — changes access.
