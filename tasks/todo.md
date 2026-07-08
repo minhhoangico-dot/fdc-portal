@@ -731,3 +731,11 @@ Owner: Fable 5 (direction) -> Opus 4.8 (execution). Spec: tasks/active/2026-07-0
 - [ ] MINH decision: head_nurse authority (direction §8.5) — needed before Phase 4 admin/roles sweep.
 - [ ] Phase 4 (Sweep) — GATED: Nhan su blocked by attendance WIP; Bao cao & Man hinh (weekly-report/lab-dashboard reskin) doable now; admin control room needs §8.5.
 - [ ] Follow-up (Minh-flagged, separate commit): router-gap tightening (moduleKey on /lab-dashboard + /weekly-report*, /valuation gate) — changes access.
+
+## 2026-07-08 — UX REDESIGN COMPLETE (Phases 1-4c, branch codex/portal-presentation-refactor, unpushed)
+- [x] Phase 4a reskin (admin/reports) + Kho parity — committed
+- [x] Phase 4b flip + retire 5 pages + realtime hoist + router-gaps — committed
+- [x] Phase 4c safe compute extraction (proven byte-identical) + finalize fixes — committed
+- [x] Router-gap tightening done (no legitimate role lost access; /valuation dissolved via redirect)
+- [ ] DEFERRED (needs live auth): full usePharmacyInventory+useSupplyInventory behavioural merge — recipe in REDESIGN-COMPLETE.md
+- [ ] MINH before deploy: live-auth click-through — /inbox, /workflow, /kho numbers vs old data + phone approval E2E; then push
