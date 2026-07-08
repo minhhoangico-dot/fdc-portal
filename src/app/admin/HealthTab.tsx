@@ -1,9 +1,18 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React from "react";
 import { format, parseISO } from "date-fns";
 import { ArrowRight, Database, RefreshCw, Server, CheckCircle2, XCircle, RotateCw } from "lucide-react";
 import { isBridgeHeartbeatStale } from "@/lib/bridge";
 import { formatTimeAgo } from "@/lib/utils";
 import { BridgeHealth, SyncRecord } from "@/types/sync";
+import { WidgetCard } from "@/ui/WidgetCard";
+import { StatusBadge } from "@/ui/StatusBadge";
+import { DataTable, type DataTableColumn } from "@/ui/DataTable";
+import type { StatusKind } from "@/ui/StatusBadge";
 
 interface HealthTabProps {
   bridgeHealth: BridgeHealth;
@@ -39,12 +48,19 @@ function formatSyncStatus(status: SyncRecord["status"]): string {
       : "Thất bại";
 }
 
+function syncStatusKind(status: SyncRecord["status"]): StatusKind {
+  return status === "success" ? "ok" : status === "pending" ? "warn" : "danger";
+}
+
 function getDurationMs(record: SyncRecord): number | null {
   if (!record.startedAt || !record.completedAt) return null;
   const start = parseISO(record.startedAt).getTime();
   const end = parseISO(record.completedAt).getTime();
   return end - start;
 }
+
+const SYNC_BUTTON_CLASS =
+  "w-full flex items-center justify-between px-3 py-2 bg-paper text-ink-600 rounded-field text-sm font-medium border border-line transition-colors";
 
 export function HealthTab({
   bridgeHealth,
@@ -74,53 +90,99 @@ export function HealthTab({
     }
   };
 
+  const recentSyncs = syncHistory.slice(0, 5);
+  const expandedSync = recentSyncs.find((sync) => sync.id === expandedId) ?? null;
+  const syncDisabled = isSyncing || bridgeHealth.status !== "online";
+
+  const historyColumns: DataTableColumn<SyncRecord>[] = [
+    {
+      key: "type",
+      header: "Loại",
+      cell: (sync) => (
+        <span className="font-medium text-ink-900">{getSyncTypeLabel(sync.type)}</span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Trạng thái",
+      cell: (sync) => (
+        <StatusBadge status={syncStatusKind(sync.status)} label={formatSyncStatus(sync.status)} />
+      ),
+    },
+    {
+      key: "records",
+      header: "Số bản ghi",
+      align: "right",
+      cell: (sync) => <span className="text-ink-600">{sync.recordsSynced}</span>,
+    },
+    {
+      key: "startedAt",
+      header: "Thời gian bắt đầu",
+      cell: (sync) => (
+        <span className="text-ink-600">
+          {sync.startedAt ? format(parseISO(sync.startedAt), "HH:mm:ss dd/MM/yyyy") : "---"}
+        </span>
+      ),
+    },
+    {
+      key: "error",
+      header: "Chi tiết lỗi",
+      cell: (sync) => (
+        <span className="text-danger-600">
+          {sync.error ? `${sync.error.slice(0, 40)}${sync.error.length > 40 ? "…" : ""}` : "-"}
+        </span>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       {syncMessage && (
-        <div className={`flex items-center justify-between px-4 py-3 rounded-lg text-sm ${
-          syncMessage.type === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
-        }`}>
+        <div
+          className={`flex items-center justify-between px-4 py-3 rounded-card border text-sm ${
+            syncMessage.type === "success"
+              ? "bg-brand-50 text-brand-700 border-brand-100"
+              : "bg-danger-600/10 text-danger-600 border-danger-600/20"
+          }`}
+        >
           <span>{syncMessage.text}</span>
-          <button onClick={onDismissSyncMessage} className="ml-4 font-medium hover:underline">Đóng</button>
+          <button onClick={onDismissSyncMessage} className="ml-4 font-medium hover:underline">
+            Đóng
+          </button>
         </div>
       )}
+
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Server className="w-4 h-4 text-indigo-600" />
-              LAN Bridge
-            </h3>
-            <span
-              className={`px-2 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
-                bridgeHealth.status === "online"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : "bg-rose-100 text-rose-700"
-              }`}
-            >
-              {bridgeHealth.status}
-            </span>
-          </div>
+        <WidgetCard
+          title="LAN Bridge"
+          actions={
+            <StatusBadge
+              status={bridgeHealth.status === "online" ? "ok" : "danger"}
+              label={bridgeHealth.status}
+              className="uppercase tracking-wide"
+            />
+          }
+        >
           <div className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Kết nối HIS</span>
+              <span className="text-ink-600">Kết nối HIS</span>
               {bridgeHealth.hisConnected ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <CheckCircle2 className="w-4 h-4 text-ok-600" />
               ) : (
-                <XCircle className="w-4 h-4 text-rose-500" />
+                <XCircle className="w-4 h-4 text-danger-600" />
               )}
             </div>
             <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Kết nối MISA</span>
+              <span className="text-ink-600">Kết nối MISA</span>
               {bridgeHealth.misaConnected ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                <CheckCircle2 className="w-4 h-4 text-ok-600" />
               ) : (
-                <XCircle className="w-4 h-4 text-rose-500" />
+                <XCircle className="w-4 h-4 text-danger-600" />
               )}
             </div>
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+            <div className="pt-3 border-t border-line flex items-center justify-between text-xs text-ink-600">
               <span>Heartbeat cuối:</span>
-              <span>
+              <span className="[font-variant-numeric:tabular-nums]">
                 {bridgeHealth.lastHeartbeat
                   ? formatTimeAgo(bridgeHealth.lastHeartbeat)
                   : bridgeHealth.status === "online"
@@ -129,48 +191,42 @@ export function HealthTab({
               </span>
             </div>
             {(showStaleHeartbeatWarning || showMissingHeartbeatWarning) && (
-              <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+              <div className="rounded-field border border-warn-600/20 bg-warn-100/60 px-3 py-2 text-xs text-warn-600">
                 {showStaleHeartbeatWarning
                   ? `Mất kết nối với Bridge từ ${formatTimeAgo(bridgeHealth.lastHeartbeat)}`
                   : "Chưa nhận được tín hiệu từ Bridge"}
               </div>
             )}
           </div>
-        </div>
+        </WidgetCard>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
-              <Database className="w-4 h-4 text-indigo-600" />
-              Hàng đợi đồng bộ
-            </h3>
-          </div>
+        <WidgetCard
+          title="Hàng đợi đồng bộ"
+          actions={<Database className="w-4 h-4 text-brand-600" />}
+        >
           <div className="flex flex-col items-center justify-center h-24">
-            <div className="text-4xl font-bold text-gray-900">
+            <div className="text-4xl font-bold text-ink-900 [font-variant-numeric:tabular-nums]">
               {bridgeHealth.queueDepth}
             </div>
-            <div className="text-sm text-gray-500 mt-1">bản ghi đang chờ</div>
+            <div className="text-sm text-ink-600 mt-1">bản ghi đang chờ</div>
           </div>
-        </div>
+        </WidgetCard>
 
-        <div className="bg-white rounded-xl border border-gray-200 p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-gray-900 mb-2 flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-indigo-600" />
-            Đồng bộ thủ công
-          </h3>
+        <WidgetCard
+          title="Đồng bộ thủ công"
+          actions={<RefreshCw className="w-4 h-4 text-brand-600" />}
+        >
           {bridgeHealth.status !== "online" && (
-            <p className="mb-3 text-xs text-amber-600">
+            <p className="mb-3 text-xs text-warn-600">
               LAN Bridge đang offline. Vui lòng kiểm tra dịch vụ fdc-lan-bridge trong mạng nội bộ trước khi đồng bộ.
             </p>
           )}
           <div className="space-y-2">
             <button
               onClick={() => onManualSync("HIS")}
-              disabled={isSyncing || bridgeHealth.status !== "online"}
-              className={`w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
-                isSyncing || bridgeHealth.status !== "online"
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-indigo-50 hover:text-indigo-700"
+              disabled={syncDisabled}
+              className={`${SYNC_BUTTON_CLASS} ${
+                syncDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-brand-50 hover:text-brand-700"
               }`}
             >
               <span>Đồng bộ từ HIS</span>
@@ -178,11 +234,9 @@ export function HealthTab({
             </button>
             <button
               onClick={() => onManualSync("MISA")}
-              disabled={isSyncing || bridgeHealth.status !== "online"}
-              className={`w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
-                isSyncing || bridgeHealth.status !== "online"
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-indigo-50 hover:text-indigo-700"
+              disabled={syncDisabled}
+              className={`${SYNC_BUTTON_CLASS} ${
+                syncDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-brand-50 hover:text-brand-700"
               }`}
             >
               <span>Đồng bộ từ MISA</span>
@@ -190,158 +244,86 @@ export function HealthTab({
             </button>
             <button
               onClick={() => onManualSync("timekeeping")}
-              disabled={isSyncing || bridgeHealth.status !== "online"}
-              className={`w-full flex items-center justify-between px-3 py-2 bg-gray-50 text-gray-700 rounded-lg text-sm font-medium transition-colors ${
-                isSyncing || bridgeHealth.status !== "online"
-                  ? "opacity-50 cursor-not-allowed"
-                  : "hover:bg-indigo-50 hover:text-indigo-700"
+              disabled={syncDisabled}
+              className={`${SYNC_BUTTON_CLASS} ${
+                syncDisabled ? "opacity-50 cursor-not-allowed" : "hover:bg-brand-50 hover:text-brand-700"
               }`}
             >
               <span>Đồng bộ Máy chấm công</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
-        </div>
+        </WidgetCard>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-base font-bold text-gray-900">
-            Lịch sử đồng bộ gần đây
-          </h3>
+      <WidgetCard
+        title="Lịch sử đồng bộ gần đây"
+        actions={
           <button
             onClick={handleRefresh}
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-sm text-ink-600 hover:text-brand-600 hover:bg-brand-50 rounded-field transition-colors"
           >
             <RotateCw className="w-4 h-4" />
             Làm mới
           </button>
+        }
+      >
+        <div className="space-y-4">
+          <DataTable<SyncRecord>
+            columns={historyColumns}
+            rows={recentSyncs}
+            rowKey={(sync) => sync.id}
+            onRowClick={(sync) => setExpandedId((id) => (id === sync.id ? null : sync.id))}
+            isRowActive={(sync) => sync.id === expandedId}
+            emptyLabel="Chưa có lịch sử đồng bộ"
+          />
+
+          {expandedSync && (
+            <div className="rounded-card border border-line bg-paper px-4 py-4">
+              <div className="grid grid-cols-1 gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
+                <div>
+                  <span className="text-ink-600">Loại:</span> {getSyncTypeLabel(expandedSync.type)}
+                </div>
+                <div>
+                  <span className="text-ink-600">Trạng thái:</span>{" "}
+                  <StatusBadge
+                    status={syncStatusKind(expandedSync.status)}
+                    label={formatSyncStatus(expandedSync.status)}
+                  />
+                </div>
+                <div>
+                  <span className="text-ink-600">Số bản ghi:</span>{" "}
+                  <span className="[font-variant-numeric:tabular-nums]">{expandedSync.recordsSynced}</span>
+                </div>
+                <div>
+                  <span className="text-ink-600">Thời gian bắt đầu:</span>{" "}
+                  {expandedSync.startedAt
+                    ? format(parseISO(expandedSync.startedAt), "HH:mm:ss dd/MM/yyyy")
+                    : "---"}
+                </div>
+                <div>
+                  <span className="text-ink-600">Thời gian kết thúc:</span>{" "}
+                  {expandedSync.completedAt
+                    ? format(parseISO(expandedSync.completedAt), "HH:mm:ss dd/MM/yyyy")
+                    : "---"}
+                </div>
+                <div>
+                  <span className="text-ink-600">Thời lượng:</span>{" "}
+                  {getDurationMs(expandedSync) != null
+                    ? `${(getDurationMs(expandedSync)! / 1000).toFixed(1)}s`
+                    : "---"}
+                </div>
+                {expandedSync.error && (
+                  <div className="sm:col-span-2">
+                    <span className="text-ink-600">Lỗi:</span>{" "}
+                    <span className="text-danger-600">{expandedSync.error}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
-        <div className="border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Loại
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trạng thái
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
-                  Số bản ghi
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Thời gian bắt đầu
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Chi tiết lỗi
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {syncHistory.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-sm text-gray-500">
-                    Chưa có lịch sử đồng bộ
-                  </td>
-                </tr>
-              ) : (
-                syncHistory.slice(0, 5).map((sync) => (
-                  <React.Fragment key={sync.id}>
-                    <tr
-                      onClick={() => setExpandedId((id) => (id === sync.id ? null : sync.id))}
-                      className="hover:bg-gray-50 cursor-pointer select-none"
-                    >
-                      <td className="px-4 py-3 text-sm font-medium text-gray-900">
-                        {getSyncTypeLabel(sync.type)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span
-                          className={`inline-flex items-center px-2 py-1 rounded-md text-xs font-medium ${
-                            sync.status === "success"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : sync.status === "pending"
-                                ? "bg-amber-100 text-amber-700"
-                                : "bg-rose-100 text-rose-700"
-                          }`}
-                        >
-                          {formatSyncStatus(sync.status)}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600 text-right">
-                        {sync.recordsSynced}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-600">
-                        {sync.startedAt
-                          ? format(parseISO(sync.startedAt), "HH:mm:ss dd/MM/yyyy")
-                          : "---"}
-                      </td>
-                      <td className="px-4 py-3 text-sm text-rose-600">
-                        {sync.error ? `${sync.error.slice(0, 40)}${sync.error.length > 40 ? "…" : ""}` : "-"}
-                      </td>
-                    </tr>
-                    {expandedId === sync.id && (
-                      <tr className="bg-gray-50/80">
-                        <td colSpan={5} className="px-4 py-4">
-                          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
-                            <div>
-                              <span className="text-gray-500">Loại:</span>{" "}
-                              {getSyncTypeLabel(sync.type)}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Trạng thái:</span>{" "}
-                              <span
-                                className={`inline-flex px-2 py-0.5 rounded text-xs font-medium ${
-                                  sync.status === "success"
-                                    ? "bg-emerald-100 text-emerald-700"
-                                    : sync.status === "pending"
-                                      ? "bg-amber-100 text-amber-700"
-                                      : "bg-rose-100 text-rose-700"
-                                }`}
-                              >
-                                {formatSyncStatus(sync.status)}
-                              </span>
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Số bản ghi:</span>{" "}
-                              {sync.recordsSynced}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Thời gian bắt đầu:</span>{" "}
-                              {sync.startedAt
-                                ? format(parseISO(sync.startedAt), "HH:mm:ss dd/MM/yyyy")
-                                : "---"}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Thời gian kết thúc:</span>{" "}
-                              {sync.completedAt
-                                ? format(parseISO(sync.completedAt), "HH:mm:ss dd/MM/yyyy")
-                                : "---"}
-                            </div>
-                            <div>
-                              <span className="text-gray-500">Thời lượng:</span>{" "}
-                              {getDurationMs(sync) != null
-                                ? `${(getDurationMs(sync)! / 1000).toFixed(1)}s`
-                                : "---"}
-                            </div>
-                            {sync.error && (
-                              <div className="col-span-2">
-                                <span className="text-gray-500">Lỗi:</span>{" "}
-                                <span className="text-rose-600">{sync.error}</span>
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      </WidgetCard>
     </div>
   );
 }
-

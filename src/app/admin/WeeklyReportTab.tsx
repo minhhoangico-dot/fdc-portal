@@ -13,6 +13,9 @@ import {
   WeeklyReportServiceMapping,
 } from '@/types/weeklyReport';
 import { useWeeklyReportAdmin } from '@/viewmodels/useWeeklyReport';
+import { WidgetCard } from '@/ui/WidgetCard';
+import { DataTable, type DataTableColumn } from '@/ui/DataTable';
+import { StatusBadge } from '@/ui/StatusBadge';
 
 const INDICATORS: Array<{ key: WeeklyReportIndicatorKey; label: string }> = [
   { key: 'examination', label: 'Khám bệnh' },
@@ -42,6 +45,20 @@ const EMPTY_MAPPING_FORM: Partial<WeeklyReportServiceMapping> = {
   display_order: 99,
   is_active: true,
 };
+
+// Tokenized form-control class strings (replace the legacy indigo/gray literals).
+const INPUT_CLASS =
+  'w-full rounded-field border border-line bg-card px-3 py-2 text-[14px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100';
+const PRIMARY_BTN =
+  'inline-flex items-center gap-2 rounded-field bg-brand-600 px-3 py-2 text-[14px] font-medium text-white hover:bg-brand-700';
+const SECONDARY_BTN =
+  'inline-flex items-center gap-2 rounded-field border border-line px-3 py-2 text-[14px] font-medium text-ink-600 hover:bg-paper';
+const ROW_EDIT_BTN =
+  'rounded-field border border-line px-2 py-1 text-[12px] font-medium text-ink-600 hover:bg-paper';
+const ROW_DELETE_BTN =
+  'rounded-field border border-danger-600/30 px-2 py-1 text-[12px] font-medium text-danger-600 hover:bg-danger-600/10';
+
+type CustomReportRow = { item: any; index: number };
 
 export function WeeklyReportTab() {
   const {
@@ -78,12 +95,127 @@ export function WeeklyReportTab() {
     );
   };
 
+  const catalogColumns: DataTableColumn<(typeof catalogResults)[number]>[] = [
+    {
+      key: 'service',
+      header: 'Service',
+      cell: (row) => (
+        <button
+          type="button"
+          onClick={() => navigator.clipboard.writeText(row.servicename)}
+          className="text-left font-medium text-ink-900 hover:text-brand-600"
+          title="Copy tên dịch vụ"
+        >
+          {row.servicename}
+        </button>
+      ),
+    },
+    {
+      key: 'group',
+      header: 'Nhóm',
+      cell: (row) => (
+        <span className="text-ink-600">
+          {row.dm_servicegroupid ?? '-'} / {row.dm_servicesubgroupid ?? '-'}
+        </span>
+      ),
+    },
+  ];
+
+  const codeColumns: DataTableColumn<WeeklyReportInfectiousCode>[] = [
+    { key: 'icd', header: 'ICD', cell: (code) => <span className="font-semibold text-ink-900">{code.icd_code}</span> },
+    { key: 'name', header: 'Tên bệnh', cell: (code) => code.disease_name_vi },
+    { key: 'group', header: 'Nhóm', cell: (code) => <span className="text-ink-600">{code.disease_group}</span> },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      cell: (code) =>
+        code.is_active ? (
+          <StatusBadge status="ok" label="Đang hoạt động" />
+        ) : (
+          <StatusBadge status="neutral" label="Tạm dừng" />
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'right',
+      cell: (code) => (
+        <div className="inline-flex items-center gap-2">
+          <button type="button" onClick={() => setCodeForm(code)} className={ROW_EDIT_BTN}>
+            Sửa
+          </button>
+          <button
+            type="button"
+            onClick={() => window.confirm('Xóa cấu hình ICD này?') && void deleteInfectiousCode(code.id)}
+            className={ROW_DELETE_BTN}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
+  const mappingColumns: DataTableColumn<WeeklyReportServiceMapping>[] = [
+    {
+      key: 'key',
+      header: 'Key',
+      cell: (mapping) => (
+        <div>
+          <div className="font-semibold text-ink-900">{mapping.category_key}</div>
+          <div className="text-[12px] text-ink-600">{mapping.category_name_vi}</div>
+        </div>
+      ),
+    },
+    { key: 'group', header: 'Nhóm', cell: (mapping) => <span className="text-ink-600">{mapping.display_group}</span> },
+    {
+      key: 'match',
+      header: 'Match',
+      cell: (mapping) => (
+        <span className="text-ink-600">
+          {mapping.match_type}: {mapping.match_value}
+        </span>
+      ),
+    },
+    {
+      key: 'status',
+      header: 'Trạng thái',
+      cell: (mapping) =>
+        mapping.is_active ? (
+          <StatusBadge status="ok" label="Đang hoạt động" />
+        ) : (
+          <StatusBadge status="neutral" label="Tạm dừng" />
+        ),
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'right',
+      cell: (mapping) => (
+        <div className="inline-flex items-center gap-2">
+          <button type="button" onClick={() => setMappingForm(mapping)} className={ROW_EDIT_BTN}>
+            Sửa
+          </button>
+          <button
+            type="button"
+            onClick={() => window.confirm('Xóa mapping này?') && void deleteServiceMapping(mapping.id)}
+            className={ROW_DELETE_BTN}
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ),
+    },
+  ];
+
   return (
     <div className="space-y-6 p-6">
       {(message || error) && (
         <div
-          className={`flex items-center justify-between rounded-xl border px-4 py-3 text-sm ${
-            error ? 'border-red-200 bg-red-50 text-red-700' : 'border-emerald-200 bg-emerald-50 text-emerald-700'
+          className={`flex items-center justify-between rounded-field border px-4 py-3 text-[14px] ${
+            error
+              ? 'border-danger-600/30 bg-danger-600/10 text-danger-600'
+              : 'border-brand-100 bg-brand-50 text-brand-700'
           }`}
         >
           <span>{error || message}</span>
@@ -93,9 +225,8 @@ export function WeeklyReportTab() {
         </div>
       )}
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <h2 className="text-lg font-semibold text-gray-900">Tra cứu service catalog</h2>
-        <p className="mt-1 text-sm text-gray-500">Tìm dịch vụ HIS để điền chính xác match value cho service mapping.</p>
+      <WidgetCard title="Tra cứu service catalog">
+        <p className="text-[14px] text-ink-600">Tìm dịch vụ HIS để điền chính xác match value cho service mapping.</p>
 
         <div className="mt-4 flex gap-2">
           <input
@@ -103,118 +234,82 @@ export function WeeklyReportTab() {
             value={catalogTerm}
             onChange={(event) => setCatalogTerm(event.target.value)}
             placeholder="Nhập tên dịch vụ..."
-            className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+            className={`flex-1 ${INPUT_CLASS}`}
           />
-          <button
-            type="button"
-            onClick={() => void searchCatalog(catalogTerm)}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
+          <button type="button" onClick={() => void searchCatalog(catalogTerm)} className={SECONDARY_BTN}>
             <Search className="h-4 w-4" />
             Tìm
           </button>
         </div>
 
-        <div className="mt-4 max-h-[260px] overflow-auto rounded-xl border border-gray-100">
-          <table className="min-w-full text-sm">
-            <thead className="sticky top-0 bg-slate-50">
-              <tr>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Service</th>
-                <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Nhóm</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {catalogResults.length === 0 ? (
-                <tr>
-                  <td colSpan={2} className="px-3 py-4 text-center text-slate-500">
-                    Chưa có kết quả.
-                  </td>
-                </tr>
-              ) : (
-                catalogResults.map((row) => (
-                  <tr key={`${row.servicename}-${row.dm_servicegroupid}-${row.dm_servicesubgroupid}`} className="hover:bg-slate-50">
-                    <td className="px-3 py-2">
-                      <button
-                        type="button"
-                        onClick={() => navigator.clipboard.writeText(row.servicename)}
-                        className="text-left font-medium text-slate-900 hover:text-indigo-600"
-                        title="Copy tên dịch vụ"
-                      >
-                        {row.servicename}
-                      </button>
-                    </td>
-                    <td className="px-3 py-2 text-slate-500">
-                      {row.dm_servicegroupid ?? '-'} / {row.dm_servicesubgroupid ?? '-'}
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+        <div className="mt-4">
+          <DataTable
+            columns={catalogColumns}
+            rows={catalogResults}
+            rowKey={(row) => `${row.servicename}-${row.dm_servicegroupid}-${row.dm_servicesubgroupid}`}
+            density="compact"
+            emptyLabel="Chưa có kết quả."
+            className="max-h-[260px]"
+          />
         </div>
-      </section>
+      </WidgetCard>
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">ICD bệnh truyền nhiễm</h2>
-              <p className="text-sm text-gray-500">CRUD cấu hình ICD để thống kê nhóm bệnh truyền nhiễm trên dashboard TV.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void saveInfectiousCode(codeForm)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
+        <WidgetCard
+          title="ICD bệnh truyền nhiễm"
+          actions={
+            <button type="button" onClick={() => void saveInfectiousCode(codeForm)} className={PRIMARY_BTN}>
               <Save className="h-4 w-4" />
               Lưu ICD
             </button>
-          </div>
+          }
+        >
+          <p className="text-[14px] text-ink-600">CRUD cấu hình ICD để thống kê nhóm bệnh truyền nhiễm trên dashboard TV.</p>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <input
               type="text"
               placeholder="Mã ICD"
               value={codeForm.icd_code || ''}
               onChange={(event) => setCodeForm((current) => ({ ...current, icd_code: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
             <input
               type="text"
               placeholder="Pattern (mặc định J09%)"
               value={codeForm.icd_pattern || ''}
               onChange={(event) => setCodeForm((current) => ({ ...current, icd_pattern: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
             <input
               type="text"
               placeholder="Tên bệnh"
               value={codeForm.disease_name_vi || ''}
               onChange={(event) => setCodeForm((current) => ({ ...current, disease_name_vi: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm md:col-span-2"
+              className={`${INPUT_CLASS} md:col-span-2`}
             />
             <input
               type="text"
               placeholder="Nhóm"
               value={codeForm.disease_group || ''}
               onChange={(event) => setCodeForm((current) => ({ ...current, disease_group: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
             <input
               type="number"
               placeholder="Display order"
               value={codeForm.display_order ?? 99}
               onChange={(event) => setCodeForm((current) => ({ ...current, display_order: Number(event.target.value) }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
             <div className="flex items-center gap-3">
               <input
                 type="color"
                 value={codeForm.color_code || '#3b82f6'}
                 onChange={(event) => setCodeForm((current) => ({ ...current, color_code: event.target.value }))}
-                className="h-10 w-12 rounded border border-gray-200 p-1"
+                className="h-10 w-12 rounded-field border border-line p-1"
               />
-              <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+              <label className="inline-flex items-center gap-2 text-[14px] text-ink-600">
                 <input
                   type="checkbox"
                   checked={codeForm.is_active ?? true}
@@ -223,91 +318,52 @@ export function WeeklyReportTab() {
                 Đang hoạt động
               </label>
             </div>
-            <button
-              type="button"
-              onClick={resetCodeForm}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-            >
+            <button type="button" onClick={resetCodeForm} className={SECONDARY_BTN}>
               Tạo mới
             </button>
           </div>
 
-          <div className="mt-4 max-h-[340px] overflow-auto rounded-xl border border-gray-100">
-            <table className="min-w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">ICD</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Tên bệnh</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Nhóm</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-slate-500">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {infectiousCodes.map((code) => (
-                  <tr key={code.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2 font-semibold text-slate-900">{code.icd_code}</td>
-                    <td className="px-3 py-2">{code.disease_name_vi}</td>
-                    <td className="px-3 py-2 text-slate-500">{code.disease_group}</td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setCodeForm(code)}
-                          className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => window.confirm('Xóa cấu hình ICD này?') && void deleteInfectiousCode(code.id)}
-                          className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-4">
+            <DataTable
+              columns={codeColumns}
+              rows={infectiousCodes}
+              rowKey={(code) => String(code.id)}
+              density="compact"
+              className="max-h-[340px]"
+            />
           </div>
-        </section>
+        </WidgetCard>
 
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex items-start justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Service mappings</h2>
-              <p className="text-sm text-gray-500">Cấu hình category key, display group và match rule để map dữ liệu HIS.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => void saveServiceMapping(mappingForm)}
-              className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700"
-            >
+        <WidgetCard
+          title="Service mappings"
+          actions={
+            <button type="button" onClick={() => void saveServiceMapping(mappingForm)} className={PRIMARY_BTN}>
               <Save className="h-4 w-4" />
               Lưu mapping
             </button>
-          </div>
+          }
+        >
+          <p className="text-[14px] text-ink-600">Cấu hình category key, display group và match rule để map dữ liệu HIS.</p>
 
-          <div className="grid gap-3 md:grid-cols-2">
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
             <input
               type="text"
               placeholder="Category key"
               value={mappingForm.category_key || ''}
               onChange={(event) => setMappingForm((current) => ({ ...current, category_key: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
             <input
               type="text"
               placeholder="Tên hiển thị"
               value={mappingForm.category_name_vi || ''}
               onChange={(event) => setMappingForm((current) => ({ ...current, category_name_vi: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
             <select
               value={mappingForm.display_group || 'kham_benh'}
               onChange={(event) => setMappingForm((current) => ({ ...current, display_group: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             >
               <option value="kham_benh">Khám bệnh</option>
               <option value="xet_nghiem">Xét nghiệm</option>
@@ -317,7 +373,7 @@ export function WeeklyReportTab() {
             <select
               value={mappingForm.match_type || 'contains'}
               onChange={(event) => setMappingForm((current) => ({ ...current, match_type: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             >
               <option value="contains">contains</option>
               <option value="starts_with">starts_with</option>
@@ -329,16 +385,16 @@ export function WeeklyReportTab() {
               placeholder="Match value"
               value={mappingForm.match_value || ''}
               onChange={(event) => setMappingForm((current) => ({ ...current, match_value: event.target.value }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm md:col-span-2"
+              className={`${INPUT_CLASS} md:col-span-2`}
             />
             <input
               type="number"
               placeholder="Display order"
               value={mappingForm.display_order ?? 99}
               onChange={(event) => setMappingForm((current) => ({ ...current, display_order: Number(event.target.value) }))}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
-            <label className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700">
+            <label className="inline-flex items-center gap-2 rounded-field border border-line px-3 py-2 text-[14px] text-ink-600">
               <input
                 type="checkbox"
                 checked={mappingForm.is_active ?? true}
@@ -346,74 +402,35 @@ export function WeeklyReportTab() {
               />
               Đang hoạt động
             </label>
-            <button
-              type="button"
-              onClick={resetMappingForm}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 md:col-span-2"
-            >
+            <button type="button" onClick={resetMappingForm} className={`${SECONDARY_BTN} md:col-span-2`}>
               Tạo mới
             </button>
           </div>
 
-          <div className="mt-4 max-h-[340px] overflow-auto rounded-xl border border-gray-100">
-            <table className="min-w-full text-sm">
-              <thead className="sticky top-0 bg-slate-50">
-                <tr>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Key</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Nhóm</th>
-                  <th className="px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Match</th>
-                  <th className="px-3 py-2 text-right text-xs font-medium uppercase tracking-wide text-slate-500">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {serviceMappings.map((mapping) => (
-                  <tr key={mapping.id} className="hover:bg-slate-50">
-                    <td className="px-3 py-2">
-                      <div className="font-semibold text-slate-900">{mapping.category_key}</div>
-                      <div className="text-xs text-slate-500">{mapping.category_name_vi}</div>
-                    </td>
-                    <td className="px-3 py-2 text-slate-500">{mapping.display_group}</td>
-                    <td className="px-3 py-2 text-slate-500">
-                      {mapping.match_type}: {mapping.match_value}
-                    </td>
-                    <td className="px-3 py-2 text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setMappingForm(mapping)}
-                          className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                        >
-                          Sửa
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => window.confirm('Xóa mapping này?') && void deleteServiceMapping(mapping.id)}
-                          className="rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mt-4">
+            <DataTable
+              columns={mappingColumns}
+              rows={serviceMappings}
+              rowKey={(mapping) => String(mapping.id)}
+              density="compact"
+              className="max-h-[340px]"
+            />
           </div>
-        </section>
+        </WidgetCard>
       </div>
 
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Custom report</h2>
-          <p className="text-sm text-gray-500">Tạo báo cáo tùy chọn theo khoảng thời gian và drilldown vào route chi tiết.</p>
-        </div>
+      <WidgetCard title="Custom report">
+        <p className="text-[14px] text-ink-600">Tạo báo cáo tùy chọn theo khoảng thời gian và drilldown vào route chi tiết.</p>
 
-        <div className="grid gap-4 xl:grid-cols-[1fr_220px_220px_180px]">
-          <div className="rounded-xl border border-gray-100 p-4">
-            <div className="mb-3 text-sm font-medium text-slate-700">Chỉ số</div>
+        <div className="mt-4 grid gap-4 xl:grid-cols-[1fr_220px_220px_180px]">
+          <div className="rounded-field border border-line p-4">
+            <div className="mb-3 text-[14px] font-medium text-ink-900">Chỉ số</div>
             <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {INDICATORS.map((indicator) => (
-                <label key={indicator.key} className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700">
+                <label
+                  key={indicator.key}
+                  className="inline-flex items-center gap-2 rounded-field border border-line px-3 py-2 text-[14px] text-ink-600"
+                >
                   <input
                     type="checkbox"
                     checked={customIndicators.includes(indicator.key)}
@@ -425,23 +442,23 @@ export function WeeklyReportTab() {
             </div>
           </div>
 
-          <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+          <label className="flex flex-col gap-2 text-[14px] font-medium text-ink-900">
             Từ ngày
             <input
               type="date"
               value={customStartDate}
               onChange={(event) => setCustomStartDate(event.target.value)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
           </label>
 
-          <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+          <label className="flex flex-col gap-2 text-[14px] font-medium text-ink-900">
             Đến ngày
             <input
               type="date"
               value={customEndDate}
               onChange={(event) => setCustomEndDate(event.target.value)}
-              className="rounded-lg border border-gray-200 px-3 py-2 text-sm"
+              className={INPUT_CLASS}
             />
           </label>
 
@@ -449,7 +466,7 @@ export function WeeklyReportTab() {
             <button
               type="button"
               onClick={() => void generateCustomReport({ indicators: customIndicators, startDate: customStartDate, endDate: customEndDate })}
-              className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className={`w-full justify-center ${PRIMARY_BTN}`}
             >
               <BarChart3 className="h-4 w-4" />
               Tạo báo cáo
@@ -459,67 +476,92 @@ export function WeeklyReportTab() {
 
         {customReport && (
           <div className="mt-6 space-y-4">
-            {Object.entries((customReport.data as Record<string, unknown>) || {}).map(([groupKey, items]) => (
-              <div key={groupKey} className="overflow-hidden rounded-xl border border-gray-100">
-                <div className="border-b border-gray-100 bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700">
-                  {INDICATORS.find((indicator) => indicator.key === groupKey)?.label || groupKey}
+            {Object.entries((customReport.data as Record<string, unknown>) || {}).map(([groupKey, items]) => {
+              const rows: CustomReportRow[] = Array.isArray(items)
+                ? items.map((item: any, index) => ({ item, index }))
+                : [];
+              const reportColumns: DataTableColumn<CustomReportRow>[] = [
+                {
+                  key: 'metric',
+                  header: 'Chỉ số',
+                  cell: ({ item }) => (
+                    <span className="font-medium text-ink-900">
+                      {groupKey === 'infectious' ? item.disease_name : item.name}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'current',
+                  header: 'Hiện tại',
+                  align: 'right',
+                  cell: ({ item }) => (
+                    <span className="text-ink-900">
+                      {groupKey === 'infectious' ? item.periods?.current ?? 0 : item.current ?? 0}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'previous',
+                  header: 'Trước',
+                  align: 'right',
+                  cell: ({ item }) => (
+                    <span className="text-ink-600">
+                      {groupKey === 'infectious' ? item.periods?.previous ?? 0 : item.previous ?? 0}
+                    </span>
+                  ),
+                },
+                {
+                  key: 'detail',
+                  header: 'Chi tiết',
+                  align: 'right',
+                  cell: ({ item }) => {
+                    const rowKey = groupKey === 'infectious' ? item.icd_code : item.key;
+                    const rowTitle = groupKey === 'infectious' ? item.disease_name : item.name;
+                    const rowType = groupKey === 'infectious' ? 'infectious' : groupKey;
+                    return (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          window.location.assign(
+                            buildWeeklyReportDetailsUrl({
+                              key: String(rowKey),
+                              type: rowType,
+                              title: String(rowTitle),
+                              start: new Date(`${customStartDate}T00:00:00`).toISOString(),
+                              end: new Date(`${customEndDate}T23:59:59`).toISOString(),
+                              from: 'management',
+                            }),
+                          )
+                        }
+                        className={ROW_EDIT_BTN}
+                      >
+                        Drilldown
+                      </button>
+                    );
+                  },
+                },
+              ];
+
+              return (
+                <div key={groupKey}>
+                  <div className="mb-2 text-[14px] font-semibold text-ink-900">
+                    {INDICATORS.find((indicator) => indicator.key === groupKey)?.label || groupKey}
+                  </div>
+                  <DataTable
+                    columns={reportColumns}
+                    rows={rows}
+                    rowKey={({ item, index }) =>
+                      `${groupKey === 'infectious' ? item.icd_code : item.key}-${index}`
+                    }
+                    density="compact"
+                    stickyHeader={false}
+                  />
                 </div>
-
-                <table className="min-w-full text-sm">
-                  <thead className="bg-white">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wide text-slate-500">Chỉ số</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">Hiện tại</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">Trước</th>
-                      <th className="px-4 py-3 text-right text-xs font-medium uppercase tracking-wide text-slate-500">Chi tiết</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {Array.isArray(items) &&
-                      items.map((item: any, index) => {
-                        const currentValue =
-                          groupKey === 'infectious' ? item.periods?.current ?? 0 : item.current ?? 0;
-                        const previousValue =
-                          groupKey === 'infectious' ? item.periods?.previous ?? 0 : item.previous ?? 0;
-                        const rowKey = groupKey === 'infectious' ? item.icd_code : item.key;
-                        const rowTitle = groupKey === 'infectious' ? item.disease_name : item.name;
-                        const rowType = groupKey === 'infectious' ? 'infectious' : groupKey;
-
-                        return (
-                          <tr key={`${rowKey}-${index}`} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 font-medium text-slate-900">{rowTitle}</td>
-                            <td className="px-4 py-3 text-right text-slate-900">{currentValue}</td>
-                            <td className="px-4 py-3 text-right text-slate-500">{previousValue}</td>
-                            <td className="px-4 py-3 text-right">
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  window.location.assign(
-                                    buildWeeklyReportDetailsUrl({
-                                      key: String(rowKey),
-                                      type: rowType,
-                                      title: String(rowTitle),
-                                      start: new Date(`${customStartDate}T00:00:00`).toISOString(),
-                                      end: new Date(`${customEndDate}T23:59:59`).toISOString(),
-                                      from: 'management',
-                                    }),
-                                  )
-                                }
-                                className="rounded-md border border-gray-200 px-2 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50"
-                              >
-                                Drilldown
-                              </button>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                  </tbody>
-                </table>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
-      </section>
+      </WidgetCard>
     </div>
   );
 }

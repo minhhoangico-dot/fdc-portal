@@ -1,6 +1,7 @@
 import React from "react";
 import { useRoleCatalog } from "@/contexts/RoleCatalogContext";
 import { User } from "@/types/user";
+import { StatusBadge } from "@/ui/StatusBadge";
 
 interface DelegationModalProps {
   isOpen: boolean;
@@ -79,18 +80,21 @@ export function DelegationModal({
   return (
     <>
       <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm" onClick={onClose} />
-      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 rounded-2xl bg-white p-6 shadow-xl duration-200">
-        <h2 className="mb-4 text-lg font-bold text-gray-900">
-          Ủy quyền duyệt: {selectedUser.name}
-        </h2>
+      <div className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 animate-in zoom-in-95 rounded-card border border-line bg-card p-6 shadow-card duration-200">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <h2 className="text-lg font-bold text-ink-900">
+            Ủy quyền duyệt: {selectedUser.name}
+          </h2>
+          <StatusBadge status="neutral" label={getRoleLabel(selectedUser.role)} />
+        </div>
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700">
+            <label className="mb-1 block text-sm font-medium text-ink-600">
               Người được ủy quyền
             </label>
             <select
-              className={`w-full rounded-lg py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 ${
-                showValidation && !delegateId ? "border border-rose-300" : "border border-gray-200"
+              className={`w-full rounded-field bg-card py-2 text-sm text-ink-900 focus:border-brand-500 focus:ring-brand-500 ${
+                showValidation && !delegateId ? "border border-danger-600" : "border border-line"
               }`}
               value={delegateId}
               onChange={(event) => setDelegateId(event.target.value)}
@@ -107,35 +111,35 @@ export function DelegationModal({
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Từ ngày</label>
+              <label className="mb-1 block text-sm font-medium text-ink-600">Từ ngày</label>
               <input
                 type="date"
                 value={startDate}
                 onChange={(event) => setStartDate(event.target.value)}
-                className={`w-full rounded-lg py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 ${
-                  showValidation && !startDate ? "border border-rose-300" : "border border-gray-200"
+                className={`w-full rounded-field bg-card py-2 text-sm text-ink-900 focus:border-brand-500 focus:ring-brand-500 ${
+                  showValidation && !startDate ? "border border-danger-600" : "border border-line"
                 }`}
               />
             </div>
             <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">Đến ngày</label>
+              <label className="mb-1 block text-sm font-medium text-ink-600">Đến ngày</label>
               <input
                 type="date"
                 value={endDate}
                 onChange={(event) => setEndDate(event.target.value)}
-                className={`w-full rounded-lg py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500 ${
-                  showValidation && !endDate ? "border border-rose-300" : "border border-gray-200"
+                className={`w-full rounded-field bg-card py-2 text-sm text-ink-900 focus:border-brand-500 focus:ring-brand-500 ${
+                  showValidation && !endDate ? "border border-danger-600" : "border border-line"
                 }`}
               />
             </div>
           </div>
           <div>
-            <label className="mb-2 block text-sm font-medium text-gray-700">
+            <label className="mb-2 block text-sm font-medium text-ink-600">
               Loại đề nghị ủy quyền
             </label>
             <div
               className={`space-y-2 ${
-                showValidation && types.length === 0 ? "rounded-lg border border-rose-200 p-2" : ""
+                showValidation && types.length === 0 ? "rounded-field border border-danger-600/30 p-2" : ""
               }`}
             >
               {DELEGATION_REQUEST_TYPES.map(({ value, label }) => (
@@ -144,14 +148,14 @@ export function DelegationModal({
                     type="checkbox"
                     checked={types.includes(value)}
                     onChange={() => toggleType(value)}
-                    className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="rounded border-line text-brand-600 focus:ring-brand-500"
                   />
-                  <span className="text-sm text-gray-700">{label}</span>
+                  <span className="text-sm text-ink-600">{label}</span>
                 </label>
               ))}
             </div>
             {showValidation && (
-              <p className="text-xs text-rose-600">
+              <p className="text-xs text-danger-600">
                 Vui lòng điền đầy đủ và chọn ít nhất một loại đề nghị.
               </p>
             )}
@@ -160,13 +164,13 @@ export function DelegationModal({
         <div className="mt-6 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
+            className="rounded-field px-4 py-2 text-sm font-medium text-ink-600 transition-colors hover:bg-line"
           >
             Hủy
           </button>
           <button
             onClick={handleSubmit}
-            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+            className="rounded-field bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
           >
             Lưu ủy quyền
           </button>

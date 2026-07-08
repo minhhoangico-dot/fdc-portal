@@ -1,6 +1,23 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 import React, { useState } from "react";
 import { Activity, Edit2, Plus, ShieldAlert } from "lucide-react";
 import { MisaKeywordModal } from "./MisaKeywordModal";
+import { WidgetCard } from "@/ui/WidgetCard";
+import { DataTable, type DataTableColumn } from "@/ui/DataTable";
+import { StatusBadge } from "@/ui/StatusBadge";
+
+/**
+ * MisaTab — reskin of the MISA keyword manager + recent-scan panel onto
+ * `ui/WidgetCard` + `ui/DataTable` + brand tokens (Phase 4a §4 "Quản trị"
+ * mapping row). Presentation only: consumes `useAdmin`'s props
+ * (`misaKeywords`, `scanResults`, callbacks) verbatim; the active-toggle
+ * switch becomes a clickable `StatusBadge` calling the same
+ * `onToggleKeywordActive` handler.
+ */
 
 interface MisaKeyword {
   id: string;
@@ -40,117 +57,111 @@ export function MisaTab({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingKeyword, setEditingKeyword] = useState<MisaKeyword | null>(null);
 
+  const columns: DataTableColumn<MisaKeyword>[] = [
+    {
+      key: "keyword",
+      header: "Từ khóa",
+      cell: (kw) => <span className="font-medium text-ink-900">{kw.keyword}</span>,
+    },
+    {
+      key: "category",
+      header: "Danh mục",
+      cell: (kw) => <span className="text-ink-600">{kw.category}</span>,
+    },
+    {
+      key: "alertOnMatch",
+      header: "Cảnh báo",
+      align: "center",
+      cell: (kw) =>
+        kw.alertOnMatch ? (
+          <ShieldAlert className="mx-auto h-4 w-4 text-danger-600" />
+        ) : (
+          <span className="text-ink-400">-</span>
+        ),
+    },
+    {
+      key: "isActive",
+      header: "Trạng thái",
+      align: "center",
+      cell: (kw) => (
+        <button type="button" onClick={() => onToggleKeywordActive(kw.id)}>
+          <StatusBadge
+            status={kw.isActive ? "ok" : "neutral"}
+            label={kw.isActive ? "Hoạt động" : "Vô hiệu"}
+          />
+        </button>
+      ),
+    },
+    {
+      key: "actions",
+      header: "Thao tác",
+      align: "right",
+      cell: (kw) => (
+        <button
+          className="rounded-field p-1.5 text-ink-400 transition-colors hover:bg-brand-50 hover:text-brand-600"
+          onClick={() => {
+            setEditingKeyword(kw);
+            setIsModalOpen(true);
+          }}
+        >
+          <Edit2 className="h-4 w-4" />
+        </button>
+      ),
+    },
+  ];
+
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">Quản lý từ khóa MISA</h2>
-          <p className="text-sm text-gray-500 mt-1">
+          <h2 className="text-lg font-bold text-ink-900">Quản lý từ khóa MISA</h2>
+          <p className="mt-1 text-sm text-ink-600">
             Hệ thống sẽ cảnh báo khi phiếu chi có chứa các từ khóa này.
           </p>
         </div>
         <button
-          className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          className="flex items-center justify-center gap-2 rounded-field bg-brand-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-brand-700"
           onClick={() => {
             setEditingKeyword(null);
             setIsModalOpen(true);
           }}
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="h-4 w-4" />
           Thêm từ khóa
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 border border-gray-200 rounded-xl overflow-hidden">
-          <table className="w-full text-left border-collapse">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Từ khóa
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Danh mục
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">
-                  Cảnh báo
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-center">
-                  Trạng thái
-                </th>
-                <th className="px-4 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider text-right">
-                  Thao tác
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {misaKeywords.map((kw) => (
-                <tr key={kw.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {kw.keyword}
-                  </td>
-                  <td className="px-4 py-3 text-sm text-gray-600">
-                    {kw.category}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    {kw.alertOnMatch ? (
-                      <ShieldAlert className="w-4 h-4 text-rose-500 mx-auto" />
-                    ) : (
-                      <span className="text-gray-300">-</span>
-                    )}
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        className="sr-only peer"
-                        checked={kw.isActive}
-                        onChange={() => onToggleKeywordActive(kw.id)}
-                      />
-                      <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-500"></div>
-                    </label>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <button
-                      className="p-1.5 text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-md transition-colors"
-                      onClick={() => {
-                        setEditingKeyword(kw);
-                        setIsModalOpen(true);
-                      }}
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <DataTable
+            columns={columns}
+            rows={misaKeywords}
+            rowKey={(kw) => kw.id}
+            emptyLabel="Chưa có từ khóa nào."
+          />
         </div>
 
-        <div className="bg-gray-50 rounded-xl p-5 border border-gray-200">
-          <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Activity className="w-4 h-4 text-indigo-600" />
-            Kết quả quét gần đây
-          </h3>
+        <WidgetCard
+          title="Kết quả quét gần đây"
+          actions={<Activity className="h-4 w-4 text-brand-600" />}
+        >
           <div className="space-y-3">
             {scanResults.map((r) => (
               <div
                 key={r.id}
-                className="bg-white p-3 rounded-lg border border-rose-100 shadow-sm"
+                className="rounded-field border border-danger-600/20 bg-card p-3 shadow-card"
               >
-                <div className="flex items-center justify-between mb-1">
-                  <span className="text-xs font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded">
-                    Cảnh báo
-                  </span>
-                  <span className="text-xs text-gray-500">
+                <div className="mb-1 flex items-center justify-between">
+                  <StatusBadge status="danger" label="Cảnh báo" />
+                  <span className="text-xs text-ink-400">
                     {r.syncedAt ? new Date(r.syncedAt).toLocaleString("vi-VN") : ""}
                   </span>
                 </div>
-                <p className="text-sm text-gray-900 font-medium">{r.docNumber}</p>
-                <p className="text-xs text-gray-600 mt-1">
+                <p className="text-sm font-medium text-ink-900">{r.docNumber}</p>
+                <p className="mt-1 text-xs text-ink-600">
                   {r.description}{" "}
                   {r.matchedKeywords && r.matchedKeywords.length > 0 && (
-                    <span className="bg-yellow-200 font-medium px-1 rounded">
+                    <span className="rounded bg-warn-100 px-1 font-medium text-warn-600">
                       {r.matchedKeywords.join(", ")}
                     </span>
                   )}
@@ -158,12 +169,10 @@ export function MisaTab({
               </div>
             ))}
             {scanResults.length === 0 && (
-              <div className="text-xs text-gray-500">
-                Chưa có kết quả quét gần đây.
-              </div>
+              <div className="text-xs text-ink-400">Chưa có kết quả quét gần đây.</div>
             )}
           </div>
-        </div>
+        </WidgetCard>
       </div>
 
       <MisaKeywordModal
@@ -190,4 +199,3 @@ export function MisaTab({
     </div>
   );
 }
-

@@ -9,12 +9,16 @@ import { Link } from 'react-router-dom';
 import { getTvScreenPreviewHref, getTvScreenPublicAlias, getTvScreenSettingsHref } from '@/lib/tv-screen-links';
 import { useTvScreensAdmin } from '@/viewmodels/useTvScreens';
 import type { TvContentType, TvScreen } from '@/types/tvScreen';
+import { PageHeader } from '@/ui/PageHeader';
+import { DataTable, type DataTableColumn } from '@/ui/DataTable';
+import { StatusBadge } from '@/ui/StatusBadge';
+import { EmptyState } from '@/ui/EmptyState';
 
 function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .replace(/đ/g, 'd')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
@@ -31,6 +35,13 @@ const EMPTY_FORM = {
   refreshIntervalSeconds: 300,
   settings: {} as Record<string, unknown>,
 };
+
+const FIELD_CLASS =
+  'w-full rounded-field border border-line bg-card px-3 py-2 text-[14px] text-ink-900 transition-colors focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20';
+const FIELD_LABEL_CLASS =
+  'mb-1 block text-[12px] font-medium uppercase tracking-wide text-ink-600';
+const ICON_BTN_CLASS =
+  'rounded-field p-1.5 text-ink-400 transition-colors hover:bg-paper hover:text-ink-600';
 
 export function TvScreensTab() {
   const { screens, loading, message, saveScreen, deleteScreen, toggleActive } = useTvScreensAdmin();
@@ -96,34 +107,141 @@ export function TvScreensTab() {
     setConfirmDeleteId(null);
   };
 
-  return (
-    <div className="space-y-6 p-4 sm:p-6">
-      {/* Header */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-lg font-semibold text-gray-900">Quản lý màn hình TV</h2>
-          <p className="text-sm text-gray-500">
-            Cấu hình nội dung hiển thị trên các TV tại phòng khám. Mỗi TV truy cập qua{' '}
-            <code className="rounded bg-gray-100 px-1.5 py-0.5 text-xs">/tv/slug</code>
-          </p>
+  const columns: DataTableColumn<TvScreen>[] = [
+    {
+      key: 'name',
+      header: 'Tên',
+      cell: (screen) => (
+        <div>
+          <div className="font-medium text-ink-900">{screen.name}</div>
+          <div className="text-[12px] text-ink-400">
+            Alias cong khai: {getTvScreenPublicAlias(screen)}
+          </div>
         </div>
+      ),
+    },
+    {
+      key: 'location',
+      header: 'Vị trí',
+      cellClassName: 'hidden md:table-cell text-ink-600',
+      headerClassName: 'hidden md:table-cell',
+      cell: (screen) => screen.location || '—',
+    },
+    {
+      key: 'type',
+      header: 'Loại',
+      cell: (screen) => (
+        <StatusBadge
+          status={screen.contentType === 'url' ? 'info' : 'neutral'}
+          label={screen.contentType === 'url' ? 'iframe' : 'internal'}
+        />
+      ),
+    },
+    {
+      key: 'url',
+      header: 'URL',
+      cellClassName: 'hidden lg:table-cell',
+      headerClassName: 'hidden lg:table-cell',
+      cell: (screen) => (
+        <span className="block max-w-xs truncate text-[12px] text-ink-600" title={screen.contentUrl}>
+          {screen.contentUrl}
+        </span>
+      ),
+    },
+    {
+      key: 'active',
+      header: 'Active',
+      align: 'center',
+      cell: (screen) => (
         <button
           type="button"
-          onClick={openAdd}
-          className="inline-flex items-center gap-2 self-start rounded-lg bg-indigo-600 px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-indigo-700"
+          onClick={() => toggleActive(screen.id)}
+          title="Bật/tắt hiển thị"
+          className="cursor-pointer"
         >
-          <Plus className="h-4 w-4" />
-          Thêm TV
+          <StatusBadge
+            status={screen.isActive ? 'ok' : 'neutral'}
+            label={screen.isActive ? 'Đang hoạt động' : 'Tạm dừng'}
+          />
         </button>
-      </div>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Thao tác',
+      align: 'right',
+      cell: (screen) => {
+        const settingsHref = getTvScreenSettingsHref(screen);
+        return (
+          <div className="flex items-center justify-end gap-1">
+            {settingsHref && (
+              <Link to={settingsHref} className={ICON_BTN_CLASS} title="Cài đặt báo cáo giao ban">
+                <Settings className="h-4 w-4" />
+              </Link>
+            )}
+            <a
+              href={getTvScreenPreviewHref(screen)}
+              target="_blank"
+              rel="noopener noreferrer"
+              className={ICON_BTN_CLASS}
+              title="Xem trước"
+            >
+              <ExternalLink className="h-4 w-4" />
+            </a>
+            <button type="button" onClick={() => openEdit(screen)} className={ICON_BTN_CLASS} title="Sửa">
+              <Pencil className="h-4 w-4" />
+            </button>
+            {confirmDeleteId === screen.id ? (
+              <button
+                type="button"
+                onClick={() => handleDelete(screen.id)}
+                className="rounded-field px-2 py-1 text-[13px] font-medium text-danger-600 transition-colors hover:bg-danger-600/10"
+              >
+                Xác nhận xoá
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setConfirmDeleteId(screen.id)}
+                className="rounded-field p-1.5 text-ink-400 transition-colors hover:bg-danger-600/10 hover:text-danger-600"
+                title="Xoá"
+              >
+                <Trash2 className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        );
+      },
+    },
+  ];
+
+  return (
+    <div className="space-y-6 p-4 sm:p-6">
+      <PageHeader
+        title="Quản lý màn hình TV"
+        actions={
+          <button
+            type="button"
+            onClick={openAdd}
+            className="inline-flex items-center gap-2 rounded-field bg-brand-600 px-3 py-2 text-[14px] font-medium text-white transition-colors hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" />
+            Thêm TV
+          </button>
+        }
+      />
+      <p className="-mt-3 text-[14px] text-ink-600">
+        Cấu hình nội dung hiển thị trên các TV tại phòng khám. Mỗi TV truy cập qua{' '}
+        <code className="rounded-field bg-paper px-1.5 py-0.5 text-[12px]">/tv/slug</code>
+      </p>
 
       {/* Message */}
       {message && (
         <div
-          className={`rounded-xl border px-4 py-3 text-sm ${
+          className={`rounded-card border px-4 py-3 text-[14px] ${
             message.type === 'success'
-              ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-              : 'border-rose-200 bg-rose-50 text-rose-700'
+              ? 'border-brand-100 bg-brand-50 text-brand-700'
+              : 'border-danger-600/20 bg-danger-600/10 text-danger-600'
           }`}
         >
           {message.text}
@@ -132,15 +250,18 @@ export function TvScreensTab() {
 
       {/* Form */}
       {isFormOpen && (
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-2xl border border-indigo-200 bg-indigo-50/30 p-5">
+        <form
+          onSubmit={handleSubmit}
+          className="space-y-4 rounded-card border border-brand-100 bg-brand-50/40 p-5"
+        >
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold text-gray-900">
+            <h3 className="text-[14px] font-semibold text-ink-900">
               {form.id ? 'Chỉnh sửa TV' : 'Thêm TV mới'}
             </h3>
             <button
               type="button"
               onClick={() => setIsFormOpen(false)}
-              className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+              className="rounded-field p-1 text-ink-400 transition-colors hover:bg-paper hover:text-ink-600"
             >
               <X className="h-4 w-4" />
             </button>
@@ -148,22 +269,18 @@ export function TvScreensTab() {
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-                Tên TV *
-              </label>
+              <label className={FIELD_LABEL_CLASS}>Tên TV *</label>
               <input
                 type="text"
                 value={form.name}
                 onChange={(e) => handleNameChange(e.target.value)}
                 placeholder="TV Sảnh chờ"
                 required
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className={FIELD_CLASS}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-                Slug (URL)
-              </label>
+              <label className={FIELD_LABEL_CLASS}>Slug (URL)</label>
               <input
                 type="text"
                 value={form.slug}
@@ -172,66 +289,58 @@ export function TvScreensTab() {
                   setForm((f) => ({ ...f, slug: e.target.value }));
                 }}
                 placeholder="sanh-cho"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className={FIELD_CLASS}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-                Vị trí
-              </label>
+              <label className={FIELD_LABEL_CLASS}>Vị trí</label>
               <input
                 type="text"
                 value={form.location}
                 onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                 placeholder="Sảnh chờ tầng 1"
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className={FIELD_CLASS}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-                Loại nội dung
-              </label>
+              <label className={FIELD_LABEL_CLASS}>Loại nội dung</label>
               <select
                 value={form.contentType}
                 onChange={(e) => setForm((f) => ({ ...f, contentType: e.target.value as TvContentType }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className={FIELD_CLASS}
               >
                 <option value="url">URL bên ngoài (iframe)</option>
                 <option value="internal">Route nội bộ (redirect)</option>
               </select>
             </div>
             <div className="xl:col-span-2">
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-                URL / Đường dẫn *
-              </label>
+              <label className={FIELD_LABEL_CLASS}>URL / Đường dẫn *</label>
               <input
                 type="text"
                 value={form.contentUrl}
                 onChange={(e) => setForm((f) => ({ ...f, contentUrl: e.target.value }))}
                 placeholder={form.contentType === 'url' ? 'https://grafana.example.com/d/abc' : '/tv-management/weekly-report/tv'}
                 required
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className={FIELD_CLASS}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs font-medium uppercase tracking-wider text-gray-500">
-                Refresh (giây)
-              </label>
+              <label className={FIELD_LABEL_CLASS}>Refresh (giây)</label>
               <input
                 type="number"
                 min={30}
                 value={form.refreshIntervalSeconds}
                 onChange={(e) => setForm((f) => ({ ...f, refreshIntervalSeconds: Number(e.target.value) || 300 }))}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-indigo-500 focus:ring-indigo-500"
+                className={FIELD_CLASS}
               />
             </div>
             <div className="flex items-end">
-              <label className="inline-flex items-center gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700">
+              <label className="inline-flex items-center gap-3 rounded-field border border-line bg-card px-3 py-2 text-[14px] text-ink-900">
                 <input
                   type="checkbox"
                   checked={form.isActive}
                   onChange={(e) => setForm((f) => ({ ...f, isActive: e.target.checked }))}
-                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  className="rounded border-line text-brand-600 focus:ring-brand-600"
                 />
                 Đang hoạt động
               </label>
@@ -242,13 +351,13 @@ export function TvScreensTab() {
             <button
               type="button"
               onClick={() => setIsFormOpen(false)}
-              className="rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="rounded-field border border-line px-4 py-2 text-[14px] font-medium text-ink-600 transition-colors hover:bg-paper"
             >
               Huỷ
             </button>
             <button
               type="submit"
-              className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
+              className="rounded-field bg-brand-600 px-4 py-2 text-[14px] font-medium text-white transition-colors hover:bg-brand-700"
             >
               {form.id ? 'Cập nhật' : 'Thêm'}
             </button>
@@ -258,125 +367,21 @@ export function TvScreensTab() {
 
       {/* Table */}
       {loading && screens.length === 0 ? (
-        <div className="rounded-xl border border-gray-200 bg-white p-6 text-sm text-gray-500">
+        <div className="rounded-card border border-line bg-card p-6 text-[14px] text-ink-600">
           Đang tải danh sách TV...
         </div>
       ) : screens.length === 0 ? (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-gray-200 bg-white p-12 text-center">
-          <Monitor className="h-10 w-10 text-gray-300" />
-          <p className="text-sm text-gray-500">Chưa có màn hình TV nào. Nhấn "Thêm TV" để bắt đầu.</p>
-        </div>
+        <EmptyState
+          icon={Monitor}
+          title='Chưa có màn hình TV nào. Nhấn "Thêm TV" để bắt đầu.'
+        />
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">Tên</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 hidden md:table-cell">Vị trí</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500">Loại</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 hidden lg:table-cell">URL</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 text-center">Active</th>
-                <th className="px-4 py-3 text-xs font-medium uppercase tracking-wider text-gray-500 text-right">Thao tác</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {screens.map((screen) => {
-                const settingsHref = getTvScreenSettingsHref(screen);
-
-                return (
-                <tr key={screen.id} className="hover:bg-gray-50/50">
-                  <td className="px-4 py-3">
-                    <div className="font-medium text-gray-900">{screen.name}</div>
-                    <div className="text-xs text-gray-400">
-                      Alias cong khai: {getTvScreenPublicAlias(screen)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-gray-600 hidden md:table-cell">{screen.location || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${
-                        screen.contentType === 'url'
-                          ? 'bg-blue-50 text-blue-700'
-                          : 'bg-violet-50 text-violet-700'
-                      }`}
-                    >
-                      {screen.contentType === 'url' ? 'iframe' : 'internal'}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 hidden lg:table-cell">
-                    <span className="max-w-xs truncate block text-xs text-gray-500" title={screen.contentUrl}>
-                      {screen.contentUrl}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-center">
-                    <button
-                      type="button"
-                      onClick={() => toggleActive(screen.id)}
-                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                        screen.isActive ? 'bg-emerald-500' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
-                          screen.isActive ? 'translate-x-4' : 'translate-x-1'
-                        }`}
-                      />
-                    </button>
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {settingsHref && (
-                        <Link
-                          to={settingsHref}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                          title="Cài đặt báo cáo giao ban"
-                        >
-                          <Settings className="h-4 w-4" />
-                        </Link>
-                      )}
-                      <a
-                        href={getTvScreenPreviewHref(screen)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                        title="Xem trước"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </a>
-                      <button
-                        type="button"
-                        onClick={() => openEdit(screen)}
-                        className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                        title="Sửa"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                      {confirmDeleteId === screen.id ? (
-                        <button
-                          type="button"
-                          onClick={() => handleDelete(screen.id)}
-                          className="rounded-lg px-2 py-1 text-xs font-medium text-rose-600 hover:bg-rose-50"
-                        >
-                          Xác nhận xoá
-                        </button>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setConfirmDeleteId(screen.id)}
-                          className="rounded-lg p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-500"
-                          title="Xoá"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+        <DataTable
+          columns={columns}
+          rows={screens}
+          rowKey={(screen) => screen.id}
+          density="compact"
+        />
       )}
     </div>
   );

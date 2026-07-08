@@ -17,6 +17,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { hasFullPortalAdminAccess } from "@/lib/role-access";
 import { AdminTab, useAdmin } from "@/viewmodels/useAdmin";
+import { PageHeader } from "@/ui/PageHeader";
+import { TabBar } from "@/ui/TabBar";
 import { ADMIN_TABS, getAdminLegacyTabRedirect, isAdminTab } from "./admin-navigation";
 import { AddUserModal } from "./AddUserModal";
 import { ApprovalTab } from "./ApprovalTab";
@@ -95,7 +97,7 @@ export default function AdminPage() {
   if (!user || !hasFullPortalAdminAccess(user.role)) {
     return (
       <div className="flex h-96 items-center justify-center">
-        <p className="text-lg text-gray-500">Bạn không có quyền truy cập trang này.</p>
+        <p className="text-lg text-ink-600">Bạn không có quyền truy cập trang này.</p>
       </div>
     );
   }
@@ -110,30 +112,24 @@ export default function AdminPage() {
     anomaly_thresholds: <AlertTriangle className="h-4 w-4" />,
   };
 
+  const tabItems = ADMIN_TABS.map((tab) => ({
+    key: tab.id,
+    label: tab.label,
+    icon: iconsByTab[tab.id],
+  }));
+
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-24">
-      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Quản trị hệ thống</h1>
-      </div>
+      <PageHeader title="Quản trị hệ thống" />
 
-      <div className="hide-scrollbar flex overflow-x-auto rounded-xl border border-gray-200 bg-white p-1">
-        {ADMIN_TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 whitespace-nowrap rounded-lg px-4 py-2.5 text-sm font-medium transition-colors ${
-              activeTab === tab.id
-                ? "bg-indigo-50 text-indigo-700"
-                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-            }`}
-          >
-            {iconsByTab[tab.id]}
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      <TabBar<AdminTab>
+        tabs={tabItems}
+        activeKey={activeTab}
+        onChange={setActiveTab}
+        className="hide-scrollbar"
+      />
 
-      <div className="min-h-[600px] rounded-xl border border-gray-200 bg-white shadow-sm">
+      <div className="min-h-[600px]">
         {activeTab === "users" && (
           <UsersTab
             users={users}
