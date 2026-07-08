@@ -26,6 +26,8 @@ import { format, parseISO } from 'date-fns';
 
 import { PageHeader } from '@/ui/PageHeader';
 import { TabBar, type TabBarItem } from '@/ui/TabBar';
+import { anomalyMatchesInventoryItem } from '@/lib/inventory-identity';
+import type { InventoryAnomaly } from '@/types/inventory';
 import { usePharmacyInventory } from '@/viewmodels/usePharmacyInventory';
 import { useSupplyInventory } from '@/viewmodels/useSupplyInventory';
 
@@ -33,6 +35,7 @@ import KhoOverviewView from './KhoOverviewView';
 import KhoInventoryListView from './KhoInventoryListView';
 import KhoValuationView from './KhoValuationView';
 import KhoAnomaliesView from './KhoAnomaliesView';
+import KhoDetailDrawer from './KhoDetailDrawer';
 import ConsumptionTab from '@/app/inventory/ConsumptionTab';
 import ImportExportTab from '@/app/inventory/ImportExportTab';
 import StocktakeTab from '@/app/inventory/StocktakeTab';
@@ -91,6 +94,22 @@ export default function KhoWorkspace() {
     );
   };
 
+  // Anomaly drill-down parity with the retired app/pharmacy/page.tsx:258–269:
+  // resolve the anomaly to its inventory item, open the shared drawer, and
+  // switch to the Danh sách sub-tab. Reads vm.filteredInventory only.
+  const inspectAnomaly = (anomaly: InventoryAnomaly) => {
+    const found = vm.filteredInventory.find((item) =>
+      anomalyMatchesInventoryItem(anomaly, item),
+    );
+
+    if (!found) {
+      return;
+    }
+
+    vm.setSelectedItem(found);
+    setTab('danh-sach');
+  };
+
   const warehouseItems: TabBarItem<WarehouseKey>[] = WAREHOUSES.map((w) => ({
     key: w.key,
     label: w.label,
@@ -138,7 +157,7 @@ export default function KhoWorkspace() {
       ) : null}
 
       {activeTab === 'bat-thuong' ? (
-        <KhoAnomaliesView vm={vm} warehouse={warehouse} />
+        <KhoAnomaliesView vm={vm} warehouse={warehouse} onInspectAnomaly={inspectAnomaly} />
       ) : null}
 
       {/* Vật tư-only tabs — legacy inventory components mounted VERBATIM. */}
@@ -149,6 +168,11 @@ export default function KhoWorkspace() {
       {activeTab === 'kiem-ke' ? (
         <StocktakeTab filteredInventory={supply.filteredInventory} />
       ) : null}
+
+      {/* Shared detail drawer — one mount serves both the Danh sách row click
+          and the Bất thường anomaly click, for both warehouses. Renders null
+          when no item is selected. */}
+      <KhoDetailDrawer vm={vm} warehouse={warehouse} />
     </div>
   );
 }

@@ -93,10 +93,16 @@ export interface KhoAnomaliesViewProps {
   vm: KhoAnomaliesVm;
   /** Accepted for call-site parity with the sibling Kho views; unused here. */
   warehouse?: WarehouseKey;
+  /**
+   * Optional drill-down: resolve an active anomaly to its inventory item and
+   * open the shared detail drawer (parity with retired pharmacy page). Owned by
+   * `KhoWorkspace`, which holds the full vm.
+   */
+  onInspectAnomaly?: (anomaly: InventoryAnomaly) => void;
   className?: string;
 }
 
-export function KhoAnomaliesView({ vm, className = "" }: KhoAnomaliesViewProps) {
+export function KhoAnomaliesView({ vm, onInspectAnomaly, className = "" }: KhoAnomaliesViewProps) {
   const { anomalies, acknowledgeAnomaly } = vm;
 
   const activeAnomalies = anomalies.filter((anomaly) => !anomaly.acknowledged);
@@ -138,7 +144,12 @@ export function KhoAnomaliesView({ vm, className = "" }: KhoAnomaliesViewProps) 
             {items.map((anomaly) => (
               <div
                 key={anomaly.id}
-                className="rounded-card bg-card p-4 border border-line shadow-card flex flex-col gap-3"
+                role={onInspectAnomaly ? "button" : undefined}
+                tabIndex={onInspectAnomaly ? 0 : undefined}
+                onClick={onInspectAnomaly ? () => onInspectAnomaly(anomaly) : undefined}
+                className={`rounded-card bg-card p-4 border border-line shadow-card flex flex-col gap-3${
+                  onInspectAnomaly ? " cursor-pointer hover:border-brand-500 transition-colors" : ""
+                }`}
               >
                 <div className="flex items-start gap-3">
                   <div
@@ -161,7 +172,10 @@ export function KhoAnomaliesView({ vm, className = "" }: KhoAnomaliesViewProps) 
                 <div className="flex justify-end">
                   <button
                     type="button"
-                    onClick={() => acknowledgeAnomaly(anomaly.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      acknowledgeAnomaly(anomaly.id);
+                    }}
                     className="px-3 py-1.5 bg-paper hover:bg-line text-ink-600 text-[12px] font-medium rounded-field transition-colors"
                   >
                     Xác nhận
