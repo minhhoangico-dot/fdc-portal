@@ -12,6 +12,29 @@ import { WeeklyReportTab } from '@/app/admin/WeeklyReportTab';
 import { buildWeeklyReportTvUrl } from '@/lib/weekly-report';
 import { formatTimeAgo } from '@/lib/utils';
 import { useWeeklyReportLauncher } from '@/viewmodels/useWeeklyReport';
+import { PageHeader } from '@/ui/PageHeader';
+import { KpiCard } from '@/ui/KpiCard';
+import { WidgetCard } from '@/ui/WidgetCard';
+import { StatusBadge } from '@/ui/StatusBadge';
+import type { StatusKind } from '@/ui/StatusBadge';
+
+/**
+ * WeeklyReportManagementWorkspace — re-skin of the launcher chrome onto
+ * `ui/PageHeader` + `ui/KpiCard` + `ui/WidgetCard` + `ui/StatusBadge` +
+ * brand tokens (Phase 4a §4 mapping row 2).
+ *
+ * PRESENTATION ONLY. Consumes `useWeeklyReportLauncher` verbatim — same
+ * fields (`selectedDate`, `report`, `status`, `isLoading`, `isGenerating`,
+ * `error`, `refresh`, `generateSnapshot`, `moveWeek`, `setDate`), zero
+ * re-derive. `quickStats` is the identical pure presentation compute already
+ * in this file — reproduced verbatim. `<WeeklyReportTab/>` keeps its
+ * no-prop mount (owned by a different wave).
+ */
+
+const TASK_STATUS_MAP: Record<string, { status: StatusKind; label: string }> = {
+  SUCCESS: { status: 'ok', label: 'SUCCESS' },
+  FAILED: { status: 'danger', label: 'FAILED' },
+};
 
 export function WeeklyReportManagementWorkspace() {
   const {
@@ -42,156 +65,145 @@ export function WeeklyReportManagementWorkspace() {
       ]
     : [];
 
+  const taskStatus = status?.latest_log?.status
+    ? (TASK_STATUS_MAP[status.latest_log.status] ?? { status: 'warn' as StatusKind, label: status.latest_log.status })
+    : { status: 'neutral' as StatusKind, label: 'N/A' };
+
   return (
     <div className="space-y-6 pb-24">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2 text-sm text-gray-500">
-            <Link to="/tv-management" className="hover:text-gray-700 hover:underline">
-              Quản lý TV
-            </Link>
-            <span>/</span>
-            <span>Báo cáo giao ban</span>
-          </div>
-          <h1 className="mt-1 text-2xl font-bold text-gray-900">Báo cáo giao ban</h1>
-          <p className="text-sm text-gray-500">
-            Quản trị báo cáo giao ban từ Quản lý TV, gồm cả vận hành snapshot và cấu hình dữ liệu cho màn hình TV.
-          </p>
-        </div>
+      <PageHeader
+        title="Báo cáo giao ban"
+        sub="Quản trị báo cáo giao ban từ Quản lý TV, gồm cả vận hành snapshot và cấu hình dữ liệu cho màn hình TV."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={refresh}
+              disabled={isLoading}
+              className="inline-flex items-center gap-2 rounded-field border border-line bg-card px-4 py-2 text-[14px] font-medium text-ink-700 hover:bg-paper disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Làm mới
+            </button>
+            <button
+              type="button"
+              onClick={() => void generateSnapshot()}
+              disabled={isGenerating}
+              className="inline-flex items-center gap-2 rounded-field bg-brand-600 px-4 py-2 text-[14px] font-medium text-white hover:bg-brand-700 disabled:opacity-50"
+            >
+              <ArrowRight className={`h-4 w-4 ${isGenerating ? 'animate-pulse' : ''}`} />
+              {isGenerating ? 'Đang tạo snapshot...' : 'Tạo lại snapshot'}
+            </button>
+            <button
+              type="button"
+              onClick={openTv}
+              className="inline-flex items-center gap-2 rounded-field bg-ink-900 px-4 py-2 text-[14px] font-medium text-white hover:bg-ink-900/90"
+            >
+              <Tv className="h-4 w-4" />
+              Mở màn hình TV
+            </button>
+          </>
+        }
+      />
 
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={refresh}
-            disabled={isLoading}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-            Làm mới
-          </button>
-          <button
-            type="button"
-            onClick={() => void generateSnapshot()}
-            disabled={isGenerating}
-            className="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
-          >
-            <ArrowRight className={`h-4 w-4 ${isGenerating ? 'animate-pulse' : ''}`} />
-            {isGenerating ? 'Đang tạo snapshot...' : 'Tạo lại snapshot'}
-          </button>
-          <button
-            type="button"
-            onClick={openTv}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            <Tv className="h-4 w-4" />
-            Mở màn hình TV
-          </button>
-        </div>
+      <div className="flex items-center gap-2 text-[14px] text-ink-600">
+        <Link to="/tv-management" className="hover:text-ink-900 hover:underline">
+          Quản lý TV
+        </Link>
+        <span>/</span>
+        <span>Báo cáo giao ban</span>
       </div>
 
       {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-field border border-danger-600/20 bg-danger-600/10 px-4 py-3 text-[14px] text-danger-600">
           {error}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.25fr_0.75fr]">
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Chọn tuần báo cáo</h2>
-              <p className="text-sm text-gray-500">Dùng tuần bất kỳ để tạo snapshot đúng kỳ và mở màn hình TV tương ứng.</p>
-            </div>
+        <WidgetCard
+          title="Chọn tuần báo cáo"
+          actions={
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={() => moveWeek(-1)}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-field border border-line px-3 py-2 text-[13px] font-medium text-ink-700 hover:bg-paper"
               >
                 Tuần trước
               </button>
               <button
                 type="button"
                 onClick={() => moveWeek(1)}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                className="rounded-field border border-line px-3 py-2 text-[13px] font-medium text-ink-700 hover:bg-paper"
               >
                 Tuần sau
               </button>
             </div>
-          </div>
+          }
+        >
+          <p className="-mt-2 mb-4 text-[13px] text-ink-600">
+            Dùng tuần bất kỳ để tạo snapshot đúng kỳ và mở màn hình TV tương ứng.
+          </p>
 
           <div className="grid gap-4 md:grid-cols-[200px_1fr]">
-            <label className="flex flex-col gap-2 text-sm font-medium text-gray-700">
+            <label className="flex flex-col gap-2 text-[14px] font-medium text-ink-700">
               Ngày tham chiếu
               <input
                 type="date"
                 value={format(selectedDate, 'yyyy-MM-dd')}
                 onChange={(event) => setDate(event.target.value)}
-                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-900 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-100"
+                className="rounded-field border border-line px-3 py-2 text-[14px] text-ink-900 focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-600/20"
               />
             </label>
 
-            <div className="rounded-xl bg-slate-50 p-4">
-              <div className="text-sm font-medium text-slate-700">
+            <div className="rounded-card bg-paper p-4">
+              <div className="text-[14px] font-medium text-ink-700">
                 {report
                   ? `Tuần ${report.meta.week_number}, ${report.meta.year}`
                   : `Tuần ${format(selectedDate, 'II', { locale: vi })}`}
               </div>
-              <div className="mt-1 text-sm text-slate-500">
+              <div className="mt-1 text-[14px] text-ink-600">
                 {report
                   ? `${format(new Date(report.meta.week_start), 'dd/MM/yyyy', { locale: vi })} - ${format(new Date(report.meta.week_end), 'dd/MM/yyyy', { locale: vi })}`
                   : `${format(selectedDate, 'dd/MM/yyyy', { locale: vi })} - ${format(addWeeks(selectedDate, 0), 'dd/MM/yyyy', { locale: vi })}`}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {quickStats.map((item) => (
-                  <div key={item.label} className="rounded-lg border border-white bg-white px-3 py-2 shadow-sm">
-                    <div className="text-xs uppercase tracking-wide text-slate-400">{item.label}</div>
-                    <div className="text-lg font-semibold text-slate-900">{item.value.toLocaleString('vi-VN')}</div>
-                  </div>
+                  <KpiCard key={item.label} label={item.label} value={item.value.toLocaleString('vi-VN')} />
                 ))}
               </div>
             </div>
           </div>
-        </section>
+        </WidgetCard>
 
         <section className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Trạng thái snapshot</h2>
-            <div className="mt-4 space-y-3 text-sm">
+          <WidgetCard title="Trạng thái snapshot">
+            <div className="space-y-3 text-[14px]">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Nguồn dữ liệu</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-ink-600">Nguồn dữ liệu</span>
+                <span className="font-medium text-ink-900">
                   {report?.meta.source === 'snapshot' ? 'Snapshot đã lưu' : report ? 'Sinh trực tiếp / vừa tạo' : 'Đang tải'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Snapshot kỳ này</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-ink-600">Snapshot kỳ này</span>
+                <span className="font-medium text-ink-900">
                   {status?.snapshot?.generated_at ? formatTimeAgo(status.snapshot.generated_at) : 'Chưa có'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Lần tạo gần nhất</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-ink-600">Lần tạo gần nhất</span>
+                <span className="font-medium text-ink-900">
                   {status?.latest_log?.started_at ? formatTimeAgo(status.latest_log.started_at) : 'Chưa có'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Trạng thái tác vụ</span>
-                <span
-                  className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${
-                    status?.latest_log?.status === 'SUCCESS'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : status?.latest_log?.status === 'FAILED'
-                        ? 'bg-red-100 text-red-700'
-                        : 'bg-amber-100 text-amber-700'
-                  }`}
-                >
-                  {status?.latest_log?.status || 'N/A'}
-                </span>
+                <span className="text-ink-600">Trạng thái tác vụ</span>
+                <StatusBadge status={taskStatus.status} label={taskStatus.label} />
               </div>
             </div>
-          </div>
+          </WidgetCard>
         </section>
       </div>
 

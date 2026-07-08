@@ -4,19 +4,64 @@
  */
 
 import React from 'react';
-import { ArrowLeft, ArrowUpDown, Download } from 'lucide-react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { getWeeklyReportDetailsBackTarget } from '@/lib/weekly-report';
 import { useWeeklyReportDetails } from '@/viewmodels/useWeeklyReport';
+import type { WeeklyReportDetailRow } from '@/types/weeklyReport';
+import { PageHeader } from '@/ui/PageHeader';
+import { WidgetCard } from '@/ui/WidgetCard';
+import { DataTable } from '@/ui/DataTable';
+import type { DataTableColumn } from '@/ui/DataTable';
+import { StatusBadge } from '@/ui/StatusBadge';
+import type { StatusKind } from '@/ui/StatusBadge';
+
+/**
+ * WeeklyReportDetailsScreen — re-skin of the hand-rolled sortable `<table>`
+ * onto `ui/PageHeader` + `ui/WidgetCard` + `ui/DataTable` (compact, sticky,
+ * sortable) + `ui/StatusBadge` + brand tokens (Phase 4a §4 mapping row 3).
+ *
+ * PRESENTATION ONLY. Consumes `useWeeklyReportDetails` verbatim — same
+ * fields (`rows`, `loading`, `error`). `sortConfig` / `sortedRows` /
+ * `handleSort` / `exportCsv` / `toCsvValue` are the identical presentation
+ * state + CSV builder already in this file — reproduced verbatim.
+ * `DataTable` never re-sorts: it only renders `sortedRows` in the order
+ * this component already computed, controlled by `sortKey`/`sortDir`/
+ * `onToggleSort` wired straight to the local `sortConfig`/`handleSort`.
+ */
 
 type SortConfig = {
   key: string;
   direction: 'asc' | 'desc';
 } | null;
 
+/** Row + display index (1-based) — presentation-only, mirrors the original `index + 1` STT column. */
+type IndexedRow = WeeklyReportDetailRow & { __rowIndex: number };
+
 function toCsvValue(value: unknown): string {
   const stringValue = String(value ?? '');
   return /[",\n]/.test(stringValue) ? `"${stringValue.replace(/"/g, '""')}"` : stringValue;
+}
+
+/**
+ * `doituong` → StatusBadge kind. StatusBadge exposes 5 kinds (ok/warn/danger/
+ * info/neutral); the legacy chip used 5 solid hues (blue/green/purple/
+ * yellow/gray). Purple has no token equivalent — "Yeu cau" is mapped to
+ * `danger` purely for the 5th distinct hue, not to imply an error state.
+ */
+function doituongStatus(value?: string): StatusKind {
+  switch (value) {
+    case 'Bao hiem':
+      return 'info';
+    case 'Vien phi':
+      return 'ok';
+    case 'Yeu cau':
+      return 'danger';
+    case 'Mien phi':
+      return 'warn';
+    default:
+      return 'neutral';
+  }
 }
 
 export function WeeklyReportDetailsScreen() {
@@ -43,6 +88,11 @@ export function WeeklyReportDetailsScreen() {
     });
   }, [rows, sortConfig]);
 
+  const indexedRows = React.useMemo<IndexedRow[]>(
+    () => sortedRows.map((row, index) => ({ ...row, __rowIndex: index + 1 })),
+    [sortedRows],
+  );
+
   const handleSort = (nextKey: string) => {
     setSortConfig((current) => {
       if (current?.key === nextKey) {
@@ -64,7 +114,7 @@ export function WeeklyReportDetailsScreen() {
     );
 
     const csv = [header, ...rowsForCsv].map((line) => line.map(toCsvValue).join(',')).join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const blob = new Blob([`﻿${csv}`], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement('a');
     anchor.href = url;
@@ -75,152 +125,125 @@ export function WeeklyReportDetailsScreen() {
 
   const backTarget = getWeeklyReportDetailsBackTarget({ from, start });
 
+  const commonColumns: DataTableColumn<IndexedRow>[] = [
+    {
+      key: 'stt',
+      header: 'STT',
+      cell: (row) => row.__rowIndex,
+      cellClassName: 'w-[60px]',
+    },
+    {
+      key: 'patientcode',
+      header: 'Mã BN',
+      cell: (row) => row.patientcode,
+      cellClassName: 'w-[100px]',
+    },
+    {
+      key: 'patientname',
+      header: 'Tên bệnh nhân',
+      cell: (row) => row.patientname,
+      cellClassName: 'whitespace-nowrap font-medium text-ink-900',
+    },
+    {
+      key: 'gender',
+      header: 'GT',
+      cell: (row) => row.gender,
+      cellClassName: 'w-[60px]',
+    },
+  ];
+
+  const transferColumns: DataTableColumn<IndexedRow>[] = [
+    {
+      key: 'examtime',
+      header: 'Ngày khám',
+      sortKey: 'examtime',
+      cell: (row) => row.examtime,
+      cellClassName: 'w-[140px]',
+    },
+    {
+      key: 'hospitalname',
+      header: 'Bệnh viện',
+      sortKey: 'hospitalname',
+      cell: (row) => row.hospitalname,
+      cellClassName: 'min-w-[220px] whitespace-normal font-medium text-info-600',
+    },
+    {
+      key: 'diagnosis',
+      header: 'Chẩn đoán',
+      sortKey: 'diagnosis',
+      cell: (row) => row.diagnosis,
+      cellClassName: 'min-w-[320px] whitespace-normal italic text-ink-600',
+    },
+  ];
+
+  const serviceColumns: DataTableColumn<IndexedRow>[] = [
+    {
+      key: 'doituong',
+      header: 'Đối tượng',
+      sortKey: 'doituong',
+      cell: (row) => (row.doituong ? <StatusBadge status={doituongStatus(row.doituong)} label={row.doituong} /> : null),
+    },
+    {
+      key: 'servicename',
+      header: 'Dịch vụ',
+      sortKey: 'servicename',
+      cell: (row) => row.servicename,
+    },
+    {
+      key: 'time',
+      header: 'Thời gian',
+      sortKey: 'time',
+      cell: (row) => row.time,
+    },
+  ];
+
+  const columns = [...commonColumns, ...(isTransfer ? transferColumns : serviceColumns)];
+
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <div className="min-h-screen bg-paper p-6">
       <div className="mx-auto max-w-[1600px] space-y-6">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-[14px] text-ink-600">
           <Link
             to={backTarget}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="inline-flex items-center gap-2 rounded-field border border-line bg-card px-4 py-2 text-[14px] font-medium text-ink-700 hover:bg-paper"
           >
             <ArrowLeft className="h-4 w-4" />
             Quay lại
           </Link>
-
-          <h1 className="text-2xl font-bold uppercase text-blue-900">Chi tiết dịch vụ</h1>
-
-          <button
-            type="button"
-            onClick={exportCsv}
-            className="inline-flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-          >
-            <Download className="h-4 w-4" />
-            Xuất CSV
-          </button>
         </div>
 
+        <PageHeader
+          title="Chi tiết dịch vụ"
+          actions={
+            <button
+              type="button"
+              onClick={exportCsv}
+              className="inline-flex items-center gap-2 rounded-field border border-line bg-card px-4 py-2 text-[14px] font-medium text-ink-700 hover:bg-paper"
+            >
+              <Download className="h-4 w-4" />
+              Xuất CSV
+            </button>
+          }
+        />
+
         {error && (
-          <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          <div className="rounded-field border border-danger-600/20 bg-danger-600/10 px-4 py-3 text-[14px] text-danger-600">
             {error}
           </div>
         )}
 
-        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-          <div className="border-b border-slate-100 px-6 py-4">
-            <h2 className="text-lg font-semibold text-slate-900">Danh sách bệnh nhân - {title}</h2>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-sm">
-              <thead className="sticky top-0 z-10 bg-slate-50">
-                <tr>
-                  <th className="w-[60px] px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">STT</th>
-                  <th className="w-[100px] px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">Mã BN</th>
-                  <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">Tên bệnh nhân</th>
-                  <th className="w-[60px] px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">GT</th>
-
-                  {isTransfer ? (
-                    <>
-                      <th className="w-[140px] px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <button type="button" onClick={() => handleSort('examtime')} className="inline-flex items-center gap-1">
-                          Ngày khám
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      </th>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <button type="button" onClick={() => handleSort('hospitalname')} className="inline-flex items-center gap-1">
-                          Bệnh viện
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      </th>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <button type="button" onClick={() => handleSort('diagnosis')} className="inline-flex items-center gap-1">
-                          Chẩn đoán
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      </th>
-                    </>
-                  ) : (
-                    <>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <button type="button" onClick={() => handleSort('doituong')} className="inline-flex items-center gap-1">
-                          Đối tượng
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      </th>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <button type="button" onClick={() => handleSort('servicename')} className="inline-flex items-center gap-1">
-                          Dịch vụ
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      </th>
-                      <th className="px-4 py-3 text-xs font-medium uppercase tracking-wide text-slate-500">
-                        <button type="button" onClick={() => handleSort('time')} className="inline-flex items-center gap-1">
-                          Thời gian
-                          <ArrowUpDown className="h-3 w-3" />
-                        </button>
-                      </th>
-                    </>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {loading ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                      Đang tải...
-                    </td>
-                  </tr>
-                ) : sortedRows.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                      Không có dữ liệu
-                    </td>
-                  </tr>
-                ) : (
-                  sortedRows.map((row, index) => (
-                    <tr key={`${row.servicedataid}-${index}`} className="hover:bg-slate-50">
-                      <td className="px-4 py-3">{index + 1}</td>
-                      <td className="px-4 py-3">{row.patientcode}</td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-slate-900">{row.patientname}</td>
-                      <td className="px-4 py-3">{row.gender}</td>
-
-                      {isTransfer ? (
-                        <>
-                          <td className="px-4 py-3">{row.examtime}</td>
-                          <td className="min-w-[220px] whitespace-normal px-4 py-3 font-medium text-blue-700">{row.hospitalname}</td>
-                          <td className="min-w-[320px] whitespace-normal px-4 py-3 italic text-slate-600">{row.diagnosis}</td>
-                        </>
-                      ) : (
-                        <>
-                          <td className="px-4 py-3">
-                            <span
-                              className={`inline-flex rounded-full px-2 py-1 text-xs font-medium ${
-                                row.doituong === 'Bao hiem'
-                                  ? 'bg-blue-100 text-blue-700'
-                                  : row.doituong === 'Vien phi'
-                                    ? 'bg-green-100 text-green-700'
-                                    : row.doituong === 'Yeu cau'
-                                      ? 'bg-purple-100 text-purple-700'
-                                      : row.doituong === 'Mien phi'
-                                        ? 'bg-yellow-100 text-yellow-700'
-                                        : 'bg-gray-100 text-gray-700'
-                              }`}
-                            >
-                              {row.doituong}
-                            </span>
-                          </td>
-                          <td className="px-4 py-3">{row.servicename}</td>
-                          <td className="px-4 py-3">{row.time}</td>
-                        </>
-                      )}
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <WidgetCard title={`Danh sách bệnh nhân - ${title}`}>
+          <DataTable
+            columns={columns}
+            rows={indexedRows}
+            rowKey={(row) => `${row.servicedataid}-${row.__rowIndex}`}
+            sortKey={sortConfig?.key}
+            sortDir={sortConfig?.direction}
+            onToggleSort={handleSort}
+            emptyLabel={loading ? 'Đang tải...' : 'Không có dữ liệu'}
+            density="compact"
+          />
+        </WidgetCard>
       </div>
     </div>
   );

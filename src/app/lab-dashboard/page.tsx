@@ -9,6 +9,24 @@ import { LabDashboardDisplay } from '@/components/lab-dashboard/LabDashboardDisp
 import { formatTimeAgo } from '@/lib/utils';
 import { LabDashboardSectionKey } from '@/types/labDashboard';
 import { useLabDashboard } from '@/viewmodels/useLabDashboard';
+import { PageHeader } from '@/ui/PageHeader';
+import { KpiCard } from '@/ui/KpiCard';
+import { WidgetCard } from '@/ui/WidgetCard';
+import { StatusBadge } from '@/ui/StatusBadge';
+
+/**
+ * lab-dashboard/page.tsx — re-skin of the light launcher chrome onto
+ * `ui/PageHeader` + `ui/KpiCard` + `ui/WidgetCard` + `ui/StatusBadge` +
+ * brand tokens (Phase 4a §4 mapping row 1).
+ *
+ * PRESENTATION ONLY. Consumes `useLabDashboard` verbatim — same fields
+ * (`payload`, `loading`, `refreshing`, `error`, `refresh`), zero re-derive.
+ * `statCards` / `sectionErrors` / `countReagentAlerts` are the identical
+ * pure presentation compute already in this file — reproduced verbatim.
+ *
+ * The dark `LabDashboardDisplay` preview box (mode="preview") is left
+ * completely untouched — only the light chrome around it is reskinned.
+ */
 
 const SECTION_LABELS: Record<LabDashboardSectionKey, string> = {
   queue: 'Hàng chờ',
@@ -56,66 +74,63 @@ export default function LabDashboardPage() {
 
   return (
     <div className="mx-auto max-w-7xl space-y-6 pb-24">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard xét nghiệm</h1>
-          <p className="mt-2 max-w-3xl text-sm text-gray-500">
-            Trang launcher cho màn hình khoa xét nghiệm. Preview dùng cùng payload với TV công khai để tránh phân nhánh dữ liệu hiển thị.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={() => void refresh()}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Làm mới
-          </button>
-          <button
-            type="button"
-            onClick={openTv}
-            className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-          >
-            <Tv className="h-4 w-4" />
-            Mở màn hình TV
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Dashboard xét nghiệm"
+        sub="Trang launcher cho màn hình khoa xét nghiệm. Preview dùng cùng payload với TV công khai để tránh phân nhánh dữ liệu hiển thị."
+        actions={
+          <>
+            <button
+              type="button"
+              onClick={() => void refresh()}
+              className="inline-flex items-center gap-2 rounded-field border border-line bg-card px-4 py-2 text-[14px] font-medium text-ink-700 hover:bg-paper"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Làm mới
+            </button>
+            <button
+              type="button"
+              onClick={openTv}
+              className="inline-flex items-center gap-2 rounded-field bg-ink-900 px-4 py-2 text-[14px] font-medium text-white hover:bg-ink-900/90"
+            >
+              <Tv className="h-4 w-4" />
+              Mở màn hình TV
+            </button>
+          </>
+        }
+      />
 
       {payload && (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {statCards.map((card) => (
-            <div key={card.label} className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-              <div className="text-sm font-medium text-gray-500">{card.label}</div>
-              <div className="mt-2 text-3xl font-bold text-gray-900">{card.value.toLocaleString('vi-VN')}</div>
-              <div className="mt-2 text-xs text-gray-500">{card.helper}</div>
-            </div>
+            <KpiCard
+              key={card.label}
+              label={card.label}
+              value={card.value.toLocaleString('vi-VN')}
+              delta={card.helper}
+            />
           ))}
         </div>
       )}
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-          <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-gray-900">Preview màn hình</h2>
-              <p className="text-sm text-gray-500">
-                Route công khai: <span className="font-medium text-gray-700">/lab-dashboard/tv</span>
-              </p>
-            </div>
+        <WidgetCard
+          title="Preview màn hình"
+          actions={
             <button
               type="button"
               onClick={openTv}
-              className="inline-flex items-center gap-2 self-start rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+              className="inline-flex items-center gap-2 self-start rounded-field border border-line px-3 py-2 text-[13px] font-medium text-ink-700 hover:bg-paper"
             >
               <ExternalLink className="h-4 w-4" />
               Mở tab mới
             </button>
-          </div>
+          }
+        >
+          <p className="mb-4 -mt-2 text-[13px] text-ink-600">
+            Route công khai: <span className="font-medium text-ink-900">/lab-dashboard/tv</span>
+          </p>
 
-          <div className="overflow-auto rounded-[28px] border border-slate-900 bg-[#0a0e14] shadow-2xl">
+          <div className="overflow-auto rounded-[28px] border border-ink-900 bg-[#0a0e14] shadow-2xl">
             <LabDashboardDisplay
               payload={payload}
               loading={loading}
@@ -125,51 +140,54 @@ export default function LabDashboardPage() {
               onRetry={() => void refresh()}
             />
           </div>
-        </section>
+        </WidgetCard>
 
         <section className="space-y-4">
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Tình trạng dữ liệu</h2>
-            <div className="mt-4 space-y-3 text-sm">
+          <WidgetCard title="Tình trạng dữ liệu">
+            <div className="space-y-3 text-[14px]">
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Lần cập nhật gần nhất</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-ink-600">Lần cập nhật gần nhất</span>
+                <span className="font-medium text-ink-900">
                   {payload ? formatTimeAgo(payload.meta.generatedAt) : 'Đang tải'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Ngày dữ liệu HIS</span>
-                <span className="font-medium text-gray-900">{payload?.meta.asOfDate || '--'}</span>
+                <span className="text-ink-600">Ngày dữ liệu HIS</span>
+                <span className="font-medium text-ink-900">{payload?.meta.asOfDate || '--'}</span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Ngày snapshot tồn kho</span>
-                <span className="font-medium text-gray-900">
+                <span className="text-ink-600">Ngày snapshot tồn kho</span>
+                <span className="font-medium text-ink-900">
                   {payload?.meta.sectionFreshness.reagents.dataDate || '--'}
                 </span>
               </div>
               <div className="flex items-center justify-between">
-                <span className="text-gray-500">Lỗi từng phần</span>
-                <span className="font-medium text-gray-900">
-                  {sectionErrors.length > 0 ? sectionErrors.map((key) => SECTION_LABELS[key]).join(', ') : 'Không có'}
-                </span>
+                <span className="text-ink-600">Lỗi từng phần</span>
+                {sectionErrors.length > 0 ? (
+                  <StatusBadge
+                    status="danger"
+                    label={sectionErrors.map((key) => SECTION_LABELS[key]).join(', ')}
+                  />
+                ) : (
+                  <StatusBadge status="ok" label="Không có" />
+                )}
               </div>
             </div>
-          </div>
+          </WidgetCard>
 
-          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
-            <h2 className="text-lg font-semibold text-gray-900">Vận hành TV</h2>
-            <div className="mt-4 space-y-3 text-sm text-gray-600">
+          <WidgetCard title="Vận hành TV">
+            <div className="space-y-3 text-[14px] text-ink-600">
               <p>
-                TV public chạy ngoài <span className="font-medium text-gray-900">AppShell</span> để giữ layout full-screen và có thể mở qua slug trong bảng <span className="font-medium text-gray-900">fdc_tv_screens</span>.
+                TV public chạy ngoài <span className="font-medium text-ink-900">AppShell</span> để giữ layout full-screen và có thể mở qua slug trong bảng <span className="font-medium text-ink-900">fdc_tv_screens</span>.
               </p>
               <p>
-                Seed mặc định dùng slug <span className="font-medium text-gray-900">xet-nghiem</span>, trỏ nội bộ đến <span className="font-medium text-gray-900">/lab-dashboard/tv</span>.
+                Seed mặc định dùng slug <span className="font-medium text-ink-900">xet-nghiem</span>, trỏ nội bộ đến <span className="font-medium text-ink-900">/lab-dashboard/tv</span>.
               </p>
               <p>
-                V1 chỉ hiển thị <span className="font-medium text-gray-900">mã bệnh nhân</span>, không đưa tên bệnh nhân lên launcher hoặc màn hình TV.
+                V1 chỉ hiển thị <span className="font-medium text-ink-900">mã bệnh nhân</span>, không đưa tên bệnh nhân lên launcher hoặc màn hình TV.
               </p>
             </div>
-          </div>
+          </WidgetCard>
         </section>
       </div>
     </div>
